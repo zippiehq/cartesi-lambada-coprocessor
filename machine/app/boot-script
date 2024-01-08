@@ -1,0 +1,7 @@
+#!/bin/sh
+VALUE=`curl http://127.0.0.1:5004/get_tx`
+echo $VALUE
+SQUARE=$(expr $VALUE \* $VALUE)
+echo $SQUARE
+echo -n $SQUARE | ipfs files write -e /state/output
+curl -X POST http://127.0.0.1:5004/finish
