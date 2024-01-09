@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
@@ -27,11 +28,11 @@ func TestOperator(t *testing.T) {
 	const taskIndex = 1
 
 	t.Run("ProcessNewTaskCreatedLog", func(t *testing.T) {
-		var numberToBeSquared = big.NewInt(3)
+		var input = []byte("data")
 		newTaskCreatedLog := &cstaskmanager.ContractIncredibleSquaringTaskManagerNewTaskCreated{
 			TaskIndex: taskIndex,
 			Task: cstaskmanager.IIncredibleSquaringTaskManagerTask{
-				NumberToBeSquared:         numberToBeSquared,
+				Input:                     input,
 				TaskCreatedBlock:          1000,
 				QuorumNumbers:             aggtypes.QUORUM_NUMBERS,
 				QuorumThresholdPercentage: aggtypes.QUORUM_THRESHOLD_NUMERATOR,
@@ -39,22 +40,22 @@ func TestOperator(t *testing.T) {
 			Raw: types.Log{},
 		}
 		got := operator.ProcessNewTaskCreatedLog(newTaskCreatedLog)
-		numberSquared := big.NewInt(0).Mul(numberToBeSquared, numberToBeSquared)
+		outputHash := [32]byte(crypto.Keccak256(input))
 		want := &cstaskmanager.IIncredibleSquaringTaskManagerTaskResponse{
 			ReferenceTaskIndex: taskIndex,
-			NumberSquared:      numberSquared,
+			OutputHash:         outputHash,
 		}
 		assert.Equal(t, got, want)
 	})
 
 	t.Run("Start", func(t *testing.T) {
-		var numberToBeSquared = big.NewInt(3)
+		var input = []byte("data")
 
 		// new task event
 		newTaskCreatedEvent := &cstaskmanager.ContractIncredibleSquaringTaskManagerNewTaskCreated{
 			TaskIndex: taskIndex,
 			Task: cstaskmanager.IIncredibleSquaringTaskManagerTask{
-				NumberToBeSquared:         numberToBeSquared,
+				Input:                     input,
 				TaskCreatedBlock:          1000,
 				QuorumNumbers:             aggtypes.QUORUM_NUMBERS,
 				QuorumThresholdPercentage: aggtypes.QUORUM_THRESHOLD_NUMERATOR,
@@ -70,7 +71,7 @@ func TestOperator(t *testing.T) {
 		signedTaskResponse := &aggregator.SignedTaskResponse{
 			TaskResponse: cstaskmanager.IIncredibleSquaringTaskManagerTaskResponse{
 				ReferenceTaskIndex: taskIndex,
-				NumberSquared:      big.NewInt(0).Mul(numberToBeSquared, numberToBeSquared),
+				OutputHash:         [32]byte(crypto.Keccak256(input)),
 			},
 			BlsSignature: bls.Signature{
 				G1Point: bls.NewG1Point(X, Y),

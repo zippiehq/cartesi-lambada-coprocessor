@@ -3,16 +3,16 @@ package operator
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"io"
-	"math/big"
-	"math/rand"
 	"net/http"
 	"os"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 	ipfs_files "github.com/ipfs/boxo/files"
 	ipfs_path "github.com/ipfs/boxo/path"
 	"github.com/ipfs/go-cid"
@@ -346,7 +346,7 @@ func (o *Operator) Start(ctx context.Context) error {
 func (o *Operator) ProcessNewTaskCreatedLog(newTaskCreatedLog *cstaskmanager.ContractIncredibleSquaringTaskManagerNewTaskCreated) *cstaskmanager.IIncredibleSquaringTaskManagerTaskResponse {
 	o.logger.Debug("Received new task", "task", newTaskCreatedLog)
 	o.logger.Info("Received new task",
-		"numberToBeSquared", newTaskCreatedLog.Task.NumberToBeSquared,
+		"input", string(newTaskCreatedLog.Task.Input),
 		"taskIndex", newTaskCreatedLog.TaskIndex,
 		"taskCreatedBlock", newTaskCreatedLog.Task.TaskCreatedBlock,
 		"quorumNumbers", newTaskCreatedLog.Task.QuorumNumbers,
@@ -354,31 +354,30 @@ func (o *Operator) ProcessNewTaskCreatedLog(newTaskCreatedLog *cstaskmanager.Con
 	)
 
 	//numberSquared := big.NewInt(0).Exp(newTaskCreatedLog.Task.NumberToBeSquared, big.NewInt(2), nil)
-	numberSquared, err := o.requestSquaredNumber(newTaskCreatedLog.Task.NumberToBeSquared)
+	output, err := o.requestEcho(newTaskCreatedLog.Task.Input)
 	if err != nil {
-		fake := fakeNumberSquare()
+		fake := fakeInput(len(newTaskCreatedLog.Task.Input))
 		o.logger.Errorf("failed to request squared number from lambada service -%s, faking result - %s",
-			err, fake.String())
+			err, string(fake))
 		return &cstaskmanager.IIncredibleSquaringTaskManagerTaskResponse{
 			ReferenceTaskIndex: newTaskCreatedLog.TaskIndex,
-			NumberSquared:      fake,
+			OutputHash:         hashOutput(fake),
 		}
 	} else {
 		return &cstaskmanager.IIncredibleSquaringTaskManagerTaskResponse{
 			ReferenceTaskIndex: newTaskCreatedLog.TaskIndex,
-			NumberSquared:      numberSquared,
+			OutputHash:         hashOutput(output),
 		}
 	}
 }
 
-func (o *Operator) requestSquaredNumber(n *big.Int) (*big.Int, error) {
+func (o *Operator) requestEcho(input []byte) ([]byte, error) {
 	// Query lambada compute endpoint.
 	requestURL := fmt.Sprintf("http://%s/compute/%s",
 		os.Getenv("LAMBADA_ADDRESS"),
 		os.Getenv("LAMBADA_COMPUTE_CID"),
 	)
-	requestBody := []byte(n.String())
-	resp, err := http.Post(requestURL, "application/octet-stream", bytes.NewBuffer(requestBody))
+	resp, err := http.Post(requestURL, "application/octet-stream", bytes.NewBuffer(input))
 	if err != nil {
 		return nil, err
 	}
@@ -401,27 +400,22 @@ func (o *Operator) requestSquaredNumber(n *big.Int) (*big.Int, error) {
 	}
 
 	// Query squared number from IPFS.
-	squaredNumberPath, err := ipfs_path.NewPath(fmt.Sprintf("/ipfs/%s/output", cid.String()))
+	outputPath, err := ipfs_path.NewPath(fmt.Sprintf("/ipfs/%s/output", cid.String()))
 	if err != nil {
 		return nil, err
 	}
-	squaredNumberNode, err := o.ipfsClient.Unixfs().Get(context.TODO(), squaredNumberPath)
+	outputNode, err := o.ipfsClient.Unixfs().Get(context.TODO(), outputPath)
 	if err != nil {
 		return nil, err
 	}
-	squaredNumberFile := ipfs_files.ToFile(squaredNumberNode)
-	defer squaredNumberFile.Close()
-	squaredNumberData, err := io.ReadAll(squaredNumberFile)
+	outputFile := ipfs_files.ToFile(outputNode)
+	defer outputFile.Close()
+	output, err := io.ReadAll(outputFile)
 	if err != nil {
 		return nil, err
 	}
 
-	squaredNumber := new(big.Int)
-	if _, err := fmt.Sscan(string(squaredNumberData), squaredNumber); err != nil {
-		return nil, err
-	}
-
-	return squaredNumber, nil
+	return output, nil
 }
 
 func (o *Operator) SignTaskResponse(taskResponse *cstaskmanager.IIncredibleSquaringTaskManagerTaskResponse) (*aggregator.SignedTaskResponse, error) {
@@ -440,7 +434,12 @@ func (o *Operator) SignTaskResponse(taskResponse *cstaskmanager.IIncredibleSquar
 	return signedTaskResponse, nil
 }
 
-func fakeNumberSquare() *big.Int {
-	fakeResult := rand.Int()
-	return big.NewInt(int64(fakeResult))
+func fakeInput(size int) []byte {
+	fake := make([]byte, size)
+	rand.Read(fake)
+	return fake
+}
+
+func hashOutput(output []byte) [32]byte {
+	return [32]byte(crypto.Keccak256())
 }
