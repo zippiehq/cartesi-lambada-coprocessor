@@ -10,6 +10,7 @@ import (
 	"github.com/Layr-Labs/incredible-squaring-avs/common"
 	"github.com/Layr-Labs/incredible-squaring-avs/core/config"
 	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/ethereum/go-ethereum/crypto"
 
 	"github.com/Layr-Labs/incredible-squaring-avs/challenger/types"
 	cstaskmanager "github.com/Layr-Labs/incredible-squaring-avs/contracts/bindings/IncredibleSquaringTaskManager"
@@ -136,12 +137,12 @@ func (c *Challenger) processTaskResponseLog(taskResponseLog *cstaskmanager.Contr
 }
 
 func (c *Challenger) callChallengeModule(taskIndex uint32) error {
-	numberToBeSquared := c.tasks[taskIndex].NumberToBeSquared
-	answerInResponse := c.taskResponses[taskIndex].TaskResponse.NumberSquared
-	trueAnswer := numberToBeSquared.Exp(numberToBeSquared, big.NewInt(2), nil)
+	input := c.tasks[taskIndex].Input
+	answerInResponse := c.taskResponses[taskIndex].TaskResponse.OutputHash
+	trueAnswer := [32]byte(crypto.Keccak256(input))
 
 	// checking if the answer in the response submitted by aggregator is correct
-	if trueAnswer.Cmp(answerInResponse) != 0 {
+	if trueAnswer != answerInResponse {
 		c.logger.Infof("The number squared is not correct")
 
 		// raise challenge
