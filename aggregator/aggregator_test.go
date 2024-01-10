@@ -60,9 +60,9 @@ func TestSendNewTask(t *testing.T) {
 	var BLOCK_NUMBER = uint32(100)
 	var INPUT = []byte("data")
 
-	mockAvsWriterer.EXPECT().SendNewTaskNumberToSquare(
+	mockAvsWriterer.EXPECT().SendNewEchoTask(
 		context.Background(), INPUT, types.QUORUM_THRESHOLD_NUMERATOR, types.QUORUM_NUMBERS,
-	).Return(mocks.MockSendNewTaskNumberToSquareCall(BLOCK_NUMBER, TASK_INDEX, INPUT))
+	).Return(mocks.MockEchoTaskCall(BLOCK_NUMBER, TASK_INDEX, INPUT))
 
 	// 100 blocks, each takes 12 seconds. We hardcode for now since aggregator also hardcodes this value
 	taskTimeToExpiry := 100 * 12 * time.Second

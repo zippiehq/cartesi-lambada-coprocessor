@@ -11,7 +11,7 @@ import (
 
 // ====== TaskManager Mocks ======
 
-func MockSendNewTaskNumberToSquareCall(blockNum, taskNum uint32, input []byte) (cstaskmanager.IIncredibleSquaringTaskManagerTask, uint32, error) {
+func MockEchoTaskCall(blockNum, taskNum uint32, input []byte) (cstaskmanager.IIncredibleSquaringTaskManagerTask, uint32, error) {
 	task := cstaskmanager.IIncredibleSquaringTaskManagerTask{
 		Input:                     input,
 		TaskCreatedBlock:          blockNum,

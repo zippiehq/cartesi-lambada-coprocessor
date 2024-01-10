@@ -143,7 +143,7 @@ func (c *Challenger) callChallengeModule(taskIndex uint32) error {
 
 	// checking if the answer in the response submitted by aggregator is correct
 	if trueAnswer != answerInResponse {
-		c.logger.Infof("The number squared is not correct")
+		c.logger.Infof("The output is not correct")
 
 		// raise challenge
 		c.raiseChallenge(taskIndex)

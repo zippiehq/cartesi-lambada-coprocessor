@@ -353,11 +353,10 @@ func (o *Operator) ProcessNewTaskCreatedLog(newTaskCreatedLog *cstaskmanager.Con
 		"QuorumThresholdPercentage", newTaskCreatedLog.Task.QuorumThresholdPercentage,
 	)
 
-	//numberSquared := big.NewInt(0).Exp(newTaskCreatedLog.Task.NumberToBeSquared, big.NewInt(2), nil)
 	output, err := o.requestEcho(newTaskCreatedLog.Task.Input)
 	if err != nil {
 		fake := fakeInput(len(newTaskCreatedLog.Task.Input))
-		o.logger.Errorf("failed to request squared number from lambada service -%s, faking result - %s",
+		o.logger.Errorf("failed to request echo from lambada service -%s, faking result - %s",
 			err, string(fake))
 		return &cstaskmanager.IIncredibleSquaringTaskManagerTaskResponse{
 			ReferenceTaskIndex: newTaskCreatedLog.TaskIndex,
@@ -382,7 +381,7 @@ func (o *Operator) requestEcho(input []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	// Parse CID with squared number.
+	// Parse CID with echo output.
 	defer resp.Body.Close()
 	respData, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -399,7 +398,7 @@ func (o *Operator) requestEcho(input []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	// Query squared number from IPFS.
+	// Query echo output from IPFS.
 	outputPath, err := ipfs_path.NewPath(fmt.Sprintf("/ipfs/%s/output", cid.String()))
 	if err != nil {
 		return nil, err

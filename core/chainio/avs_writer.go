@@ -20,7 +20,7 @@ import (
 type AvsWriterer interface {
 	avsregistry.AvsRegistryWriter
 
-	SendNewTaskNumberToSquare(
+	SendNewEchoTask(
 		ctx context.Context,
 		input []byte,
 		quorumThresholdPercentage uint32,
@@ -93,7 +93,7 @@ func NewAvsWriter(signer signer.Signer, serviceManagerAddr, blsOperatorStateRetr
 }
 
 // returns the tx receipt, as well as the task index (which it gets from parsing the tx receipt logs)
-func (w *AvsWriter) SendNewTaskNumberToSquare(ctx context.Context, input []byte, quorumThresholdPercentage uint32, quorumNumbers []byte) (cstaskmanager.IIncredibleSquaringTaskManagerTask, uint32, error) {
+func (w *AvsWriter) SendNewEchoTask(ctx context.Context, input []byte, quorumThresholdPercentage uint32, quorumNumbers []byte) (cstaskmanager.IIncredibleSquaringTaskManagerTask, uint32, error) {
 	txOpts := w.Signer.GetTxOpts()
 	tx, err := w.AvsContractBindings.TaskManager.CreateNewTask(txOpts, input, quorumThresholdPercentage, quorumNumbers)
 	if err != nil {

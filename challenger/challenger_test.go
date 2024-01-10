@@ -25,9 +25,9 @@ var MOCK_OPERATOR_BLS_PRIVATE_KEY_STRING = "50"
 
 // @samlaf I tried pulling the MockTask struct froma ggregator_test but getting error: "undefined: aggregator.MockTask"
 type MockTask struct {
-	TaskNum        uint32
-	BlockNumber    uint32
-	NumberToSquare uint32
+	TaskNum     uint32
+	BlockNumber uint32
+	Input       []byte
 }
 
 func TestCallChallengeModule(t *testing.T) {

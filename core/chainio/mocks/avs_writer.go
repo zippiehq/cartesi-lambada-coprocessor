@@ -10,7 +10,6 @@ package mocks
 
 import (
 	context "context"
-	big "math/big"
 	reflect "reflect"
 
 	contractBLSPubkeyRegistry "github.com/Layr-Labs/eigensdk-go/contracts/bindings/BLSPubkeyRegistry"
@@ -104,20 +103,20 @@ func (mr *MockAvsWritererMockRecorder) SendAggregatedResponse(arg0, arg1, arg2, 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendAggregatedResponse", reflect.TypeOf((*MockAvsWriterer)(nil).SendAggregatedResponse), arg0, arg1, arg2, arg3)
 }
 
-// SendNewTaskNumberToSquare mocks base method.
-func (m *MockAvsWriterer) SendNewTaskNumberToSquare(arg0 context.Context, arg1 *big.Int, arg2 uint32, arg3 []byte) (contractIncredibleSquaringTaskManager.IIncredibleSquaringTaskManagerTask, uint32, error) {
+// SendNewEchoTask mocks base method.
+func (m *MockAvsWriterer) SendNewEchoTask(arg0 context.Context, arg1 []byte, arg2 uint32, arg3 []byte) (contractIncredibleSquaringTaskManager.IIncredibleSquaringTaskManagerTask, uint32, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SendNewTaskNumberToSquare", arg0, arg1, arg2, arg3)
+	ret := m.ctrl.Call(m, "SendNewEchoTask", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(contractIncredibleSquaringTaskManager.IIncredibleSquaringTaskManagerTask)
 	ret1, _ := ret[1].(uint32)
 	ret2, _ := ret[2].(error)
 	return ret0, ret1, ret2
 }
 
-// SendNewTaskNumberToSquare indicates an expected call of SendNewTaskNumberToSquare.
-func (mr *MockAvsWritererMockRecorder) SendNewTaskNumberToSquare(arg0, arg1, arg2, arg3 any) *gomock.Call {
+// SendNewEchoTask indicates an expected call of SendNewEchoTask.
+func (mr *MockAvsWritererMockRecorder) SendNewEchoTask(arg0, arg1, arg2, arg3 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendNewTaskNumberToSquare", reflect.TypeOf((*MockAvsWriterer)(nil).SendNewTaskNumberToSquare), arg0, arg1, arg2, arg3)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendNewEchoTask", reflect.TypeOf((*MockAvsWriterer)(nil).SendNewEchoTask), arg0, arg1, arg2, arg3)
 }
 
 // UpdateStakes mocks base method.

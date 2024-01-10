@@ -27,7 +27,7 @@ func main() {
 	app.Version = fmt.Sprintf("%s-%s-%s", Version, GitCommit, GitDate)
 	app.Name = "credible-squaring-aggregator"
 	app.Usage = "Credible Squaring Aggregator"
-	app.Description = "Service that sends number to be credibly squared by operator nodes."
+	app.Description = "Service that input to be credibly echoed by operator nodes."
 
 	app.Action = aggregatorMain
 	err := app.Run(os.Args)
