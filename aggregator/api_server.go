@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"io"
 	"log"
-	"math/big"
 	"net/http"
 
 	"github.com/Layr-Labs/incredible-squaring-avs/aggregator/types"
@@ -28,14 +27,14 @@ func (agg *Aggregator) createTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	task := struct {
-		Number int64 `json:"number"`
+		Input string `json:"input"`
 	}{}
 	if err = json.Unmarshal(taskData, &task); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	taskIndex, err := agg.sendNewTask(big.NewInt(task.Number))
+	taskIndex, err := agg.sendNewTask([]byte(task.Input))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
