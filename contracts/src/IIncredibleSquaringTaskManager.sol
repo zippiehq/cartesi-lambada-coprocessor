@@ -44,7 +44,6 @@ interface IIncredibleSquaringTaskManager {
         // Can be obtained by the operator from the event NewTaskCreated.
         uint32 referenceTaskIndex;
         // This is just the response that the operator has to compute by itself.
-        bytes resultCID;
         bytes32 outputHash;
     }
 
