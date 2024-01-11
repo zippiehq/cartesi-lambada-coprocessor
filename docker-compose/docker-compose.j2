@@ -45,7 +45,7 @@ services:
       - incredible-squaring-network
 {% for operator in operators %}
   {{ operator.machine }}:
-    image: zippiehq/cartesi-lambada:1.5
+    image: zippiehq/cartesi-lambada:1.6
     container_name: incredible-squaring-{{ operator.machine }}
     volumes:
       - {{ operator.data_path }}:/data
@@ -70,7 +70,7 @@ services:
     environment:
       - IPFS_ADDRESS={{ operator.ipfs_address }}
       - LAMBADA_ADDRESS={{ operator.lambada_address }}
-      - LAMBADA_COMPUTE_CID=bafybeif5liyov4oltxvc34qh3uyyxy5znisbmarsorxrp4nr3o7ywjuo5u
+      - LAMBADA_COMPUTE_CID=bafybeigwjqf46kb7b2t37z4hrav6n73yagjghdxp54nlfwsl7d5e4yhy2q
       - OPERATOR_BLS_KEY_PASSWORD={{ operator.bls_key_password }}
       - OPERATOR_ECDSA_KEY_PASSWORD={{ operator.ecdsa_key_password }}
     volumes:
