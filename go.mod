@@ -7,6 +7,7 @@ toolchain go1.21.0
 require (
 	github.com/Layr-Labs/eigensdk-go v0.0.8
 	github.com/ethereum/go-ethereum v1.13.4
+	github.com/go-faster/xor v1.0.0
 	github.com/ipfs/boxo v0.16.0
 	github.com/ipfs/go-cid v0.4.1
 	github.com/nikolalohinski/gonja v1.5.3

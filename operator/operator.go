@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -12,7 +13,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/go-faster/xor"
 	ipfs_files "github.com/ipfs/boxo/files"
 	ipfs_path "github.com/ipfs/boxo/path"
 	"github.com/ipfs/go-cid"
@@ -353,24 +354,24 @@ func (o *Operator) ProcessNewTaskCreatedLog(newTaskCreatedLog *cstaskmanager.Con
 		"QuorumThresholdPercentage", newTaskCreatedLog.Task.QuorumThresholdPercentage,
 	)
 
-	output, err := o.requestEcho(newTaskCreatedLog.Task.Input)
+	cid, output, err := o.requestEcho(newTaskCreatedLog.Task.Input)
 	if err != nil {
-		fake := fakeInput(len(newTaskCreatedLog.Task.Input))
-		o.logger.Errorf("failed to request echo from lambada service -%s, faking result - %s",
-			err, string(fake))
+		fakeCID, fakeOut := fakeOutput(len(newTaskCreatedLog.Task.Input))
+		o.logger.Errorf("failed to request echo from lambada service -%s, faking result - %s, %s",
+			err, fakeCID, string(fakeOut))
 		return &cstaskmanager.IIncredibleSquaringTaskManagerTaskResponse{
 			ReferenceTaskIndex: newTaskCreatedLog.TaskIndex,
-			OutputHash:         hashOutput(fake),
+			OutputHash:         hashOutput(fakeCID, fakeOut),
 		}
 	} else {
 		return &cstaskmanager.IIncredibleSquaringTaskManagerTaskResponse{
 			ReferenceTaskIndex: newTaskCreatedLog.TaskIndex,
-			OutputHash:         hashOutput(output),
+			OutputHash:         hashOutput(cid, output),
 		}
 	}
 }
 
-func (o *Operator) requestEcho(input []byte) ([]byte, error) {
+func (o *Operator) requestEcho(input []byte) (string, []byte, error) {
 	// Query lambada compute endpoint.
 	requestURL := fmt.Sprintf("http://%s/compute/%s",
 		os.Getenv("LAMBADA_ADDRESS"),
@@ -378,43 +379,43 @@ func (o *Operator) requestEcho(input []byte) ([]byte, error) {
 	)
 	resp, err := http.Post(requestURL, "application/octet-stream", bytes.NewBuffer(input))
 	if err != nil {
-		return nil, err
+		return "", nil, err
 	}
 
 	// Parse CID with echo output.
 	defer resp.Body.Close()
 	respData, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return "", nil, err
 	}
 	jsonCID := struct {
 		CID string `json:"cid"`
 	}{}
 	if err = json.Unmarshal(respData, &jsonCID); err != nil {
-		return nil, err
+		return "", nil, err
 	}
 	cid, err := cid.Decode(jsonCID.CID)
 	if err != nil {
-		return nil, err
+		return "", nil, err
 	}
 
 	// Query echo output from IPFS.
 	outputPath, err := ipfs_path.NewPath(fmt.Sprintf("/ipfs/%s/output", cid.String()))
 	if err != nil {
-		return nil, err
+		return "", nil, err
 	}
 	outputNode, err := o.ipfsClient.Unixfs().Get(context.TODO(), outputPath)
 	if err != nil {
-		return nil, err
+		return "", nil, err
 	}
 	outputFile := ipfs_files.ToFile(outputNode)
 	defer outputFile.Close()
 	output, err := io.ReadAll(outputFile)
 	if err != nil {
-		return nil, err
+		return "", nil, err
 	}
 
-	return output, nil
+	return cid.String(), output, nil
 }
 
 func (o *Operator) SignTaskResponse(taskResponse *cstaskmanager.IIncredibleSquaringTaskManagerTaskResponse) (*aggregator.SignedTaskResponse, error) {
@@ -433,12 +434,17 @@ func (o *Operator) SignTaskResponse(taskResponse *cstaskmanager.IIncredibleSquar
 	return signedTaskResponse, nil
 }
 
-func fakeInput(size int) []byte {
-	fake := make([]byte, size)
-	rand.Read(fake)
-	return fake
+func fakeOutput(size int) (string, []byte) {
+	cid := "bafybeif5liyov4oltxvc34qh3uyyxy5znisbmarsorxrp4nr3o7ywjuo5u"
+	output := make([]byte, size)
+	rand.Read(output)
+	return cid, output
 }
 
-func hashOutput(output []byte) [32]byte {
-	return [32]byte(crypto.Keccak256())
+func hashOutput(ouputCID string, output []byte) [32]byte {
+	cidHash := sha256.Sum256([]byte(ouputCID))
+	outputHash := sha256.Sum256(output)
+	var hash [32]byte
+	xor.Bytes(hash[:], cidHash[:], outputHash[:])
+	return hash
 }
