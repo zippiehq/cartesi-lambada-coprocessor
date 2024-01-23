@@ -7,14 +7,14 @@ import (
 
 	ethclient "github.com/Layr-Labs/eigensdk-go/chainio/clients/eth"
 	"github.com/Layr-Labs/eigensdk-go/logging"
-	"github.com/Layr-Labs/incredible-squaring-avs/common"
-	"github.com/Layr-Labs/incredible-squaring-avs/core/config"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/zippiehq/cartesi-lambada-coprocessor/common"
+	"github.com/zippiehq/cartesi-lambada-coprocessor/core/config"
 
-	"github.com/Layr-Labs/incredible-squaring-avs/challenger/types"
-	cstaskmanager "github.com/Layr-Labs/incredible-squaring-avs/contracts/bindings/IncredibleSquaringTaskManager"
-	"github.com/Layr-Labs/incredible-squaring-avs/core/chainio"
+	"github.com/zippiehq/cartesi-lambada-coprocessor/challenger/types"
+	cstaskmanager "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/IncredibleSquaringTaskManager"
+	"github.com/zippiehq/cartesi-lambada-coprocessor/core/chainio"
 )
 
 type Challenger struct {

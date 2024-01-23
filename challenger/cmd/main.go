@@ -9,8 +9,8 @@ import (
 
 	"github.com/urfave/cli"
 
-	"github.com/Layr-Labs/incredible-squaring-avs/challenger"
-	"github.com/Layr-Labs/incredible-squaring-avs/core/config"
+	"github.com/zippiehq/cartesi-lambada-coprocessor/challenger"
+	"github.com/zippiehq/cartesi-lambada-coprocessor/core/config"
 )
 
 var (

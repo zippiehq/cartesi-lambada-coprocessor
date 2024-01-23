@@ -11,9 +11,9 @@ import (
 
 	"github.com/Layr-Labs/eigensdk-go/crypto/bls"
 	sdktypes "github.com/Layr-Labs/eigensdk-go/types"
-	"github.com/Layr-Labs/incredible-squaring-avs/aggregator/types"
-	cstaskmanager "github.com/Layr-Labs/incredible-squaring-avs/contracts/bindings/IncredibleSquaringTaskManager"
-	"github.com/Layr-Labs/incredible-squaring-avs/core"
+	"github.com/zippiehq/cartesi-lambada-coprocessor/aggregator/types"
+	cstaskmanager "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/IncredibleSquaringTaskManager"
+	"github.com/zippiehq/cartesi-lambada-coprocessor/core"
 )
 
 func TestProcessSignedTaskResponse(t *testing.T) {

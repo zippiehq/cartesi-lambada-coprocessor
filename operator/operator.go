@@ -20,12 +20,12 @@ import (
 	ipfs_api "github.com/ipfs/kubo/client/rpc"
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/Layr-Labs/incredible-squaring-avs/aggregator"
-	cstaskmanager "github.com/Layr-Labs/incredible-squaring-avs/contracts/bindings/IncredibleSquaringTaskManager"
-	"github.com/Layr-Labs/incredible-squaring-avs/core"
-	"github.com/Layr-Labs/incredible-squaring-avs/core/chainio"
-	"github.com/Layr-Labs/incredible-squaring-avs/metrics"
-	"github.com/Layr-Labs/incredible-squaring-avs/types"
+	"github.com/zippiehq/cartesi-lambada-coprocessor/aggregator"
+	cstaskmanager "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/IncredibleSquaringTaskManager"
+	"github.com/zippiehq/cartesi-lambada-coprocessor/core"
+	"github.com/zippiehq/cartesi-lambada-coprocessor/core/chainio"
+	"github.com/zippiehq/cartesi-lambada-coprocessor/metrics"
+	"github.com/zippiehq/cartesi-lambada-coprocessor/types"
 
 	sdkavsregistry "github.com/Layr-Labs/eigensdk-go/chainio/avsregistry"
 	sdkclients "github.com/Layr-Labs/eigensdk-go/chainio/clients"

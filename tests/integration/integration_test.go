@@ -13,16 +13,16 @@ import (
 	sdklogging "github.com/Layr-Labs/eigensdk-go/logging"
 	"github.com/Layr-Labs/eigensdk-go/signer"
 	sdkutils "github.com/Layr-Labs/eigensdk-go/utils"
-	"github.com/Layr-Labs/incredible-squaring-avs/aggregator"
-	"github.com/Layr-Labs/incredible-squaring-avs/core/chainio"
-	"github.com/Layr-Labs/incredible-squaring-avs/core/config"
-	"github.com/Layr-Labs/incredible-squaring-avs/operator"
-	"github.com/Layr-Labs/incredible-squaring-avs/types"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
+	"github.com/zippiehq/cartesi-lambada-coprocessor/aggregator"
+	"github.com/zippiehq/cartesi-lambada-coprocessor/core/chainio"
+	"github.com/zippiehq/cartesi-lambada-coprocessor/core/config"
+	"github.com/zippiehq/cartesi-lambada-coprocessor/operator"
+	"github.com/zippiehq/cartesi-lambada-coprocessor/types"
 )
 
 type IntegrationClients struct {

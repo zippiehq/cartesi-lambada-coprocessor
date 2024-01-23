@@ -15,12 +15,13 @@ import (
 	blsagg "github.com/Layr-Labs/eigensdk-go/services/bls_aggregation"
 	pubkeycompserv "github.com/Layr-Labs/eigensdk-go/services/pubkeycompendium"
 	sdktypes "github.com/Layr-Labs/eigensdk-go/types"
-	"github.com/Layr-Labs/incredible-squaring-avs/aggregator/types"
-	"github.com/Layr-Labs/incredible-squaring-avs/core"
-	"github.com/Layr-Labs/incredible-squaring-avs/core/chainio"
-	"github.com/Layr-Labs/incredible-squaring-avs/core/config"
 
-	cstaskmanager "github.com/Layr-Labs/incredible-squaring-avs/contracts/bindings/IncredibleSquaringTaskManager"
+	"github.com/zippiehq/cartesi-lambada-coprocessor/aggregator/types"
+	"github.com/zippiehq/cartesi-lambada-coprocessor/core"
+	"github.com/zippiehq/cartesi-lambada-coprocessor/core/chainio"
+	"github.com/zippiehq/cartesi-lambada-coprocessor/core/config"
+
+	cstaskmanager "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/IncredibleSquaringTaskManager"
 )
 
 const (

@@ -2,13 +2,14 @@ package actions
 
 import (
 	"encoding/json"
-	"github.com/urfave/cli"
 	"log"
 
+	"github.com/urfave/cli"
+
 	sdkutils "github.com/Layr-Labs/eigensdk-go/utils"
-	"github.com/Layr-Labs/incredible-squaring-avs/core/config"
-	"github.com/Layr-Labs/incredible-squaring-avs/operator"
-	"github.com/Layr-Labs/incredible-squaring-avs/types"
+	"github.com/zippiehq/cartesi-lambada-coprocessor/core/config"
+	"github.com/zippiehq/cartesi-lambada-coprocessor/operator"
+	"github.com/zippiehq/cartesi-lambada-coprocessor/types"
 )
 
 func RegisterOperatorWithEigenlayer(ctx *cli.Context) error {

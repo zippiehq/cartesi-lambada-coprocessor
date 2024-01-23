@@ -1,4 +1,4 @@
-module github.com/Layr-Labs/incredible-squaring-avs
+module github.com/zippiehq/cartesi-lambada-coprocessor
 
 go 1.21
 

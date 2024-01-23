@@ -4,9 +4,9 @@ import (
 	"log"
 	"os"
 
-	"github.com/Layr-Labs/incredible-squaring-avs/cli/actions"
-	"github.com/Layr-Labs/incredible-squaring-avs/core/config"
 	"github.com/urfave/cli"
+	"github.com/zippiehq/cartesi-lambada-coprocessor/cli/actions"
+	"github.com/zippiehq/cartesi-lambada-coprocessor/core/config"
 )
 
 func main() {

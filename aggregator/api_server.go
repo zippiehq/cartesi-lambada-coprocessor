@@ -6,7 +6,7 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/Layr-Labs/incredible-squaring-avs/aggregator/types"
+	"github.com/zippiehq/cartesi-lambada-coprocessor/aggregator/types"
 )
 
 func (agg *Aggregator) startAPIServer() error {
