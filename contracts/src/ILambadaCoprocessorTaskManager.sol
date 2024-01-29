@@ -4,7 +4,7 @@ pragma solidity ^0.8.9;
 import "@eigenlayer/contracts/libraries/BN254.sol";
 import "@eigenlayer-middleware/src/BLSSignatureChecker.sol";
 
-interface IIncredibleSquaringTaskManager is IBLSSignatureChecker {
+interface ILambadaCoprocessorTaskManager is IBLSSignatureChecker {
     event TaskBatchRegistered(TaskBatch batch);
     event TaskResponded(TaskResponse taskResponse);
 

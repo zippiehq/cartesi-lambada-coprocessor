@@ -18,9 +18,9 @@ import {StakeRegistry, IStakeRegistry} from "@eigenlayer-middleware/src/StakeReg
 import {IVoteWeigher} from "@eigenlayer-middleware/src/interfaces/IVoteWeigher.sol";
 //import {IServiceManager} from "@eigenlayer-middleware/src/interfaces/IServiceManager.sol";
 
-import {IncredibleSquaringServiceManager, IServiceManager} from "../src/IncredibleSquaringServiceManager.sol";
-import {IncredibleSquaringTaskManager} from "../src/IncredibleSquaringTaskManager.sol";
-import {IIncredibleSquaringTaskManager} from "../src/IIncredibleSquaringTaskManager.sol";
+import {LambadaCoprocessorServiceManager, IServiceManager} from "../src/LambadaCoprocessorServiceManager.sol";
+import {LambadaCoprocessorTaskManager} from "../src/LambadaCoprocessorTaskManager.sol";
+import {ILambadaCoprocessorTaskManager} from "../src/ILambadaCoprocessorTaskManager.sol";
 import "../src/ERC20Mock.sol";
 
 import {Utils} from "./utils/Utils.sol";
@@ -65,11 +65,11 @@ contract CredibleSquaringDeployer is Script, Utils {
     IStakeRegistry public stakeRegistry;
     IStakeRegistry public stakeRegistryImplementation;
 
-    IncredibleSquaringServiceManager public credibleSquaringServiceManager;
+    LambadaCoprocessorServiceManager public credibleSquaringServiceManager;
     IServiceManager public credibleSquaringServiceManagerImplementation;
 
-    IncredibleSquaringTaskManager public credibleSquaringTaskManager;
-    IIncredibleSquaringTaskManager
+    LambadaCoprocessorTaskManager public credibleSquaringTaskManager;
+    ILambadaCoprocessorTaskManager
         public credibleSquaringTaskManagerImplementation;
 
     function run() external {
@@ -210,7 +210,7 @@ contract CredibleSquaringDeployer is Script, Utils {
          * First, deploy upgradeable proxy contracts that **will point** to the implementations. Since the implementation contracts are
          * not yet deployed, we give these proxies an empty contract as the initial implementation, to act as if they have no code.
          */
-        credibleSquaringServiceManager = IncredibleSquaringServiceManager(
+        credibleSquaringServiceManager = LambadaCoprocessorServiceManager(
             address(
                 new TransparentUpgradeableProxy(
                     address(emptyContract),
@@ -219,7 +219,7 @@ contract CredibleSquaringDeployer is Script, Utils {
                 )
             )
         );
-        credibleSquaringTaskManager = IncredibleSquaringTaskManager(
+        credibleSquaringTaskManager = LambadaCoprocessorTaskManager(
             address(
                 new TransparentUpgradeableProxy(
                     address(emptyContract),
@@ -366,7 +366,7 @@ contract CredibleSquaringDeployer is Script, Utils {
             address(indexRegistryImplementation)
         );
 
-        credibleSquaringServiceManagerImplementation = new IncredibleSquaringServiceManager(
+        credibleSquaringServiceManagerImplementation = new LambadaCoprocessorServiceManager(
             registryCoordinator,
             slasher,
             credibleSquaringTaskManager
@@ -384,7 +384,7 @@ contract CredibleSquaringDeployer is Script, Utils {
             )
         );
 
-        credibleSquaringTaskManagerImplementation = new IncredibleSquaringTaskManager(
+        credibleSquaringTaskManagerImplementation = new LambadaCoprocessorTaskManager(
             registryCoordinator,
             TASK_RESPONSE_WINDOW_BLOCK
         );

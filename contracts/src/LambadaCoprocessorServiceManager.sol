@@ -3,16 +3,16 @@ pragma solidity ^0.8.9;
 
 import "@eigenlayer/contracts/libraries/BytesLib.sol";
 import "@eigenlayer-middleware/src/ServiceManagerBase.sol";
-import {IIncredibleSquaringTaskManager} from "./IIncredibleSquaringTaskManager.sol";
+import {ILambadaCoprocessorTaskManager} from "./ILambadaCoprocessorTaskManager.sol";
 
 /**
  * @title Primary entrypoint for procuring services from IncredibleSquaring.
  * @author Layr Labs, Inc.
  */
-contract IncredibleSquaringServiceManager is ServiceManagerBase {
+contract LambadaCoprocessorServiceManager is ServiceManagerBase {
     using BytesLib for bytes;
 
-    IIncredibleSquaringTaskManager
+    ILambadaCoprocessorTaskManager
         public immutable incredibleSquaringTaskManager;
 
     /// @notice when applied to a function, ensures that the function is only callable by the `registryCoordinator`.
@@ -27,7 +27,7 @@ contract IncredibleSquaringServiceManager is ServiceManagerBase {
     constructor(
         IBLSRegistryCoordinatorWithIndices _registryCoordinator,
         ISlasher _slasher,
-        IIncredibleSquaringTaskManager _incredibleSquaringTaskManager
+        ILambadaCoprocessorTaskManager _incredibleSquaringTaskManager
     ) ServiceManagerBase(_registryCoordinator, _slasher) {
         incredibleSquaringTaskManager = _incredibleSquaringTaskManager;
     }

@@ -10,15 +10,15 @@ import {BLSPubkeyRegistry} from "@eigenlayer-middleware/src/BLSPubkeyRegistry.so
 import {BLSRegistryCoordinatorWithIndices} from "@eigenlayer-middleware/src/BLSRegistryCoordinatorWithIndices.sol";
 import {BLSOperatorStateRetriever} from "@eigenlayer-middleware/src/BLSOperatorStateRetriever.sol";
 import "@eigenlayer/contracts/libraries/BN254.sol";
-import "./IIncredibleSquaringTaskManager.sol";
+import "./ILambadaCoprocessorTaskManager.sol";
 
-contract IncredibleSquaringTaskManager is
+contract LambadaCoprocessorTaskManager is
     Initializable,
     OwnableUpgradeable,
     Pausable,
     BLSSignatureChecker,
     BLSOperatorStateRetriever,
-    IIncredibleSquaringTaskManager
+    ILambadaCoprocessorTaskManager
 {
     using BN254 for BN254.G1Point;
 
