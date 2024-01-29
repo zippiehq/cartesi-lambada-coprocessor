@@ -31,7 +31,7 @@ type Config struct {
 	EthHttpClient                        eth.EthClient
 	EthWsClient                          eth.EthClient
 	BlsOperatorStateRetrieverAddr        common.Address
-	IncredibleSquaringServiceManagerAddr common.Address
+	LambadaCoprocessorServiceManagerAddr common.Address
 	BlsPublicKeyCompendiumAddress        common.Address
 	SlasherAddr                          common.Address
 	AggregatorServerIpPortAddr           string
@@ -55,7 +55,7 @@ type CredibleSquaringDeploymentRaw struct {
 	Addresses CredibleSquaringContractsRaw `json:"addresses"`
 }
 type CredibleSquaringContractsRaw struct {
-	IncredibleSquaringServiceManagerAddr string `json:"credibleSquaringServiceManager"`
+	LambadaCoprocessorServiceManagerAddr string `json:"credibleSquaringServiceManager"`
 }
 
 // BlsOperatorStateRetriever and BlsPublicKeyCompendium are deployed separately, since they are
@@ -144,7 +144,7 @@ func NewConfig(ctx *cli.Context) (*Config, error) {
 		EthHttpClient:                        ethRpcClient,
 		EthWsClient:                          ethWsClient,
 		BlsOperatorStateRetrieverAddr:        common.HexToAddress(sharedAvsContractsDeploymentRaw.BlsOperatorStateRetrieverAddr),
-		IncredibleSquaringServiceManagerAddr: common.HexToAddress(credibleSquaringDeploymentRaw.Addresses.IncredibleSquaringServiceManagerAddr),
+		LambadaCoprocessorServiceManagerAddr: common.HexToAddress(credibleSquaringDeploymentRaw.Addresses.LambadaCoprocessorServiceManagerAddr),
 		SlasherAddr:                          common.HexToAddress(""),
 		AggregatorServerIpPortAddr:           configRaw.AggregatorServerIpPortAddr,
 		RegisterOperatorOnStartup:            configRaw.RegisterOperatorOnStartup,
@@ -161,8 +161,8 @@ func (c *Config) validate() {
 	if c.BlsOperatorStateRetrieverAddr == common.HexToAddress("") {
 		panic("Config: BLSOperatorStateRetrieverAddr is required")
 	}
-	if c.IncredibleSquaringServiceManagerAddr == common.HexToAddress("") {
-		panic("Config: IncredibleSquaringServiceManagerAddr is required")
+	if c.LambadaCoprocessorServiceManagerAddr == common.HexToAddress("") {
+		panic("Config: LambadaCoprocessorServiceManagerAddr is required")
 	}
 }
 

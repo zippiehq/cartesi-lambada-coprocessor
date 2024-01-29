@@ -13,13 +13,13 @@ contract LambadaCoprocessorServiceManager is ServiceManagerBase {
     using BytesLib for bytes;
 
     ILambadaCoprocessorTaskManager
-        public immutable incredibleSquaringTaskManager;
+        public immutable lambadaCoprocessorTaskManager;
 
     /// @notice when applied to a function, ensures that the function is only callable by the `registryCoordinator`.
-    modifier onlyIncredibleSquaringTaskManager() {
+    modifier onlyLambadaCoprocessorTaskManager() {
         require(
-            msg.sender == address(incredibleSquaringTaskManager),
-            "onlyIncredibleSquaringTaskManager: not from credible squaring task manager"
+            msg.sender == address(lambadaCoprocessorTaskManager),
+            "not from lambada coprocessor task manager"
         );
         _;
     }
@@ -27,9 +27,9 @@ contract LambadaCoprocessorServiceManager is ServiceManagerBase {
     constructor(
         IBLSRegistryCoordinatorWithIndices _registryCoordinator,
         ISlasher _slasher,
-        ILambadaCoprocessorTaskManager _incredibleSquaringTaskManager
+        ILambadaCoprocessorTaskManager _lambadaCoprocessorTaskManager
     ) ServiceManagerBase(_registryCoordinator, _slasher) {
-        incredibleSquaringTaskManager = _incredibleSquaringTaskManager;
+        lambadaCoprocessorTaskManager = _lambadaCoprocessorTaskManager;
     }
 
     /// @notice Called in the event of challenge resolution, in order to forward a call to the Slasher, which 'freezes' the `operator`.
@@ -37,7 +37,7 @@ contract LambadaCoprocessorServiceManager is ServiceManagerBase {
     ///      We recommend writing slashing logic without integrating with the Slasher at this point in time.
     function freezeOperator(
         address operatorAddr
-    ) external override onlyIncredibleSquaringTaskManager {
+    ) external override onlyLambadaCoprocessorTaskManager {
         // slasher.freezeOperator(operatorAddr);
     }
 }

@@ -2,6 +2,7 @@ package chainio
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -13,30 +14,27 @@ import (
 	logging "github.com/Layr-Labs/eigensdk-go/logging"
 	"github.com/Layr-Labs/eigensdk-go/signer"
 
-	cstaskmanager "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/IncredibleSquaringTaskManager"
+	taskmanager "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/LambadaCoprocessorTaskManager"
 	"github.com/zippiehq/cartesi-lambada-coprocessor/core/config"
 )
 
 type AvsWriterer interface {
 	avsregistry.AvsRegistryWriter
 
-	SendNewEchoTask(
+	RegisterNewTaskBatch(
 		ctx context.Context,
-		input []byte,
+		batchRoot [32]byte,
 		quorumThresholdPercentage uint32,
 		quorumNumbers []byte,
-	) (cstaskmanager.IIncredibleSquaringTaskManagerTask, uint32, error)
-	RaiseChallenge(
+	) (taskmanager.ILambadaCoprocessorTaskManagerTaskBatch, error)
+
+	RespondTask(
 		ctx context.Context,
-		task cstaskmanager.IIncredibleSquaringTaskManagerTask,
-		taskResponse cstaskmanager.IIncredibleSquaringTaskManagerTaskResponse,
-		taskResponseMetadata cstaskmanager.IIncredibleSquaringTaskManagerTaskResponseMetadata,
-		pubkeysOfNonSigningOperators []cstaskmanager.BN254G1Point,
-	) (*types.Receipt, error)
-	SendAggregatedResponse(ctx context.Context,
-		task cstaskmanager.IIncredibleSquaringTaskManagerTask,
-		taskResponse cstaskmanager.IIncredibleSquaringTaskManagerTaskResponse,
-		nonSignerStakesAndSignature cstaskmanager.IBLSSignatureCheckerNonSignerStakesAndSignature,
+		taskBatch taskmanager.ILambadaCoprocessorTaskManagerTaskBatch,
+		task taskmanager.ILambadaCoprocessorTaskManagerTask,
+		taskProof [][32]byte,
+		taskResponse taskmanager.ILambadaCoprocessorTaskManagerTaskResponse,
+		nonSignerStakesAndSignature taskmanager.IBLSSignatureCheckerNonSignerStakesAndSignature,
 	) (*types.Receipt, error)
 }
 
@@ -51,7 +49,7 @@ type AvsWriter struct {
 var _ AvsWriterer = (*AvsWriter)(nil)
 
 func NewAvsWriterFromConfig(c *config.Config) (*AvsWriter, error) {
-	return NewAvsWriter(c.Signer, c.IncredibleSquaringServiceManagerAddr, c.BlsOperatorStateRetrieverAddr, c.EthHttpClient, c.Logger)
+	return NewAvsWriter(c.Signer, c.LambadaCoprocessorServiceManagerAddr, c.BlsOperatorStateRetrieverAddr, c.EthHttpClient, c.Logger)
 }
 
 func NewAvsWriter(signer signer.Signer, serviceManagerAddr, blsOperatorStateRetrieverAddr gethcommon.Address, ethHttpClient eth.EthClient, logger logging.Logger) (*AvsWriter, error) {
@@ -92,47 +90,49 @@ func NewAvsWriter(signer signer.Signer, serviceManagerAddr, blsOperatorStateRetr
 	}, nil
 }
 
-// returns the tx receipt, as well as the task index (which it gets from parsing the tx receipt logs)
-func (w *AvsWriter) SendNewEchoTask(ctx context.Context, input []byte, quorumThresholdPercentage uint32, quorumNumbers []byte) (cstaskmanager.IIncredibleSquaringTaskManagerTask, uint32, error) {
-	txOpts := w.Signer.GetTxOpts()
-	tx, err := w.AvsContractBindings.TaskManager.CreateNewTask(txOpts, input, quorumThresholdPercentage, quorumNumbers)
-	if err != nil {
-		w.logger.Errorf("Error assembling CreateNewTask tx")
-		return cstaskmanager.IIncredibleSquaringTaskManagerTask{}, 0, err
-	}
-	receipt := w.client.WaitForTransactionReceipt(ctx, tx.Hash())
-	newTaskCreatedEvent, err := w.AvsContractBindings.TaskManager.ContractIncredibleSquaringTaskManagerFilterer.ParseNewTaskCreated(*receipt.Logs[0])
-	if err != nil {
-		w.logger.Error("Aggregator failed to parse new task created event", "err", err)
-		return cstaskmanager.IIncredibleSquaringTaskManagerTask{}, 0, err
-	}
-	return newTaskCreatedEvent.Task, newTaskCreatedEvent.TaskIndex, nil
-}
-
-func (w *AvsWriter) SendAggregatedResponse(ctx context.Context, task cstaskmanager.IIncredibleSquaringTaskManagerTask, taskResponse cstaskmanager.IIncredibleSquaringTaskManagerTaskResponse, nonSignerStakesAndSignature cstaskmanager.IBLSSignatureCheckerNonSignerStakesAndSignature) (*types.Receipt, error) {
-	txOpts := w.Signer.GetTxOpts()
-	tx, err := w.AvsContractBindings.TaskManager.RespondToTask(txOpts, task, taskResponse, nonSignerStakesAndSignature)
-	if err != nil {
-		w.logger.Error("Error submitting SubmitTaskResponse tx while calling respondToTask", "err", err)
-		return nil, err
-	}
-	receipt := w.client.WaitForTransactionReceipt(ctx, tx.Hash())
-	return receipt, nil
-}
-
-func (w *AvsWriter) RaiseChallenge(
+func (w *AvsWriter) RegisterNewTaskBatch(
 	ctx context.Context,
-	task cstaskmanager.IIncredibleSquaringTaskManagerTask,
-	taskResponse cstaskmanager.IIncredibleSquaringTaskManagerTaskResponse,
-	taskResponseMetadata cstaskmanager.IIncredibleSquaringTaskManagerTaskResponseMetadata,
-	pubkeysOfNonSigningOperators []cstaskmanager.BN254G1Point,
+	batchRoot [32]byte,
+	quorumThresholdPercentage uint32,
+	quorumNumbers []byte,
+) (taskmanager.ILambadaCoprocessorTaskManagerTaskBatch, error) {
+	txOpts := w.Signer.GetTxOpts()
+	tx, err := w.AvsContractBindings.TaskManager.RegisterNewTaskBatch(
+		txOpts, batchRoot, quorumThresholdPercentage, quorumNumbers,
+	)
+	if err != nil {
+		return taskmanager.ILambadaCoprocessorTaskManagerTaskBatch{},
+			fmt.Errorf("failed to send registerNewTaskBatch transaction - %s", err)
+	}
+
+	receipt := w.client.WaitForTransactionReceipt(ctx, tx.Hash())
+	event, err := w.AvsContractBindings.TaskManager.ContractLambadaCoprocessorTaskManagerFilterer.
+		ParseTaskBatchRegistered(*receipt.Logs[0])
+	if err != nil {
+		return taskmanager.ILambadaCoprocessorTaskManagerTaskBatch{},
+			fmt.Errorf("failed to parse TaskBatchRegistered event - %S", err)
+	}
+
+	return event.Batch, nil
+}
+
+func (w *AvsWriter) RespondTask(
+	ctx context.Context,
+	taskBatch taskmanager.ILambadaCoprocessorTaskManagerTaskBatch,
+	task taskmanager.ILambadaCoprocessorTaskManagerTask,
+	taskProof [][32]byte,
+	taskResponse taskmanager.ILambadaCoprocessorTaskManagerTaskResponse,
+	nonSignerStakesAndSignature taskmanager.IBLSSignatureCheckerNonSignerStakesAndSignature,
 ) (*types.Receipt, error) {
 	txOpts := w.Signer.GetTxOpts()
-	tx, err := w.AvsContractBindings.TaskManager.RaiseAndResolveChallenge(txOpts, task, taskResponse, taskResponseMetadata, pubkeysOfNonSigningOperators)
+	tx, err := w.AvsContractBindings.TaskManager.RespondTask(
+		txOpts, taskBatch, task, taskProof, taskResponse, nonSignerStakesAndSignature,
+	)
 	if err != nil {
-		w.logger.Errorf("Error assembling RaiseChallenge tx")
-		return nil, err
+		return nil, fmt.Errorf("failed to send respondTask trasaction - %s", err)
 	}
+
 	receipt := w.client.WaitForTransactionReceipt(ctx, tx.Hash())
+
 	return receipt, nil
 }

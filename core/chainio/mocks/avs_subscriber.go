@@ -11,9 +11,9 @@ package mocks
 import (
 	reflect "reflect"
 
-	contractIncredibleSquaringTaskManager "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/IncredibleSquaringTaskManager"
 	types "github.com/ethereum/go-ethereum/core/types"
 	event "github.com/ethereum/go-ethereum/event"
+	contractLambadaCoprocessorTaskManager "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/LambadaCoprocessorTaskManager"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -41,10 +41,10 @@ func (m *MockAvsSubscriberer) EXPECT() *MockAvsSubscribererMockRecorder {
 }
 
 // ParseTaskResponded mocks base method.
-func (m *MockAvsSubscriberer) ParseTaskResponded(arg0 types.Log) (*contractIncredibleSquaringTaskManager.ContractIncredibleSquaringTaskManagerTaskResponded, error) {
+func (m *MockAvsSubscriberer) ParseTaskResponded(arg0 types.Log) (*contractLambadaCoprocessorTaskManager.ContractLambadaCoprocessorTaskManagerTaskResponded, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ParseTaskResponded", arg0)
-	ret0, _ := ret[0].(*contractIncredibleSquaringTaskManager.ContractIncredibleSquaringTaskManagerTaskResponded)
+	ret0, _ := ret[0].(*contractLambadaCoprocessorTaskManager.ContractLambadaCoprocessorTaskManagerTaskResponded)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -55,26 +55,28 @@ func (mr *MockAvsSubscribererMockRecorder) ParseTaskResponded(arg0 any) *gomock.
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ParseTaskResponded", reflect.TypeOf((*MockAvsSubscriberer)(nil).ParseTaskResponded), arg0)
 }
 
-// SubscribeToNewTasks mocks base method.
-func (m *MockAvsSubscriberer) SubscribeToNewTasks(arg0 chan *contractIncredibleSquaringTaskManager.ContractIncredibleSquaringTaskManagerNewTaskCreated) event.Subscription {
+// SubscribeToNewBatches mocks base method.
+func (m *MockAvsSubscriberer) SubscribeToNewBatches(arg0 chan *contractLambadaCoprocessorTaskManager.ContractLambadaCoprocessorTaskManagerTaskBatchRegistered) (event.Subscription, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SubscribeToNewTasks", arg0)
+	ret := m.ctrl.Call(m, "SubscribeToNewBatches", arg0)
 	ret0, _ := ret[0].(event.Subscription)
-	return ret0
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
-// SubscribeToNewTasks indicates an expected call of SubscribeToNewTasks.
-func (mr *MockAvsSubscribererMockRecorder) SubscribeToNewTasks(arg0 any) *gomock.Call {
+// SubscribeToNewBatches indicates an expected call of SubscribeToNewBatches.
+func (mr *MockAvsSubscribererMockRecorder) SubscribeToNewBatches(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubscribeToNewTasks", reflect.TypeOf((*MockAvsSubscriberer)(nil).SubscribeToNewTasks), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubscribeToNewBatches", reflect.TypeOf((*MockAvsSubscriberer)(nil).SubscribeToNewBatches), arg0)
 }
 
 // SubscribeToTaskResponses mocks base method.
-func (m *MockAvsSubscriberer) SubscribeToTaskResponses(arg0 chan *contractIncredibleSquaringTaskManager.ContractIncredibleSquaringTaskManagerTaskResponded) event.Subscription {
+func (m *MockAvsSubscriberer) SubscribeToTaskResponses(arg0 chan *contractLambadaCoprocessorTaskManager.ContractLambadaCoprocessorTaskManagerTaskResponded) (event.Subscription, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SubscribeToTaskResponses", arg0)
 	ret0, _ := ret[0].(event.Subscription)
-	return ret0
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // SubscribeToTaskResponses indicates an expected call of SubscribeToTaskResponses.

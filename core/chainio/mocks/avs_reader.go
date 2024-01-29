@@ -14,9 +14,9 @@ import (
 	reflect "reflect"
 
 	contractBLSOperatorStateRetriever "github.com/Layr-Labs/eigensdk-go/contracts/bindings/BLSOperatorStateRetriever"
-	contractERC20Mock "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/ERC20Mock"
-	contractIncredibleSquaringTaskManager "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/IncredibleSquaringTaskManager"
 	common "github.com/ethereum/go-ethereum/common"
+	contractERC20Mock "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/ERC20Mock"
+	contractLambadaCoprocessorTaskManager "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/LambadaCoprocessorTaskManager"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -44,10 +44,10 @@ func (m *MockAvsReaderer) EXPECT() *MockAvsReadererMockRecorder {
 }
 
 // CheckSignatures mocks base method.
-func (m *MockAvsReaderer) CheckSignatures(arg0 context.Context, arg1 [32]byte, arg2 []byte, arg3 uint32, arg4 contractIncredibleSquaringTaskManager.IBLSSignatureCheckerNonSignerStakesAndSignature) (contractIncredibleSquaringTaskManager.IBLSSignatureCheckerQuorumStakeTotals, error) {
+func (m *MockAvsReaderer) CheckSignatures(arg0 context.Context, arg1 [32]byte, arg2 []byte, arg3 uint32, arg4 contractLambadaCoprocessorTaskManager.IBLSSignatureCheckerNonSignerStakesAndSignature) (contractLambadaCoprocessorTaskManager.IBLSSignatureCheckerQuorumStakeTotals, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CheckSignatures", arg0, arg1, arg2, arg3, arg4)
-	ret0, _ := ret[0].(contractIncredibleSquaringTaskManager.IBLSSignatureCheckerQuorumStakeTotals)
+	ret0, _ := ret[0].(contractLambadaCoprocessorTaskManager.IBLSSignatureCheckerQuorumStakeTotals)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

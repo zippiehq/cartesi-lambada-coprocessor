@@ -14,9 +14,9 @@ import (
 
 	contractBLSPubkeyRegistry "github.com/Layr-Labs/eigensdk-go/contracts/bindings/BLSPubkeyRegistry"
 	contractBLSRegistryCoordinatorWithIndices "github.com/Layr-Labs/eigensdk-go/contracts/bindings/BLSRegistryCoordinatorWithIndices"
-	contractIncredibleSquaringTaskManager "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/IncredibleSquaringTaskManager"
 	common "github.com/ethereum/go-ethereum/common"
 	types "github.com/ethereum/go-ethereum/core/types"
+	contractLambadaCoprocessorTaskManager "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/LambadaCoprocessorTaskManager"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -58,19 +58,19 @@ func (mr *MockAvsWritererMockRecorder) DeregisterOperator(arg0, arg1, arg2, arg3
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeregisterOperator", reflect.TypeOf((*MockAvsWriterer)(nil).DeregisterOperator), arg0, arg1, arg2, arg3)
 }
 
-// RaiseChallenge mocks base method.
-func (m *MockAvsWriterer) RaiseChallenge(arg0 context.Context, arg1 contractIncredibleSquaringTaskManager.IIncredibleSquaringTaskManagerTask, arg2 contractIncredibleSquaringTaskManager.IIncredibleSquaringTaskManagerTaskResponse, arg3 contractIncredibleSquaringTaskManager.IIncredibleSquaringTaskManagerTaskResponseMetadata, arg4 []contractIncredibleSquaringTaskManager.BN254G1Point) (*types.Receipt, error) {
+// RegisterNewTaskBatch mocks base method.
+func (m *MockAvsWriterer) RegisterNewTaskBatch(arg0 context.Context, arg1 [32]byte, arg2 uint32, arg3 []byte) (contractLambadaCoprocessorTaskManager.ILambadaCoprocessorTaskManagerTaskBatch, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RaiseChallenge", arg0, arg1, arg2, arg3, arg4)
-	ret0, _ := ret[0].(*types.Receipt)
+	ret := m.ctrl.Call(m, "RegisterNewTaskBatch", arg0, arg1, arg2, arg3)
+	ret0, _ := ret[0].(contractLambadaCoprocessorTaskManager.ILambadaCoprocessorTaskManagerTaskBatch)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// RaiseChallenge indicates an expected call of RaiseChallenge.
-func (mr *MockAvsWritererMockRecorder) RaiseChallenge(arg0, arg1, arg2, arg3, arg4 any) *gomock.Call {
+// RegisterNewTaskBatch indicates an expected call of RegisterNewTaskBatch.
+func (mr *MockAvsWritererMockRecorder) RegisterNewTaskBatch(arg0, arg1, arg2, arg3 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RaiseChallenge", reflect.TypeOf((*MockAvsWriterer)(nil).RaiseChallenge), arg0, arg1, arg2, arg3, arg4)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RegisterNewTaskBatch", reflect.TypeOf((*MockAvsWriterer)(nil).RegisterNewTaskBatch), arg0, arg1, arg2, arg3)
 }
 
 // RegisterOperatorWithAVSRegistryCoordinator mocks base method.
@@ -88,35 +88,19 @@ func (mr *MockAvsWritererMockRecorder) RegisterOperatorWithAVSRegistryCoordinato
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RegisterOperatorWithAVSRegistryCoordinator", reflect.TypeOf((*MockAvsWriterer)(nil).RegisterOperatorWithAVSRegistryCoordinator), arg0, arg1, arg2, arg3)
 }
 
-// SendAggregatedResponse mocks base method.
-func (m *MockAvsWriterer) SendAggregatedResponse(arg0 context.Context, arg1 contractIncredibleSquaringTaskManager.IIncredibleSquaringTaskManagerTask, arg2 contractIncredibleSquaringTaskManager.IIncredibleSquaringTaskManagerTaskResponse, arg3 contractIncredibleSquaringTaskManager.IBLSSignatureCheckerNonSignerStakesAndSignature) (*types.Receipt, error) {
+// RespondTask mocks base method.
+func (m *MockAvsWriterer) RespondTask(arg0 context.Context, arg1 contractLambadaCoprocessorTaskManager.ILambadaCoprocessorTaskManagerTaskBatch, arg2 contractLambadaCoprocessorTaskManager.ILambadaCoprocessorTaskManagerTask, arg3 [][32]byte, arg4 contractLambadaCoprocessorTaskManager.ILambadaCoprocessorTaskManagerTaskResponse, arg5 contractLambadaCoprocessorTaskManager.IBLSSignatureCheckerNonSignerStakesAndSignature) (*types.Receipt, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SendAggregatedResponse", arg0, arg1, arg2, arg3)
+	ret := m.ctrl.Call(m, "RespondTask", arg0, arg1, arg2, arg3, arg4, arg5)
 	ret0, _ := ret[0].(*types.Receipt)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// SendAggregatedResponse indicates an expected call of SendAggregatedResponse.
-func (mr *MockAvsWritererMockRecorder) SendAggregatedResponse(arg0, arg1, arg2, arg3 any) *gomock.Call {
+// RespondTask indicates an expected call of RespondTask.
+func (mr *MockAvsWritererMockRecorder) RespondTask(arg0, arg1, arg2, arg3, arg4, arg5 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendAggregatedResponse", reflect.TypeOf((*MockAvsWriterer)(nil).SendAggregatedResponse), arg0, arg1, arg2, arg3)
-}
-
-// SendNewEchoTask mocks base method.
-func (m *MockAvsWriterer) SendNewEchoTask(arg0 context.Context, arg1 []byte, arg2 uint32, arg3 []byte) (contractIncredibleSquaringTaskManager.IIncredibleSquaringTaskManagerTask, uint32, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SendNewEchoTask", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].(contractIncredibleSquaringTaskManager.IIncredibleSquaringTaskManagerTask)
-	ret1, _ := ret[1].(uint32)
-	ret2, _ := ret[2].(error)
-	return ret0, ret1, ret2
-}
-
-// SendNewEchoTask indicates an expected call of SendNewEchoTask.
-func (mr *MockAvsWritererMockRecorder) SendNewEchoTask(arg0, arg1, arg2, arg3 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendNewEchoTask", reflect.TypeOf((*MockAvsWriterer)(nil).SendNewEchoTask), arg0, arg1, arg2, arg3)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RespondTask", reflect.TypeOf((*MockAvsWriterer)(nil).RespondTask), arg0, arg1, arg2, arg3, arg4, arg5)
 }
 
 // UpdateStakes mocks base method.
