@@ -1,13 +1,18 @@
 package aggregator
 
 import (
+	"cmp"
 	"context"
+	"slices"
 	"sync"
 	"time"
 
+	smt "github.com/FantasyJony/openzeppelin-merkle-tree-go/standard_merkle_tree"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+
+	"github.com/Layr-Labs/eigensdk-go/crypto/bls"
 	"github.com/Layr-Labs/eigensdk-go/logging"
 	"github.com/Layr-Labs/eigensdk-go/signer"
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 
 	sdkclients "github.com/Layr-Labs/eigensdk-go/chainio/clients"
 	sdkelcontracts "github.com/Layr-Labs/eigensdk-go/chainio/elcontracts"
@@ -17,14 +22,16 @@ import (
 	sdktypes "github.com/Layr-Labs/eigensdk-go/types"
 
 	"github.com/zippiehq/cartesi-lambada-coprocessor/aggregator/types"
+	tm "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/LambadaCoprocessorTaskManager"
 	"github.com/zippiehq/cartesi-lambada-coprocessor/core"
 	"github.com/zippiehq/cartesi-lambada-coprocessor/core/chainio"
 	"github.com/zippiehq/cartesi-lambada-coprocessor/core/config"
-
-	cstaskmanager "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/IncredibleSquaringTaskManager"
 )
 
 const (
+	// task batch parameters
+	batchPeriod = 10 * time.Second
+
 	// number of blocks after which a task is considered expired
 	// this hardcoded here because it's also hardcoded in the contracts, but should
 	// ideally be fetched from the contracts
@@ -66,16 +73,23 @@ const (
 // Upon sending a task onchain (or receiving a NewTaskCreated Event if the tasks were sent by an external task generator), the aggregator can get the list of all operators opted into each quorum at that
 // block number by calling the getOperatorState() function of the BLSOperatorStateRetriever.sol contract.
 type Aggregator struct {
-	logger           logging.Logger
+	log logging.Logger
+
 	serverIpPortAddr string
-	avsWriter        chainio.AvsWriterer
-	// aggregation related fields
+
+	avsWriter             chainio.AvsWriterer
 	blsAggregationService blsagg.BlsAggregationService
-	taskIndex             types.TaskIndex
-	tasks                 map[types.TaskIndex]cstaskmanager.IIncredibleSquaringTaskManagerTask
-	tasksMu               sync.RWMutex
-	taskResponses         map[types.TaskIndex]map[sdktypes.TaskResponseDigest]cstaskmanager.IIncredibleSquaringTaskManagerTaskResponse
-	taskResponsesMu       sync.RWMutex
+
+	taskMu sync.RWMutex
+
+	taskIndex      sdktypes.TaskIndex
+	pendingTasks   map[sdktypes.TaskIndex]tm.ILambadaCoprocessorTaskManagerTask
+	submittedTasks map[sdktypes.TaskIndex]tm.ILambadaCoprocessorTaskManagerTask
+
+	batchIndex types.TaskBatchIndex
+	batches    map[types.TaskBatchIndex]types.TaskBatch
+
+	taskResponses map[sdktypes.TaskIndex]map[sdktypes.TaskResponseDigest]tm.ILambadaCoprocessorTaskManagerTaskResponse
 }
 
 // NewAggregator creates a new Aggregator with the provided config.
@@ -140,49 +154,207 @@ func NewAggregator(c *config.Config) (*Aggregator, error) {
 	blsAggregationService := blsagg.NewBlsAggregatorService(avsRegistryService, c.Logger)
 
 	return &Aggregator{
-		logger:                c.Logger,
-		serverIpPortAddr:      c.AggregatorServerIpPortAddr,
+		log:              c.Logger,
+		serverIpPortAddr: c.AggregatorServerIpPortAddr,
+
 		avsWriter:             avsWriter,
 		blsAggregationService: blsAggregationService,
-		taskIndex:             0,
-		tasks:                 make(map[types.TaskIndex]cstaskmanager.IIncredibleSquaringTaskManagerTask),
-		taskResponses:         make(map[types.TaskIndex]map[sdktypes.TaskResponseDigest]cstaskmanager.IIncredibleSquaringTaskManagerTaskResponse),
+
+		taskIndex:      0,
+		pendingTasks:   make(map[sdktypes.TaskIndex]tm.ILambadaCoprocessorTaskManagerTask),
+		submittedTasks: make(map[sdktypes.TaskIndex]tm.ILambadaCoprocessorTaskManagerTask),
+
+		batchIndex: 0,
+		batches:    make(map[types.TaskBatchIndex]types.TaskBatch),
+
+		taskResponses: make(map[sdktypes.TaskIndex]map[sdktypes.TaskResponseDigest]tm.ILambadaCoprocessorTaskManagerTaskResponse),
 	}, nil
 }
 
 func (agg *Aggregator) Start(ctx context.Context) error {
-	agg.logger.Infof("Starting aggregator.")
-	agg.logger.Infof("Starting aggregator rpc server.")
+	agg.log.Infof("Starting aggregator.")
+	agg.log.Infof("Starting aggregator rpc server.")
 	go agg.startServer(ctx)
 	go agg.startAPIServer()
+
+	batchTick := time.NewTicker(10 * time.Second)
+	defer batchTick.Stop()
 
 	for {
 		select {
 		case <-ctx.Done():
 			return nil
+		case <-batchTick.C:
+			if err := agg.createTaskBatch(); err != nil {
+				agg.log.Errorf("failed to create task batch - %s", err)
+			}
 		case blsAggServiceResp := <-agg.blsAggregationService.GetResponseChannel():
-			agg.logger.Info("Received response from blsAggregationService", "blsAggServiceResp", blsAggServiceResp)
-			agg.sendAggregatedResponseToContract(blsAggServiceResp)
+			agg.log.Info("Received response from blsAggregationService", "blsAggServiceResp", blsAggServiceResp)
+			if err := agg.sendAggregatedResponseToContract(blsAggServiceResp); err != nil {
+				agg.log.Errorf("failed to send aggregated response to contract - %s", err)
+			}
 		}
 	}
 }
 
-func (agg *Aggregator) sendAggregatedResponseToContract(blsAggServiceResp blsagg.BlsAggregationServiceResponse) {
+func (agg *Aggregator) addTask(input []byte) (sdktypes.TaskIndex, error) {
+	agg.taskMu.Lock()
+	defer agg.taskMu.Unlock()
+
+	agg.pendingTasks[agg.taskIndex] = tm.ILambadaCoprocessorTaskManagerTask{
+		Input: input,
+	}
+	agg.taskIndex++
+
+	return agg.taskIndex, nil
+}
+
+func (agg *Aggregator) createTaskBatch() error {
+	batchTasks, batchMerkle, err := agg.makeBatch()
+	if err != nil {
+		return err
+	}
+
+	// Post new batch onchain.
+	onchainBatch, err := agg.avsWriter.RegisterNewTaskBatch(
+		context.TODO(), [32]byte(batchMerkle.GetRoot()), types.QUORUM_THRESHOLD_NUMERATOR, types.QUORUM_NUMBERS,
+	)
+	if err != nil {
+		return err
+	}
+
+	batch := agg.confirmBatch(onchainBatch, batchTasks, batchMerkle)
+
+	// Start accepting singed responses for every task in batch.
+	quorumThresholdPercentages := make([]uint32, len(batch.QuorumNumbers))
+	for i, _ := range batch.QuorumNumbers {
+		quorumThresholdPercentages[i] = batch.QuorumThresholdPercentage
+	}
+	// TODO(samlaf): we use seconds for now, but we should ideally pass a blocknumber to the blsAggregationService
+	// and it should monitor the chain and only expire the task aggregation once the chain has reached that block number.
+	taskTimeToExpiry := taskChallengeWindowBlock * blockTimeSeconds
+	for _, t := range batch.Tasks {
+		if err := agg.blsAggregationService.InitializeNewTask(
+			t.Index, batch.BlockNumber, batch.QuorumNumbers, quorumThresholdPercentages, taskTimeToExpiry,
+		); err != nil {
+			agg.log.Errorf("failed to initialize bls aggregation for task %d from batch %d", t.Index, batch.Index)
+		}
+	}
+
+	return nil
+}
+
+func (agg *Aggregator) makeBatch() ([]types.Task, *smt.StandardTree, error) {
+	agg.taskMu.RLock()
+	defer agg.taskMu.RUnlock()
+
+	// Sort pending tasks.
+	tasks := make([]types.Task, 0, len(agg.pendingTasks))
+	for i, t := range agg.pendingTasks {
+		tasks = append(tasks, types.Task{
+			ILambadaCoprocessorTaskManagerTask: t,
+			Index:                              i,
+		})
+	}
+	taskCmp := func(t1, t2 types.Task) int {
+		return cmp.Compare(t1.Index, t2.Index)
+	}
+	slices.SortFunc(tasks, taskCmp)
+
+	// Build merkle tree for tasks in the batch.
+	values := make([][]interface{}, len(tasks))
+	leafEncodings := make([]string, len(tasks))
+	for i, t := range tasks {
+		taskHash, err := core.GetTaskDigest(&t.ILambadaCoprocessorTaskManagerTask)
+		if err != nil {
+			return nil, nil, err
+		}
+		values[i] = []interface{}{
+			smt.SolBytes(string(taskHash[:])),
+		}
+		leafEncodings[i] = smt.SOL_BYTES32
+	}
+	merkle, err := smt.Of(values, leafEncodings)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return tasks, merkle, nil
+}
+
+func (agg *Aggregator) confirmBatch(
+	onchain tm.ILambadaCoprocessorTaskManagerTaskBatch,
+	tasks []types.Task,
+	merkle *smt.StandardTree,
+) types.TaskBatch {
+	agg.taskMu.Lock()
+	defer agg.taskMu.Unlock()
+
+	// Update batch lookup.
+	agg.batchIndex = onchain.Index
+	batch := types.TaskBatch{
+		ILambadaCoprocessorTaskManagerTaskBatch: onchain,
+		Tasks:                                   tasks,
+		Merkle:                                  merkle,
+	}
+	agg.batches[batch.Index] = batch
+
+	// Update task lookup.
+	for _, t := range batch.Tasks {
+		delete(agg.pendingTasks, t.Index)
+		agg.submittedTasks[t.Index] = t.ILambadaCoprocessorTaskManagerTask
+	}
+
+	return batch
+}
+
+func (agg *Aggregator) processTaskResponse(
+	taskIndex sdktypes.TaskIndex,
+	operatorID bls.OperatorId,
+	response tm.ILambadaCoprocessorTaskManagerTaskResponse,
+	sig bls.Signature,
+) error {
+	agg.taskMu.Lock()
+	defer agg.taskMu.Unlock()
+
+	// Create new lookup of task's responses if neccessary.
+	if _, ok := agg.taskResponses[taskIndex]; !ok {
+		agg.taskResponses[taskIndex] = make(map[sdktypes.TaskResponseDigest]tm.ILambadaCoprocessorTaskManagerTaskResponse)
+	}
+
+	// Memorize response from operator.
+	responseDigest, err := core.GetTaskResponseDigest(&response)
+	if err != nil {
+		agg.log.Error("Failed to get task response digest", "err", err)
+		return TaskResponseDigestNotFoundError500
+	}
+	if _, ok := agg.taskResponses[taskIndex][responseDigest]; !ok {
+		agg.taskResponses[taskIndex][responseDigest] = response
+	}
+
+	return agg.blsAggregationService.ProcessNewSignature(
+		context.Background(), taskIndex, responseDigest, &sig, operatorID,
+	)
+}
+
+func (agg *Aggregator) sendAggregatedResponseToContract(
+	blsAggServiceResp blsagg.BlsAggregationServiceResponse,
+) error {
 	// TODO: check if blsAggServiceResp contains an err
 	if blsAggServiceResp.Err != nil {
-		agg.logger.Error("BlsAggregationServiceResponse contains an error", "err", blsAggServiceResp.Err)
+		agg.log.Error("BlsAggregationServiceResponse contains an error", "err", blsAggServiceResp.Err)
 		// panicing to help with debugging (fail fast), but we shouldn't panic if we run this in production
 		panic(blsAggServiceResp.Err)
 	}
-	nonSignerPubkeys := []cstaskmanager.BN254G1Point{}
+	nonSignerPubkeys := []tm.BN254G1Point{}
 	for _, nonSignerPubkey := range blsAggServiceResp.NonSignersPubkeysG1 {
 		nonSignerPubkeys = append(nonSignerPubkeys, core.ConvertToBN254G1Point(nonSignerPubkey))
 	}
-	quorumApks := []cstaskmanager.BN254G1Point{}
+	quorumApks := []tm.BN254G1Point{}
 	for _, quorumApk := range blsAggServiceResp.QuorumApksG1 {
 		quorumApks = append(quorumApks, core.ConvertToBN254G1Point(quorumApk))
 	}
-	nonSignerStakesAndSignature := cstaskmanager.IBLSSignatureCheckerNonSignerStakesAndSignature{
+	nonSignerStakesAndSignature := tm.IBLSSignatureCheckerNonSignerStakesAndSignature{
 		NonSignerPubkeys:             nonSignerPubkeys,
 		QuorumApks:                   quorumApks,
 		ApkG2:                        core.ConvertToBN254G2Point(blsAggServiceResp.SignersApkG2),
@@ -193,42 +365,44 @@ func (agg *Aggregator) sendAggregatedResponseToContract(blsAggServiceResp blsagg
 		NonSignerStakeIndices:        blsAggServiceResp.NonSignerStakeIndices,
 	}
 
-	agg.logger.Info("Threshold reached. Sending aggregated response onchain.",
+	agg.log.Info("Threshold reached. Sending aggregated response onchain.",
 		"taskIndex", blsAggServiceResp.TaskIndex,
 	)
-	agg.tasksMu.RLock()
-	task := agg.tasks[blsAggServiceResp.TaskIndex]
-	agg.tasksMu.RUnlock()
-	agg.taskResponsesMu.RLock()
-	taskResponse := agg.taskResponses[blsAggServiceResp.TaskIndex][blsAggServiceResp.TaskResponseDigest]
-	agg.taskResponsesMu.RUnlock()
-	_, err := agg.avsWriter.SendAggregatedResponse(context.Background(), task, taskResponse, nonSignerStakesAndSignature)
+
+	// Get task, batch and task response from local "storage".
+	agg.taskMu.Lock()
+	batch, ok := agg.batches[agg.batchIndex]
+	if !ok {
+		panic("batch with sepcified index does not exist")
+	}
+	task, taskBatchIdx, ok := batch.TaskByIndex(blsAggServiceResp.TaskIndex)
+	if !ok {
+		panic("batch does not contain task with specified index")
+	}
+	taskResponse, ok := agg.taskResponses[blsAggServiceResp.TaskIndex][blsAggServiceResp.TaskResponseDigest]
+	if !ok {
+		panic("response with specified digest and task index deos not exist")
+	}
+	agg.taskMu.Unlock()
+
+	// Generate proof for task.
+	taskProof, err := batch.Merkle.GetProofWithIndex(taskBatchIdx)
 	if err != nil {
-		agg.logger.Error("Aggregator failed to respond to task", "err", err)
+		return err
 	}
-}
-
-// sendNewTask sends a new task to the task manager contract, and updates the Task dict struct
-// with the information of operators opted into quorum 0 at the block of task creation.
-func (agg *Aggregator) sendNewTask(input []byte) (types.TaskIndex, error) {
-	// Send input to echo to the task manager contract
-	newTask, taskIndex, err := agg.avsWriter.SendNewEchoTask(context.Background(), input, types.QUORUM_THRESHOLD_NUMERATOR, types.QUORUM_NUMBERS)
-	if err != nil {
-		return 0, err
+	taskProofOnchain := make([][32]byte, len(taskProof))
+	for i, p := range taskProof {
+		taskProofOnchain[i] = [32]byte(p)
 	}
 
-	agg.tasksMu.Lock()
-	agg.taskIndex = taskIndex
-	agg.tasks[taskIndex] = newTask
-	agg.tasksMu.Unlock()
+	_, err = agg.avsWriter.RespondTask(
+		context.Background(),
+		batch.ILambadaCoprocessorTaskManagerTaskBatch,
+		task.ILambadaCoprocessorTaskManagerTask,
+		taskProofOnchain,
+		taskResponse,
+		nonSignerStakesAndSignature,
+	)
 
-	quorumThresholdPercentages := make([]uint32, len(newTask.QuorumNumbers))
-	for i, _ := range newTask.QuorumNumbers {
-		quorumThresholdPercentages[i] = newTask.QuorumThresholdPercentage
-	}
-	// TODO(samlaf): we use seconds for now, but we should ideally pass a blocknumber to the blsAggregationService
-	// and it should monitor the chain and only expire the task aggregation once the chain has reached that block number.
-	taskTimeToExpiry := taskChallengeWindowBlock * blockTimeSeconds
-	agg.blsAggregationService.InitializeNewTask(taskIndex, newTask.TaskCreatedBlock, newTask.QuorumNumbers, quorumThresholdPercentages, taskTimeToExpiry)
-	return taskIndex, nil
+	return err
 }

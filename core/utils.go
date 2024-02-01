@@ -11,52 +11,57 @@ import (
 	taskmanager "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/LambadaCoprocessorTaskManager"
 )
 
-// this hardcodes abi.encode() for taskmanager.ILambadaCoprocessorTaskManagerTaskResponse
-// unclear why abigen doesn't provide this out of the box...
-func AbiEncodeTaskResponse(h *taskmanager.ILambadaCoprocessorTaskManagerTaskResponse) ([]byte, error) {
-
-	// The order here has to match the field ordering of taskmanager.ILambadaCoprocessorTaskManagerTaskResponse
-	taskResponseType, err := abi.NewType("tuple", "", []abi.ArgumentMarshaling{
+// GetTaskResponseDigest returns the hash of the Task
+func GetTaskDigest(task *taskmanager.ILambadaCoprocessorTaskManagerTask) ([32]byte, error) {
+	// The order here has to match the field ordering of taskmanager.ILambadaCoprocessorTaskManagerTas
+	t, err := abi.NewType("tuple", "", []abi.ArgumentMarshaling{
 		{
-			Name: "referenceTaskIndex",
-			Type: "uint32",
+			Name: "input",
+			Type: "bytes",
 		},
+	})
+	if err != nil {
+		return [32]byte{}, err
+	}
+
+	return hashObject(t, task)
+}
+
+// GetTaskResponseDigest returns the hash of the TaskResponse
+func GetTaskResponseDigest(r *taskmanager.ILambadaCoprocessorTaskManagerTaskResponse) ([32]byte, error) {
+	// The order here has to match the field ordering of taskmanager.ILambadaCoprocessorTaskManagerTaskResponse
+	t, err := abi.NewType("tuple", "", []abi.ArgumentMarshaling{
 		{
 			Name: "outputHash",
 			Type: "bytes32",
 		},
 	})
 	if err != nil {
-		return nil, err
-	}
-	arguments := abi.Arguments{
-		{
-			Type: taskResponseType,
-		},
+		return [32]byte{}, err
 	}
 
-	bytes, err := arguments.Pack(h)
-	if err != nil {
-		return nil, err
-	}
-
-	return bytes, nil
+	return hashObject(t, r)
 }
 
-// GetTaskResponseDigest returns the hash of the TaskResponse, which is what operators sign over
-func GetTaskResponseDigest(h *taskmanager.ILambadaCoprocessorTaskManagerTaskResponse) ([32]byte, error) {
-
-	encodeTaskResponseByte, err := AbiEncodeTaskResponse(h)
+func hashObject(t abi.Type, value interface{}) ([32]byte, error) {
+	// Pack object to bytes - abi.encode()
+	arguments := abi.Arguments{
+		{
+			Type: t,
+		},
+	}
+	data, err := arguments.Pack(value)
 	if err != nil {
 		return [32]byte{}, err
 	}
 
-	var taskResponseDigest [32]byte
+	// Compute keccack256.
+	var digest [32]byte
 	hasher := sha3.NewLegacyKeccak256()
-	hasher.Write(encodeTaskResponseByte)
-	copy(taskResponseDigest[:], hasher.Sum(nil)[:32])
+	hasher.Write(data)
+	copy(digest[:], hasher.Sum(nil)[:32])
 
-	return taskResponseDigest, nil
+	return digest, nil
 }
 
 // BINDING UTILS - conversion from contract structs to golang structs

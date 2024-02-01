@@ -5,6 +5,7 @@ go 1.21
 toolchain go1.21.0
 
 require (
+	github.com/FantasyJony/openzeppelin-merkle-tree-go v1.1.2
 	github.com/Layr-Labs/eigensdk-go v0.0.8
 	github.com/ethereum/go-ethereum v1.13.4
 	github.com/go-faster/xor v1.0.0

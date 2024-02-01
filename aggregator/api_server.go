@@ -34,14 +34,14 @@ func (agg *Aggregator) createTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	taskIndex, err := agg.sendNewTask([]byte(task.Input))
+	taskIndex, err := agg.addTask([]byte(task.Input))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	resp := struct {
-		TaskIndex types.TaskIndex `json:"taskIndex"`
+		TaskIndex types.TaskBatchIndex `json:"taskIndex"`
 	}{
 		TaskIndex: taskIndex,
 	}
