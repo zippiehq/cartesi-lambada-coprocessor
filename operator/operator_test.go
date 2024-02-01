@@ -17,7 +17,7 @@ import (
 
 	"github.com/zippiehq/cartesi-lambada-coprocessor/aggregator"
 	aggtypes "github.com/zippiehq/cartesi-lambada-coprocessor/aggregator/types"
-	cstaskmanager "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/IncredibleSquaringTaskManager"
+	cstaskmanager "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/LambadaCoprocessorTaskManager"
 	chainiomocks "github.com/zippiehq/cartesi-lambada-coprocessor/core/chainio/mocks"
 	operatormocks "github.com/zippiehq/cartesi-lambada-coprocessor/operator/mocks"
 )

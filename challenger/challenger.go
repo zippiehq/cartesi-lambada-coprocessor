@@ -13,7 +13,7 @@ import (
 	"github.com/zippiehq/cartesi-lambada-coprocessor/core/config"
 
 	"github.com/zippiehq/cartesi-lambada-coprocessor/challenger/types"
-	cstaskmanager "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/IncredibleSquaringTaskManager"
+	cstaskmanager "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/LambadaCoprocessorTaskManager"
 	"github.com/zippiehq/cartesi-lambada-coprocessor/core/chainio"
 )
 

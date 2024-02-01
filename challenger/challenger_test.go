@@ -14,7 +14,7 @@ import (
 	aggtypes "github.com/zippiehq/cartesi-lambada-coprocessor/aggregator/types"
 	"github.com/zippiehq/cartesi-lambada-coprocessor/challenger/mocks"
 	chtypes "github.com/zippiehq/cartesi-lambada-coprocessor/challenger/types"
-	cstaskmanager "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/IncredibleSquaringTaskManager"
+	cstaskmanager "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/LambadaCoprocessorTaskManager"
 	chainiomocks "github.com/zippiehq/cartesi-lambada-coprocessor/core/chainio/mocks"
 	"go.uber.org/mock/gomock"
 )
