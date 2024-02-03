@@ -12,6 +12,7 @@ import (
 	reflect "reflect"
 
 	aggregator "github.com/zippiehq/cartesi-lambada-coprocessor/aggregator"
+	types "github.com/zippiehq/cartesi-lambada-coprocessor/aggregator/types"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -36,6 +37,21 @@ func NewMockAggregatorRpcClienter(ctrl *gomock.Controller) *MockAggregatorRpcCli
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockAggregatorRpcClienter) EXPECT() *MockAggregatorRpcClienterMockRecorder {
 	return m.recorder
+}
+
+// GetBatchTasks mocks base method.
+func (m *MockAggregatorRpcClienter) GetBatchTasks(arg0 uint32) ([]types.Task, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetBatchTasks", arg0)
+	ret0, _ := ret[0].([]types.Task)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetBatchTasks indicates an expected call of GetBatchTasks.
+func (mr *MockAggregatorRpcClienterMockRecorder) GetBatchTasks(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBatchTasks", reflect.TypeOf((*MockAggregatorRpcClienter)(nil).GetBatchTasks), arg0)
 }
 
 // SendSignedTaskResponseToAggregator mocks base method.

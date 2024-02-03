@@ -3,6 +3,7 @@ package aggregator
 import (
 	"cmp"
 	"context"
+	"fmt"
 	"slices"
 	"sync"
 	"time"
@@ -306,6 +307,21 @@ func (agg *Aggregator) confirmBatch(
 	}
 
 	return batch
+}
+
+func (agg *Aggregator) getBatchTasks(batchIdx types.TaskBatchIndex) ([]types.Task, error) {
+	agg.taskMu.Lock()
+	defer agg.taskMu.Unlock()
+
+	batch, ok := agg.batches[batchIdx]
+	if !ok {
+		return nil, fmt.Errorf("batch with index %d does not exist", batchIdx)
+	}
+
+	tasks := make([]types.Task, len(batch.Tasks))
+	copy(tasks, batch.Tasks)
+
+	return tasks, nil
 }
 
 func (agg *Aggregator) processTaskResponse(

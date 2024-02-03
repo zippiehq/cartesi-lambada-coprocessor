@@ -9,6 +9,7 @@ import (
 	"github.com/Layr-Labs/eigensdk-go/crypto/bls"
 	sdktypes "github.com/Layr-Labs/eigensdk-go/types"
 
+	"github.com/zippiehq/cartesi-lambada-coprocessor/aggregator/types"
 	tm "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/LambadaCoprocessorTaskManager"
 )
 
@@ -31,6 +32,23 @@ func (agg *Aggregator) startServer(ctx context.Context) error {
 	err = http.ListenAndServe(agg.serverIpPortAddr, nil)
 	if err != nil {
 		agg.log.Fatal("ListenAndServe", "err", err)
+	}
+
+	return nil
+}
+
+type BatchTasks struct {
+	Tasks []types.Task
+}
+
+func (agg *Aggregator) GetBatchTasks(batchIdx types.TaskBatchIndex, tasks *BatchTasks) error {
+	batchTasks, err := agg.getBatchTasks(batchIdx)
+	if err != nil {
+		return err
+	}
+
+	*tasks = BatchTasks{
+		Tasks: batchTasks,
 	}
 
 	return nil

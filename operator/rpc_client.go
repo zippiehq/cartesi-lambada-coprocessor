@@ -5,13 +5,15 @@ import (
 	"net/rpc"
 	"time"
 
-	"github.com/zippiehq/cartesi-lambada-coprocessor/aggregator"
-	"github.com/zippiehq/cartesi-lambada-coprocessor/metrics"
-
 	"github.com/Layr-Labs/eigensdk-go/logging"
+
+	"github.com/zippiehq/cartesi-lambada-coprocessor/aggregator"
+	"github.com/zippiehq/cartesi-lambada-coprocessor/aggregator/types"
+	"github.com/zippiehq/cartesi-lambada-coprocessor/metrics"
 )
 
 type AggregatorRpcClienter interface {
+	GetBatchTasks(batchIdx types.TaskBatchIndex) ([]types.Task, error)
 	SendSignedTaskResponseToAggregator(signedTaskResponse *aggregator.SignedTaskResponse)
 }
 type AggregatorRpcClient struct {
@@ -38,6 +40,22 @@ func (c *AggregatorRpcClient) dialAggregatorRpcClient() error {
 	}
 	c.rpcClient = client
 	return nil
+}
+
+func (c *AggregatorRpcClient) GetBatchTasks(batchIdx types.TaskBatchIndex) ([]types.Task, error) {
+	if c.rpcClient == nil {
+		c.logger.Info("dialing aggregator rpc client")
+		if err := c.dialAggregatorRpcClient(); err != nil {
+			return nil, fmt.Errorf("failed to dial aggregator rpc client -%s", err)
+		}
+	}
+
+	tasks := aggregator.BatchTasks{}
+	if err := c.rpcClient.Call("Aggregator.ProcessSignedTaskResponse", batchIdx, &tasks); err != nil {
+		return nil, err
+	}
+
+	return tasks.Tasks, nil
 }
 
 // SendSignedTaskResponseToAggregator sends a signed task response to the aggregator.
