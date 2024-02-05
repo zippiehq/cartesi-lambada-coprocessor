@@ -23,10 +23,10 @@ deploy-eigenlayer-contracts-to-anvil-and-save-state: ## Deploy eigenlayer
 deploy-shared-avs-contracts-to-anvil-and-save-state: ## Deploy blspubkeycompendium and blsstateoperatorretriever
 	./tests/integration/deploy-shared-avs-contracts-save-anvil-state.sh
 
-deploy-incredible-squaring-contracts-to-anvil-and-save-state: ## Deploy avs
+deploy-lambada-coprocessor-contracts-to-anvil-and-save-state: ## Deploy avs
 	./tests/integration/deploy-avs-save-anvil-state.sh
 
-deploy-all-to-anvil-and-save-state: deploy-eigenlayer-contracts-to-anvil-and-save-state deploy-shared-avs-contracts-to-anvil-and-save-state deploy-incredible-squaring-contracts-to-anvil-and-save-state ## deploy eigenlayer, shared avs contracts, and inc-sq contracts 
+deploy-all-to-anvil-and-save-state: deploy-eigenlayer-contracts-to-anvil-and-save-state deploy-shared-avs-contracts-to-anvil-and-save-state deploy-lambada-coprocessor-contracts-to-anvil-and-save-state ## deploy eigenlayer, shared avs contracts, and inc-sq contracts 
 
 start-anvil-chain-with-el-and-avs-deployed: ## starts anvil from a saved state file (with el and avs contracts deployed)
 	anvil --load-state tests/integration/avs-and-eigenlayer-deployed-anvil-state.json
