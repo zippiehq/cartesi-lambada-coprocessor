@@ -5,14 +5,14 @@ import (
 
 	opstateretriever "github.com/Layr-Labs/eigensdk-go/contracts/bindings/BLSOperatorStateRetriever"
 	"github.com/Layr-Labs/eigensdk-go/crypto/bls"
-	"github.com/zippiehq/cartesi-lambada-coprocessor/aggregator/types"
-	cstaskmanager "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/LambadaCoprocessorTaskManager"
 )
 
 // ====== TaskManager Mocks ======
 
-func MockEchoTaskCall(blockNum, taskNum uint32, input []byte) (cstaskmanager.IIncredibleSquaringTaskManagerTask, uint32, error) {
-	task := cstaskmanager.IIncredibleSquaringTaskManagerTask{
+// TODO: only batches are created via task manager, not tasks
+/*
+func MockEchoTaskCall(blockNum, taskNum uint32, input []byte) (cstaskmanager.ILambadaCoprocessorTaskManagerTask, uint32, error) {
+	task := cstaskmanager.ILambadaCoprocessorTaskManagerTask{
 		Input:                     input,
 		TaskCreatedBlock:          blockNum,
 		QuorumNumbers:             types.QUORUM_NUMBERS,
@@ -21,6 +21,7 @@ func MockEchoTaskCall(blockNum, taskNum uint32, input []byte) (cstaskmanager.IIn
 
 	return task, taskNum, nil
 }
+*/
 
 // ======= BLSOperatorStateRetriever Mocks =======
 type MockOperatorState struct {
