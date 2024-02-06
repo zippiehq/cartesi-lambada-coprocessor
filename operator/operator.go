@@ -41,7 +41,7 @@ import (
 	"github.com/zippiehq/cartesi-lambada-coprocessor/types"
 )
 
-const AVS_NAME = "incredible-squaring"
+const AVS_NAME = "lambada-coprocessor"
 const SEM_VER = "0.0.1"
 
 type Operator struct {
