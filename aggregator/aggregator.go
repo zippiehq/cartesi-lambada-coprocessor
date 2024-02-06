@@ -3,6 +3,7 @@ package aggregator
 import (
 	"cmp"
 	"context"
+	"encoding/hex"
 	"fmt"
 	"slices"
 	"sync"
@@ -216,6 +217,10 @@ func (agg *Aggregator) createTaskBatch() error {
 		return err
 	}
 
+	if len(batchTasks) == 0 {
+		return nil
+	}
+
 	// Post new batch onchain.
 	onchainBatch, err := agg.avsWriter.RegisterNewTaskBatch(
 		context.TODO(), [32]byte(batchMerkle.GetRoot()), types.QUORUM_THRESHOLD_NUMERATOR, types.QUORUM_NUMBERS,
@@ -249,6 +254,10 @@ func (agg *Aggregator) makeBatch() ([]types.Task, *smt.StandardTree, error) {
 	agg.taskMu.RLock()
 	defer agg.taskMu.RUnlock()
 
+	if len(agg.pendingTasks) == 0 {
+		return make([]types.Task, 0), nil, nil
+	}
+
 	// Sort pending tasks.
 	tasks := make([]types.Task, 0, len(agg.pendingTasks))
 	for i, t := range agg.pendingTasks {
@@ -264,16 +273,21 @@ func (agg *Aggregator) makeBatch() ([]types.Task, *smt.StandardTree, error) {
 
 	// Build merkle tree for tasks in the batch.
 	values := make([][]interface{}, len(tasks))
-	leafEncodings := make([]string, len(tasks))
 	for i, t := range tasks {
 		taskHash, err := core.GetTaskDigest(&t.ILambadaCoprocessorTaskManagerTask)
 		if err != nil {
 			return nil, nil, err
 		}
+
+		taskHashHex := hex.EncodeToString(taskHash[:])
 		values[i] = []interface{}{
-			smt.SolBytes(string(taskHash[:])),
+			smt.SolBytes(taskHashHex),
 		}
-		leafEncodings[i] = smt.SOL_BYTES32
+	}
+
+	leafEncodings := []string{
+		// TODO: why does this fail with SOL_BYTES32 ?
+		smt.SOL_BYTES,
 	}
 	merkle, err := smt.Of(values, leafEncodings)
 	if err != nil {
