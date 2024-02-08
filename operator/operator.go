@@ -346,7 +346,7 @@ func (o *Operator) Start(ctx context.Context) error {
 		case newTaskCreatedLog := <-o.newBatchChan:
 			o.metrics.IncNumTasksReceived()
 			if err := o.processTaskBatch(newTaskCreatedLog); err != nil {
-				o.log.Error("failed to process task batch - %s", err)
+				o.log.Errorf("failed to process task batch - %s", err)
 			}
 		}
 	}
