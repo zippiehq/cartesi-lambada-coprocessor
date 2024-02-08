@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.9;
 
+import "forge-std/console.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "@openzeppelin-upgrades/contracts/proxy/utils/Initializable.sol";
 import "@openzeppelin-upgrades/contracts/access/OwnableUpgradeable.sol";
@@ -78,6 +79,7 @@ contract LambadaCoprocessorTaskManager is
         TaskBatch memory newBatch;
         newBatch.index = nextBatchIndex;
         newBatch.blockNumber = uint32(block.number);
+        newBatch.merkeRoot = batchRoot;
         newBatch.quorumThresholdPercentage = quorumThresholdPercentage;
         newBatch.quorumNumbers = quorumNumbers;
 
@@ -139,6 +141,17 @@ contract LambadaCoprocessorTaskManager is
 
         // Check that batch contains specified task.
         bytes32 taskHash = keccak256(abi.encode(task));
+
+        // !!!
+        console.log("smart contract - task proof:");
+        for (uint i = 0; i < taskProof.length; i++) {
+            console.logBytes32(taskProof[i]);
+        }
+        console.log("smart contract - batch root:");
+        console.logBytes32(batch.merkeRoot);
+        console.log("smart contract - task hash:");
+        console.logBytes32(taskHash);
+        
         require(
             MerkleProof.verify(taskProof, batch.merkeRoot, taskHash),
             "Task does not belong to batch"
@@ -151,7 +164,7 @@ contract LambadaCoprocessorTaskManager is
         bytes32 responseMetaHash = keccak256(abi.encode(responseMeta));
         require(
             !allTaskResponses[responseMetaHash],
-            "Task batch already responded"
+            "Task response already responded"
         );
 
         return responseMetaHash;
