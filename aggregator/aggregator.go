@@ -32,7 +32,7 @@ import (
 
 const (
 	// task batch parameters
-	batchPeriod = 10 * time.Second
+	batchPeriod = 25 * time.Second
 
 	// number of blocks after which a task is considered expired
 	// this hardcoded here because it's also hardcoded in the contracts, but should
@@ -283,6 +283,10 @@ func (agg *Aggregator) makeBatch() ([]types.Task, *smt.StandardTree, error) {
 		values[i] = []interface{}{
 			smt.SolBytes(taskHashHex),
 		}
+
+		//!!!
+		agg.log.Info("aggregator - task hash 1:")
+		agg.log.Info(taskHashHex)
 	}
 
 	leafEncodings := []string{
@@ -292,6 +296,19 @@ func (agg *Aggregator) makeBatch() ([]types.Task, *smt.StandardTree, error) {
 	merkle, err := smt.Of(values, leafEncodings)
 	if err != nil {
 		return nil, nil, err
+	}
+
+	//!!!
+	agg.log.Infof("aggregator - batch size  is %d", len(values))
+	for _, v := range values {
+		taskProof, err := merkle.GetProof(v)
+		if err != nil {
+			panic("blah")
+		}
+		agg.log.Infof("aggregator - task proof 1:")
+		for _, p := range taskProof {
+			agg.log.Info(hex.EncodeToString(p))
+		}
 	}
 
 	return tasks, merkle, nil
@@ -352,6 +369,9 @@ func (agg *Aggregator) processTaskResponse(
 		agg.taskResponses[taskIndex] = make(map[sdktypes.TaskResponseDigest]tm.ILambadaCoprocessorTaskManagerTaskResponse)
 	}
 
+	//!!!
+	fmt.Println("boom2")
+
 	// Memorize response from operator.
 	responseDigest, err := core.GetTaskResponseDigest(&response)
 	if err != nil {
@@ -361,6 +381,9 @@ func (agg *Aggregator) processTaskResponse(
 	if _, ok := agg.taskResponses[taskIndex][responseDigest]; !ok {
 		agg.taskResponses[taskIndex][responseDigest] = response
 	}
+
+	//!!!
+	fmt.Println("boom3")
 
 	return agg.blsAggregationService.ProcessNewSignature(
 		context.Background(), taskIndex, responseDigest, &sig, operatorID,
@@ -405,7 +428,7 @@ func (agg *Aggregator) sendAggregatedResponseToContract(
 	if !ok {
 		panic("batch with sepcified index does not exist")
 	}
-	task, taskBatchIdx, ok := batch.TaskByIndex(blsAggServiceResp.TaskIndex)
+	task, _, ok := batch.TaskByIndex(blsAggServiceResp.TaskIndex)
 	if !ok {
 		panic("batch does not contain task with specified index")
 	}
@@ -416,7 +439,13 @@ func (agg *Aggregator) sendAggregatedResponseToContract(
 	agg.taskMu.Unlock()
 
 	// Generate proof for task.
-	taskProof, err := batch.Merkle.GetProofWithIndex(taskBatchIdx)
+	taskHash, err := core.GetTaskDigest(&task.ILambadaCoprocessorTaskManagerTask)
+	if err != nil {
+		return err
+	}
+	taskProof, err := batch.Merkle.GetProof([]interface{}{
+		smt.SolBytes(hex.EncodeToString(taskHash[:])),
+	})
 	if err != nil {
 		return err
 	}
@@ -424,6 +453,14 @@ func (agg *Aggregator) sendAggregatedResponseToContract(
 	for i, p := range taskProof {
 		taskProofOnchain[i] = [32]byte(p)
 	}
+
+	//!!!
+	agg.log.Infof("aggregator - task proof 2:")
+	for _, p := range taskProof {
+		agg.log.Info(hex.EncodeToString(p))
+	}
+	agg.log.Info("aggregator - batch root 2:")
+	agg.log.Info(hex.EncodeToString(batch.Merkle.GetRoot()))
 
 	_, err = agg.avsWriter.RespondTask(
 		context.Background(),
