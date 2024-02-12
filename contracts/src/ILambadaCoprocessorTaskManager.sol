@@ -23,6 +23,7 @@ interface ILambadaCoprocessorTaskManager is IBLSSignatureChecker {
     }
 
     struct Task {
+        bytes programId;
         bytes input;
     }
 
@@ -35,6 +36,7 @@ interface ILambadaCoprocessorTaskManager is IBLSSignatureChecker {
 
     struct TaskResponseMetadata {
         uint32 batchIndex;
+        bytes programId;
         bytes taskInput;
     }
   

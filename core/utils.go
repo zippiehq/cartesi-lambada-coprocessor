@@ -11,22 +11,6 @@ import (
 	taskmanager "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/LambadaCoprocessorTaskManager"
 )
 
-// GetTaskResponseDigest returns the hash of the Task
-func GetTaskDigest(task *taskmanager.ILambadaCoprocessorTaskManagerTask) ([32]byte, error) {
-	// The order here has to match the field ordering of taskmanager.ILambadaCoprocessorTaskManagerTas
-	t, err := abi.NewType("tuple", "", []abi.ArgumentMarshaling{
-		{
-			Name: "input",
-			Type: "bytes",
-		},
-	})
-	if err != nil {
-		return [32]byte{}, err
-	}
-
-	return hashObject(t, task)
-}
-
 // GetTaskResponseDigest returns the hash of the TaskResponse
 func GetTaskResponseDigest(r *taskmanager.ILambadaCoprocessorTaskManagerTaskResponse) ([32]byte, error) {
 	// The order here has to match the field ordering of taskmanager.ILambadaCoprocessorTaskManagerTaskResponse

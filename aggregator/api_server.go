@@ -27,14 +27,15 @@ func (agg *Aggregator) createTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	task := struct {
-		Input string `json:"input"`
+		ProgramID string `json:"programId"`
+		Input     string `json:"input"`
 	}{}
 	if err = json.Unmarshal(taskData, &task); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	taskIndex, err := agg.addTask([]byte(task.Input))
+	taskIndex, err := agg.addTask([]byte(task.ProgramID), []byte(task.Input))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

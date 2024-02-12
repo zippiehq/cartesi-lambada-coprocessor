@@ -139,32 +139,22 @@ contract LambadaCoprocessorTaskManager is
             "Task batch has not been registered"
         );
 
-        // Check that batch contains specified task.
-        bytes32 taskHash = keccak256(abi.encode(task));
-
-        // !!!
-        console.log("smart contract - task proof:");
-        for (uint i = 0; i < taskProof.length; i++) {
-            console.logBytes32(taskProof[i]);
-        }
-        console.log("smart contract - batch root:");
-        console.logBytes32(batch.merkeRoot);
-        console.log("smart contract - task hash:");
-        console.logBytes32(taskHash);
-        
-        require(
-            MerkleProof.verify(taskProof, batch.merkeRoot, taskHash),
-            "Task does not belong to batch"
-        );
-
         // Check if task has been already responded.
         TaskResponseMetadata memory responseMeta;
         responseMeta.batchIndex = batch.index;
+        responseMeta.programId = task.programId;
         responseMeta.taskInput = task.input;
         bytes32 responseMetaHash = keccak256(abi.encode(responseMeta));
         require(
             !allTaskResponses[responseMetaHash],
             "Task response already responded"
+        );
+
+        // Check that batch contains specified task.
+        bytes32 taskHash = keccak256(bytes.concat(keccak256(abi.encode(task.programId, task.input))));
+        require(
+            MerkleProof.verifyCalldata(taskProof, batch.merkeRoot, taskHash),
+            "Task does not belong to batch"
         );
 
         return responseMetaHash;
