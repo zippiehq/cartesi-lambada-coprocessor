@@ -26,19 +26,24 @@ func (agg *Aggregator) createTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	task := struct {
-		ProgramID string `json:"programId"`
-		Input     string `json:"input"`
-	}{}
-	if err = json.Unmarshal(taskData, &task); err != nil {
+	tasks := make(
+		[]struct {
+			ProgramID string `json:"programId"`
+			Input     string `json:"input"`
+		},
+		0,
+	)
+	if err = json.Unmarshal(taskData, &tasks); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	taskIndex, err := agg.addTask([]byte(task.ProgramID), []byte(task.Input))
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+	var taskIndex uint32
+	for _, t := range tasks {
+		if taskIndex, err = agg.addTask([]byte(t.ProgramID), []byte(t.Input)); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 
 	resp := struct {
