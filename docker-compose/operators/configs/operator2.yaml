@@ -1,6 +1,6 @@
 production: false
 
-operator_address: 0x78a9ef72a4adafdad957702b68c42c8e086b0e28
+operator_address: 0x54523d73a5faf88e09f728820f5a88c91cd5f80d
 
 el_slasher_address: 0x5FC8d32690cc91D4c39d9d3abcBD16989F875707
 avs_service_manager_address: 0xc3e53F4d16Ae77Db1c982e75a937B9f60FE63690
@@ -10,8 +10,8 @@ bls_public_key_compendium_address: 0x322813Fd9A801c5507c9de605d63CEA4f2CE6c44
 eth_rpc_url: http://anvil:8545
 eth_ws_url: ws://anvil:8545
 
-ecdsa_private_key_store_path: docker-compose/operators/keys/ecdsa-f27d6531-ca39-11ee-862a-a036bcd1ceee/keys/1.ecdsa.key.json
-bls_private_key_store_path: docker-compose/operators/keys/bls-f3660aed-ca39-11ee-862a-a036bcd1ceee/keys/1.bls.key.json
+ecdsa_private_key_store_path: docker-compose/operators/keys/ecdsa-f27d6531-ca39-11ee-862a-a036bcd1ceee/keys/2.ecdsa.key.json
+bls_private_key_store_path: docker-compose/operators/keys/bls-f3660aed-ca39-11ee-862a-a036bcd1ceee/keys/2.bls.key.json
 
 aggregator_server_ip_port_address: lambada-coprocessor-aggregator:8090
 

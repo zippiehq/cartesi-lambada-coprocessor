@@ -194,7 +194,7 @@ func GenerateDockerCompose(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	composeFile, err := os.Create("./docker-compose-operators.yaml")
+	composeFile, err := os.Create("./docker-compose.yaml")
 	if err != nil {
 		return err
 	}
