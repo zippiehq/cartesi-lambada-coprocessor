@@ -67,30 +67,27 @@ type SharedAvsContractsRaw struct {
 	BlsOperatorStateRetrieverAddr string `json:"blsOperatorStateRetriever"`
 }
 
-// NewConfig parses config file to read from from flags or environment variables
-// Note: This config is shared by challenger and aggregator and so we put in the core.
+// Config is shared by challenger and aggregator and so we put in the core.
 // Operator has a different config and is meant to be used by the operator CLI.
-func NewConfig(ctx *cli.Context) (*Config, error) {
-
+func NewConfig(
+	configFilePath, deploymentFilePath, avsContractsDeploymentFilePath, ecdsaPrivateKeyString string,
+) (*Config, error) {
 	var configRaw ConfigRaw
-	configFilePath := ctx.GlobalString(ConfigFileFlag.Name)
 	if configFilePath != "" {
 		sdkutils.ReadYamlConfig(configFilePath, &configRaw)
 	}
 
 	var credibleSquaringDeploymentRaw CredibleSquaringDeploymentRaw
-	credibleSquaringDeploymentFilePath := ctx.GlobalString(CredibleSquaringDeploymentFileFlag.Name)
-	if _, err := os.Stat(credibleSquaringDeploymentFilePath); errors.Is(err, os.ErrNotExist) {
-		panic("Path " + credibleSquaringDeploymentFilePath + " does not exist")
+	if _, err := os.Stat(deploymentFilePath); errors.Is(err, os.ErrNotExist) {
+		panic("Path " + deploymentFilePath + " does not exist")
 	}
-	sdkutils.ReadJsonConfig(credibleSquaringDeploymentFilePath, &credibleSquaringDeploymentRaw)
+	sdkutils.ReadJsonConfig(deploymentFilePath, &credibleSquaringDeploymentRaw)
 
 	var sharedAvsContractsDeploymentRaw SharedAvsContractsRaw
-	sharedAvsContractsDeploymentFilePath := ctx.GlobalString(SharedAvsContractsDeploymentFileFlag.Name)
-	if _, err := os.Stat(sharedAvsContractsDeploymentFilePath); errors.Is(err, os.ErrNotExist) {
-		panic("Path " + sharedAvsContractsDeploymentFilePath + " does not exist")
+	if _, err := os.Stat(avsContractsDeploymentFilePath); errors.Is(err, os.ErrNotExist) {
+		panic("Path " + avsContractsDeploymentFilePath + " does not exist")
 	}
-	sdkutils.ReadJsonConfig(sharedAvsContractsDeploymentFilePath, &sharedAvsContractsDeploymentRaw)
+	sdkutils.ReadJsonConfig(avsContractsDeploymentFilePath, &sharedAvsContractsDeploymentRaw)
 
 	logger, err := sdklogging.NewZapLogger(configRaw.Environment)
 	if err != nil {
@@ -109,7 +106,6 @@ func NewConfig(ctx *cli.Context) (*Config, error) {
 		return nil, err
 	}
 
-	ecdsaPrivateKeyString := ctx.GlobalString(EcdsaPrivateKeyFlag.Name)
 	if ecdsaPrivateKeyString[:2] == "0x" {
 		ecdsaPrivateKeyString = ecdsaPrivateKeyString[2:]
 	}
@@ -153,7 +149,18 @@ func NewConfig(ctx *cli.Context) (*Config, error) {
 		BlsPublicKeyCompendiumAddress:        common.HexToAddress(configRaw.BLSPubkeyCompendiumAddr),
 	}
 	config.validate()
+
 	return config, nil
+}
+
+// NewConfigFromCLI parses config file to read from from flags or environment variables
+func NewConfigFromCLI(ctx *cli.Context) (*Config, error) {
+	configFilePath := ctx.GlobalString(ConfigFileFlag.Name)
+	deploymentFilePath := ctx.GlobalString(CredibleSquaringDeploymentFileFlag.Name)
+	avsContractsDeploymentFilePath := ctx.GlobalString(SharedAvsContractsDeploymentFileFlag.Name)
+	ecdsaPrivateKeyString := ctx.GlobalString(EcdsaPrivateKeyFlag.Name)
+
+	return NewConfig(configFilePath, deploymentFilePath, avsContractsDeploymentFilePath, ecdsaPrivateKeyString)
 }
 
 func (c *Config) validate() {

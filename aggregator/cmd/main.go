@@ -39,7 +39,7 @@ func main() {
 func aggregatorMain(ctx *cli.Context) error {
 
 	log.Println("Initializing Aggregator")
-	config, err := config.NewConfig(ctx)
+	config, err := config.NewConfigFromCLI(ctx)
 	if err != nil {
 		return err
 	}
