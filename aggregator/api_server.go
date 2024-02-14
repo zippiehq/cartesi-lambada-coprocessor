@@ -6,6 +6,8 @@ import (
 	"log"
 	"net/http"
 
+	sdktypes "github.com/Layr-Labs/eigensdk-go/types"
+
 	"github.com/zippiehq/cartesi-lambada-coprocessor/aggregator/types"
 )
 
@@ -38,7 +40,8 @@ func (agg *Aggregator) createTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var taskIndex uint32
+	batchIndex := agg.getBatchIndex()
+	var taskIndex sdktypes.TaskIndex
 	for _, t := range tasks {
 		if taskIndex, err = agg.addTask([]byte(t.ProgramID), []byte(t.Input)); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -47,9 +50,11 @@ func (agg *Aggregator) createTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp := struct {
-		TaskIndex types.TaskBatchIndex `json:"taskIndex"`
+		BatchIndex types.TaskBatchIndex `json:"batchIndex"`
+		TaskIndex  sdktypes.TaskIndex   `json:"taskIndex"`
 	}{
-		TaskIndex: taskIndex,
+		BatchIndex: batchIndex,
+		TaskIndex:  taskIndex,
 	}
 	respData, err := json.Marshal(&resp)
 	if err != nil {

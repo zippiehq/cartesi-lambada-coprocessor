@@ -199,6 +199,13 @@ func (agg *Aggregator) Start(ctx context.Context) error {
 	}
 }
 
+func (agg *Aggregator) getBatchIndex() types.TaskBatchIndex {
+	agg.taskMu.RLock()
+	defer agg.taskMu.RUnlock()
+
+	return agg.batchIndex
+}
+
 func (agg *Aggregator) addTask(programID []byte, input []byte) (sdktypes.TaskIndex, error) {
 	agg.taskMu.Lock()
 	defer agg.taskMu.Unlock()
