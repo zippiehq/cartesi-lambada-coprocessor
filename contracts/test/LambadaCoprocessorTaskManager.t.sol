@@ -46,9 +46,11 @@ contract LambadaCoprocessorTaskManagerTest is BLSMockAVSDeployer {
         );
     }
 
-    /*
-    function testCreateRegisterBatch() public {
-        TODO: implement
+    function testRegisterNewTaskBatch() public {
+        bytes32 batchRoot = 0xdf10939438762484978d10ad34e9186e9b3bd1d2f4b1fef91dd1b245b02818b8;
+        bytes memory quorumNumbers = new bytes(0);
+        cheats.prank(generator, generator);
+        tm.registerNewTaskBatch(batchRoot, 100, quorumNumbers);
+        assertEq(tm.nextBatchIndex(), 1);
     }
-    */
 }
