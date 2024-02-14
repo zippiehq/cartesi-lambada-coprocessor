@@ -1,5 +1,102 @@
 package integration_test
 
+import (
+	"bytes"
+	"encoding/json"
+	"io"
+	"net/http"
+	"testing"
+
+	sdktypes "github.com/Layr-Labs/eigensdk-go/types"
+
+	"github.com/zippiehq/cartesi-lambada-coprocessor/aggregator/types"
+	"github.com/zippiehq/cartesi-lambada-coprocessor/core/chainio"
+	"github.com/zippiehq/cartesi-lambada-coprocessor/core/config"
+)
+
+type task struct {
+	ProgramID string `json:"programId"`
+	Input     string `json:"input"`
+}
+
+func TestIntegration(t *testing.T) {
+	config, err := config.NewConfig(
+		"../../config-files/aggregator.yaml",
+		"../../contracts/script/output/31337/credible_squaring_avs_deployment_output.json",
+		"../../contracts/script/output/31337/shared_avs_contracts_deployment_output.json",
+		"0x2a871d0798f97d79848a013d4936a73bf4cc922c825d33c1cf7073dff6d409c6",
+	)
+	if err != nil {
+		t.Fatalf("failed to create avs config - %s", err)
+	}
+
+	avsReader, err := chainio.NewAvsReaderFromConfig(config)
+	if err != nil {
+		t.Fatalf("failed to create avs reader - %s", err)
+	}
+	avsSubscriber, err := chainio.NewAvsSubscriberFromConfig(config)
+	if err != nil {
+		t.Fatalf("failed to create avs subscriber - %s", err)
+	}
+
+	batches := [][]task{
+		// batch 0
+		{
+			{
+				ProgramID: "program1",
+				Input:     "input1",
+			},
+			{
+				ProgramID: "program1",
+				Input:     "intput1",
+			},
+		},
+	}
+
+	for _, b := range batches {
+		checkTaskBatch(t, b, avsReader, avsSubscriber)
+	}
+}
+
+func checkTaskBatch(t *testing.T, tasks []task, avsReader *chainio.AvsReader, avsSubscriber *chainio.AvsSubscriber) {
+	batchIdx, taskIdx, err := submitTasks(tasks)
+	if err != nil {
+		t.Fatalf("failed to submit tasks - %s", err)
+	}
+
+	// Wait for batch and comapre batch hash. Compare batch index.
+
+	// Wait for task reponse and compare task response hash.
+}
+
+func submitTasks(tasks []task) (types.TaskBatchIndex, sdktypes.TaskIndex, error) {
+	body, err := json.Marshal(tasks)
+	if err != nil {
+		return 0, 0, err
+	}
+
+	resp, err := http.Post("http://localhost:8080/createTask", "application/json", bytes.NewBuffer(body))
+	if err != nil {
+		return 0, 0, err
+	}
+	defer resp.Body.Close()
+
+	respData, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return 0, 0, err
+	}
+
+	respJSON := struct {
+		BatchIndex types.TaskBatchIndex `json:"batchIndex"`
+		TaskIndex  sdktypes.TaskIndex   `json:"taskIndex"`
+	}{}
+	if err = json.Unmarshal(respData, &respJSON); err != nil {
+		return 0, 0, err
+	}
+
+	return respJSON.BatchIndex, respJSON.TaskIndex, nil
+}
+
 // TODO: update tests
 /*
 import (
