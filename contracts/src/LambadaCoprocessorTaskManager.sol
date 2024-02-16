@@ -86,9 +86,9 @@ contract LambadaCoprocessorTaskManager is
         bytes32 batchHash = keccak256(abi.encode(newBatch));
         allBatchHashes[nextBatchIndex] = batchHash;
 
-        emit TaskBatchRegistered(newBatch);
-
         nextBatchIndex++;
+
+        emit TaskBatchRegistered(newBatch);
     }
 
     function respondTask(
@@ -125,6 +125,8 @@ contract LambadaCoprocessorTaskManager is
         
         // Update task responses.
         allTaskResponses[responseMetaHash] = true;
+
+        emit TaskResponded(taskResponse);
     }
 
     function verifyBatchTask(
