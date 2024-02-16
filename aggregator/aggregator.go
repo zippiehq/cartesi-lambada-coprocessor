@@ -84,7 +84,7 @@ type Aggregator struct {
 
 	taskMu sync.RWMutex
 
-	taskIndex      sdktypes.TaskIndex
+	nextTaskIdx    sdktypes.TaskIndex
 	pendingTasks   map[sdktypes.TaskIndex]tm.ILambadaCoprocessorTaskManagerTask
 	submittedTasks map[sdktypes.TaskIndex]tm.ILambadaCoprocessorTaskManagerTask
 
@@ -162,7 +162,7 @@ func NewAggregator(c *config.Config) (*Aggregator, error) {
 		avsWriter:             avsWriter,
 		blsAggregationService: blsAggregationService,
 
-		taskIndex:      0,
+		nextTaskIdx:    0,
 		pendingTasks:   make(map[sdktypes.TaskIndex]tm.ILambadaCoprocessorTaskManagerTask),
 		submittedTasks: make(map[sdktypes.TaskIndex]tm.ILambadaCoprocessorTaskManagerTask),
 
@@ -210,13 +210,13 @@ func (agg *Aggregator) addTask(programID []byte, input []byte) (sdktypes.TaskInd
 	agg.taskMu.Lock()
 	defer agg.taskMu.Unlock()
 
-	agg.pendingTasks[agg.taskIndex] = tm.ILambadaCoprocessorTaskManagerTask{
+	agg.pendingTasks[agg.nextTaskIdx] = tm.ILambadaCoprocessorTaskManagerTask{
 		ProgramId: programID,
 		Input:     input,
 	}
-	agg.taskIndex++
+	agg.nextTaskIdx++
 
-	return agg.taskIndex - 1, nil
+	return agg.nextTaskIdx - 1, nil
 }
 
 func (agg *Aggregator) createTaskBatch() error {
@@ -274,30 +274,35 @@ func (agg *Aggregator) makeBatch() ([]types.Task, *smt.StandardTree, error) {
 			Index:                              i,
 		})
 	}
-	taskCmp := func(t1, t2 types.Task) int {
-		return cmp.Compare(t1.Index, t2.Index)
-	}
-	slices.SortFunc(tasks, taskCmp)
 
-	// Build merkle tree for tasks in the batch.
-	values := make([][]interface{}, len(tasks))
-	for i, t := range tasks {
-		values[i] = []interface{}{
-			smt.SolBytes(hex.EncodeToString(t.ProgramId)),
-			smt.SolBytes(hex.EncodeToString(t.Input)),
+	return BuildBatchMerkle(tasks)
+	//!!!
+	/*
+		taskCmp := func(t1, t2 types.Task) int {
+			return cmp.Compare(t1.Index, t2.Index)
 		}
-	}
+		slices.SortFunc(tasks, taskCmp)
 
-	leafEncodings := []string{
-		smt.SOL_BYTES,
-		smt.SOL_BYTES,
-	}
-	merkle, err := smt.Of(values, leafEncodings)
-	if err != nil {
-		return nil, nil, err
-	}
+		// Build merkle tree for tasks in the batch.
+		values := make([][]interface{}, len(tasks))
+		for i, t := range tasks {
+			values[i] = []interface{}{
+				smt.SolBytes(hex.EncodeToString(t.ProgramId)),
+				smt.SolBytes(hex.EncodeToString(t.Input)),
+			}
+		}
 
-	return tasks, merkle, nil
+		leafEncodings := []string{
+			smt.SOL_BYTES,
+			smt.SOL_BYTES,
+		}
+		merkle, err := smt.Of(values, leafEncodings)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		return tasks, merkle, nil
+	*/
 }
 
 func (agg *Aggregator) confirmBatch(
@@ -438,4 +443,31 @@ func (agg *Aggregator) sendAggregatedResponseToContract(
 	)
 
 	return err
+}
+
+func BuildBatchMerkle(tasks []types.Task) ([]types.Task, *smt.StandardTree, error) {
+	taskCmp := func(t1, t2 types.Task) int {
+		return cmp.Compare(t1.Index, t2.Index)
+	}
+	slices.SortFunc(tasks, taskCmp)
+
+	// Build merkle tree for tasks in the batch.
+	values := make([][]interface{}, len(tasks))
+	for i, t := range tasks {
+		values[i] = []interface{}{
+			smt.SolBytes(hex.EncodeToString(t.ProgramId)),
+			smt.SolBytes(hex.EncodeToString(t.Input)),
+		}
+	}
+
+	leafEncodings := []string{
+		smt.SOL_BYTES,
+		smt.SOL_BYTES,
+	}
+	merkle, err := smt.Of(values, leafEncodings)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return tasks, merkle, nil
 }
