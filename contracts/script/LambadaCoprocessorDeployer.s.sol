@@ -10,13 +10,12 @@ import {ISlasher} from "@eigenlayer/contracts/interfaces/ISlasher.sol";
 import {StrategyBaseTVLLimits} from "@eigenlayer/contracts/strategies/StrategyBaseTVLLimits.sol";
 import "@eigenlayer/test/mocks/EmptyContract.sol";
 
-import {BLSPublicKeyCompendium} from "@eigenlayer-middleware/src/BLSPublicKeyCompendium.sol";
-import "@eigenlayer-middleware/src/BLSRegistryCoordinatorWithIndices.sol" as blsregcoord;
-import {BLSPubkeyRegistry, IBLSPubkeyRegistry} from "@eigenlayer-middleware/src/BLSPubkeyRegistry.sol";
-import {IndexRegistry, IIndexRegistry} from "@eigenlayer-middleware/src/IndexRegistry.sol";
-import {StakeRegistry, IStakeRegistry} from "@eigenlayer-middleware/src/StakeRegistry.sol";
-import {IVoteWeigher} from "@eigenlayer-middleware/src/interfaces/IVoteWeigher.sol";
-//import {IServiceManager} from "@eigenlayer-middleware/src/interfaces/IServiceManager.sol";
+import "@eigenlayer-middleware/src/RegistryCoordinator.sol" as regcoord;
+import {IBLSApkRegistry, IIndexRegistry, IStakeRegistry} from "@eigenlayer-middleware/src/RegistryCoordinator.sol";
+import {BLSApkRegistry} from "@eigenlayer-middleware/src/BLSApkRegistry.sol";
+import {IndexRegistry} from "@eigenlayer-middleware/src/IndexRegistry.sol";
+import {StakeRegistry} from "@eigenlayer-middleware/src/StakeRegistry.sol";
+import "@eigenlayer-middleware/src/OperatorStateRetriever.sol";
 
 import {LambadaCoprocessorServiceManager, IServiceManager} from "../src/LambadaCoprocessorServiceManager.sol";
 import {LambadaCoprocessorTaskManager} from "../src/LambadaCoprocessorTaskManager.sol";
@@ -31,8 +30,8 @@ import "forge-std/StdJson.sol";
 import "forge-std/console.sol";
 
 // # To deploy and verify our contract
-// forge script script/CredibleSquaringDeployer.s.sol:CredibleSquaringDeployer --rpc-url $RPC_URL  --private-key $PRIVATE_KEY --broadcast -vvvv
-contract CredibleSquaringDeployer is Script, Utils {
+// forge script script/LambadaCoprocessorDeployer.s.sol:LambadaCoprocessorDeployer --rpc-url $RPC_URL  --private-key $PRIVATE_KEY --broadcast -vvvv
+contract LambadaCoprocessorDeployer is Script, Utils {
     // DEPLOYMENT CONSTANTS
     uint256 public constant QUORUM_THRESHOLD_PERCENTAGE = 100;
     uint32 public constant TASK_RESPONSE_WINDOW_BLOCK = 30;
@@ -49,15 +48,14 @@ contract CredibleSquaringDeployer is Script, Utils {
     StrategyBaseTVLLimits public erc20MockStrategy;
 
     // Credible Squaring contracts
-    ProxyAdmin public credibleSquaringProxyAdmin;
-    PauserRegistry public credibleSquaringPauserReg;
+    ProxyAdmin public lambadaCoprocessorProxyAdmin;
+    PauserRegistry public lambadaCoprocessorPauserReg;
 
-    blsregcoord.BLSRegistryCoordinatorWithIndices public registryCoordinator;
-    blsregcoord.IBLSRegistryCoordinatorWithIndices
-        public registryCoordinatorImplementation;
+    regcoord.RegistryCoordinator public registryCoordinator;
+    regcoord.IRegistryCoordinator public registryCoordinatorImplementation;
 
-    IBLSPubkeyRegistry public blsPubkeyRegistry;
-    IBLSPubkeyRegistry public blsPubkeyRegistryImplementation;
+    IBLSApkRegistry public blsApkRegistry;
+    IBLSApkRegistry public blsApkRegistryImplementation;
 
     IIndexRegistry public indexRegistry;
     IIndexRegistry public indexRegistryImplementation;
@@ -65,20 +63,19 @@ contract CredibleSquaringDeployer is Script, Utils {
     IStakeRegistry public stakeRegistry;
     IStakeRegistry public stakeRegistryImplementation;
 
-    LambadaCoprocessorServiceManager public credibleSquaringServiceManager;
-    IServiceManager public credibleSquaringServiceManagerImplementation;
+    OperatorStateRetriever public operatorStateRetriever;
 
-    LambadaCoprocessorTaskManager public credibleSquaringTaskManager;
+    LambadaCoprocessorServiceManager public lambadaCoprocessorServiceManager;
+    IServiceManager public lambadaCoprocessorServiceManagerImplementation;
+
+    LambadaCoprocessorTaskManager public lambadaCoprocessorTaskManager;
     ILambadaCoprocessorTaskManager
-        public credibleSquaringTaskManagerImplementation;
+        public lambadaCoprocessorTaskManagerImplementation;
 
     function run() external {
         // Eigenlayer contracts
         string memory eigenlayerDeployedContracts = readOutput(
             "eigenlayer_deployment_output"
-        );
-        string memory sharedAvsDeployedContracts = readOutput(
-            "shared_avs_contracts_deployment_output"
         );
         IStrategyManager strategyManager = IStrategyManager(
             stdJson.readAddress(
@@ -92,12 +89,6 @@ contract CredibleSquaringDeployer is Script, Utils {
                 ".addresses.delegation"
             )
         );
-        ISlasher slasher = ISlasher(
-            stdJson.readAddress(
-                eigenlayerDeployedContracts,
-                ".addresses.slasher"
-            )
-        );
         ProxyAdmin eigenLayerProxyAdmin = ProxyAdmin(
             stdJson.readAddress(
                 eigenlayerDeployedContracts,
@@ -108,12 +99,6 @@ contract CredibleSquaringDeployer is Script, Utils {
             stdJson.readAddress(
                 eigenlayerDeployedContracts,
                 ".addresses.eigenLayerPauserReg"
-            )
-        );
-        BLSPublicKeyCompendium pubkeyCompendium = BLSPublicKeyCompendium(
-            stdJson.readAddress(
-                sharedAvsDeployedContracts,
-                ".blsPublicKeyCompendium"
             )
         );
         StrategyBaseTVLLimits baseStrategyImplementation = StrategyBaseTVLLimits(
@@ -133,12 +118,9 @@ contract CredibleSquaringDeployer is Script, Utils {
             baseStrategyImplementation,
             strategyManager
         );
-        _deployCredibleSquaringContracts(
-            strategyManager,
+        _deployLambadaCoprocessorContracts(
             delegationManager,
-            slasher,
             erc20MockStrategy,
-            pubkeyCompendium,
             credibleSquaringCommunityMultisig,
             credibleSquaringPauser
         );
@@ -174,13 +156,10 @@ contract CredibleSquaringDeployer is Script, Utils {
         strategyManager.addStrategiesToDepositWhitelist(strats);
     }
 
-    function _deployCredibleSquaringContracts(
-        IStrategyManager strategyManager,
+    function _deployLambadaCoprocessorContracts(
         IDelegationManager delegationManager,
-        ISlasher slasher,
         IStrategy strat,
-        BLSPublicKeyCompendium pubkeyCompendium,
-        address credibleSquaringCommunityMultisig,
+        address lambadaCoprocessorCommunityMultisig,
         address credibleSquaringPauser
     ) internal {
         // Adding this as a temporary fix to make the rest of the script work with a single strategy
@@ -189,16 +168,16 @@ contract CredibleSquaringDeployer is Script, Utils {
         uint numStrategies = deployedStrategyArray.length;
 
         // deploy proxy admin for ability to upgrade proxy contracts
-        credibleSquaringProxyAdmin = new ProxyAdmin();
+        lambadaCoprocessorProxyAdmin = new ProxyAdmin();
 
         // deploy pauser registry
         {
             address[] memory pausers = new address[](2);
             pausers[0] = credibleSquaringPauser;
-            pausers[1] = credibleSquaringCommunityMultisig;
-            credibleSquaringPauserReg = new PauserRegistry(
+            pausers[1] = lambadaCoprocessorCommunityMultisig;
+            lambadaCoprocessorPauserReg = new PauserRegistry(
                 pausers,
-                credibleSquaringCommunityMultisig
+                lambadaCoprocessorCommunityMultisig
             );
         }
 
@@ -210,38 +189,38 @@ contract CredibleSquaringDeployer is Script, Utils {
          * First, deploy upgradeable proxy contracts that **will point** to the implementations. Since the implementation contracts are
          * not yet deployed, we give these proxies an empty contract as the initial implementation, to act as if they have no code.
          */
-        credibleSquaringServiceManager = LambadaCoprocessorServiceManager(
+        lambadaCoprocessorServiceManager = LambadaCoprocessorServiceManager(
             address(
                 new TransparentUpgradeableProxy(
                     address(emptyContract),
-                    address(credibleSquaringProxyAdmin),
+                    address(lambadaCoprocessorProxyAdmin),
                     ""
                 )
             )
         );
-        credibleSquaringTaskManager = LambadaCoprocessorTaskManager(
+        lambadaCoprocessorTaskManager = LambadaCoprocessorTaskManager(
             address(
                 new TransparentUpgradeableProxy(
                     address(emptyContract),
-                    address(credibleSquaringProxyAdmin),
+                    address(lambadaCoprocessorProxyAdmin),
                     ""
                 )
             )
         );
-        registryCoordinator = blsregcoord.BLSRegistryCoordinatorWithIndices(
+        registryCoordinator = regcoord.RegistryCoordinator(
             address(
                 new TransparentUpgradeableProxy(
                     address(emptyContract),
-                    address(credibleSquaringProxyAdmin),
+                    address(lambadaCoprocessorProxyAdmin),
                     ""
                 )
             )
         );
-        blsPubkeyRegistry = IBLSPubkeyRegistry(
+        blsApkRegistry = IBLSApkRegistry(
             address(
                 new TransparentUpgradeableProxy(
                     address(emptyContract),
-                    address(credibleSquaringProxyAdmin),
+                    address(lambadaCoprocessorProxyAdmin),
                     ""
                 )
             )
@@ -250,7 +229,7 @@ contract CredibleSquaringDeployer is Script, Utils {
             address(
                 new TransparentUpgradeableProxy(
                     address(emptyContract),
-                    address(credibleSquaringProxyAdmin),
+                    address(lambadaCoprocessorProxyAdmin),
                     ""
                 )
             )
@@ -259,149 +238,147 @@ contract CredibleSquaringDeployer is Script, Utils {
             address(
                 new TransparentUpgradeableProxy(
                     address(emptyContract),
-                    address(credibleSquaringProxyAdmin),
+                    address(lambadaCoprocessorProxyAdmin),
                     ""
                 )
             )
         );
 
+        operatorStateRetriever = new OperatorStateRetriever();
+
         // Second, deploy the *implementation* contracts, using the *proxy contracts* as inputs
         {
             stakeRegistryImplementation = new StakeRegistry(
                 registryCoordinator,
-                strategyManager,
-                credibleSquaringServiceManager
+                delegationManager
             );
 
-            // set up a quorum with each strategy that needs to be set up
-            uint96[] memory minimumStakeForQuorum = new uint96[](numStrategies);
-            IVoteWeigher.StrategyAndWeightingMultiplier[][]
-                memory strategyAndWeightingMultipliers = new IVoteWeigher.StrategyAndWeightingMultiplier[][](
-                    numStrategies
-                );
-            for (uint i = 0; i < numStrategies; i++) {
-                strategyAndWeightingMultipliers[
-                    i
-                ] = new IVoteWeigher.StrategyAndWeightingMultiplier[](1);
-                strategyAndWeightingMultipliers[i][0] = IVoteWeigher
-                    .StrategyAndWeightingMultiplier({
-                        strategy: deployedStrategyArray[i],
-                        // setting this to 1 ether since the divisor is also 1 ether
-                        // therefore this allows an operator to register with even just 1 token
-                        // see ./eigenlayer-contracts/src/contracts/middleware/VoteWeigherBase.sol#L81
-                        //    weight += uint96(sharesAmount * strategyAndMultiplier.multiplier / WEIGHTING_DIVISOR);
-                        multiplier: 1 ether
-                    });
-            }
-
-            credibleSquaringProxyAdmin.upgradeAndCall(
+            lambadaCoprocessorProxyAdmin.upgrade(
                 TransparentUpgradeableProxy(payable(address(stakeRegistry))),
-                address(stakeRegistryImplementation),
-                abi.encodeWithSelector(
-                    StakeRegistry.initialize.selector,
-                    minimumStakeForQuorum,
-                    strategyAndWeightingMultipliers
-                )
+                address(stakeRegistryImplementation)
+            );
+
+            blsApkRegistryImplementation = new BLSApkRegistry(
+                registryCoordinator
+            );
+
+            lambadaCoprocessorProxyAdmin.upgrade(
+                TransparentUpgradeableProxy(payable(address(blsApkRegistry))),
+                address(blsApkRegistryImplementation)
+            );
+
+            indexRegistryImplementation = new IndexRegistry(
+                registryCoordinator
+            );
+
+            lambadaCoprocessorProxyAdmin.upgrade(
+                TransparentUpgradeableProxy(payable(address(indexRegistry))),
+                address(indexRegistryImplementation)
             );
         }
 
-        registryCoordinatorImplementation = new blsregcoord.BLSRegistryCoordinatorWithIndices(
-            slasher,
-            credibleSquaringServiceManager,
-            blsregcoord.IStakeRegistry(address(stakeRegistry)),
-            blsregcoord.IBLSPubkeyRegistry(address(blsPubkeyRegistry)),
-            blsregcoord.IIndexRegistry(address(indexRegistry))
+        registryCoordinatorImplementation = new regcoord.RegistryCoordinator(
+            lambadaCoprocessorServiceManager,
+            regcoord.IStakeRegistry(address(stakeRegistry)),
+            regcoord.IBLSApkRegistry(address(blsApkRegistry)),
+            regcoord.IIndexRegistry(address(indexRegistry))
         );
 
         {
-            blsregcoord.IBLSRegistryCoordinatorWithIndices.OperatorSetParam[]
-                memory operatorSetParams = new blsregcoord.IBLSRegistryCoordinatorWithIndices.OperatorSetParam[](
-                    numStrategies
+            uint numQuorums = 1;
+            // for each quorum to setup, we need to define
+            // QuorumOperatorSetParam, minimumStakeForQuorum, and strategyParams
+            regcoord.IRegistryCoordinator.OperatorSetParam[]
+                memory quorumsOperatorSetParams = new regcoord.IRegistryCoordinator.OperatorSetParam[](
+                    numQuorums
                 );
-            for (uint i = 0; i < numStrategies; i++) {
+            for (uint i = 0; i < numQuorums; i++) {
                 // hard code these for now
-                operatorSetParams[i] = blsregcoord
-                    .IBLSRegistryCoordinatorWithIndices
+                quorumsOperatorSetParams[i] = regcoord
+                    .IRegistryCoordinator
                     .OperatorSetParam({
                         maxOperatorCount: 10000,
                         kickBIPsOfOperatorStake: 15000,
                         kickBIPsOfTotalStake: 100
                     });
             }
-            credibleSquaringProxyAdmin.upgradeAndCall(
+            // set to 0 for every quorum
+            uint96[] memory quorumsMinimumStake = new uint96[](numQuorums);
+            IStakeRegistry.StrategyParams[][]
+                memory quorumsStrategyParams = new IStakeRegistry.StrategyParams[][](
+                    numQuorums
+                );
+            for (uint i = 0; i < numQuorums; i++) {
+                quorumsStrategyParams[i] = new IStakeRegistry.StrategyParams[](
+                    numStrategies
+                );
+                for (uint j = 0; j < numStrategies; j++) {
+                    quorumsStrategyParams[i][j] = IStakeRegistry
+                        .StrategyParams({
+                            strategy: deployedStrategyArray[j],
+                            // setting this to 1 ether since the divisor is also 1 ether
+                            // therefore this allows an operator to register with even just 1 token
+                            // see https://github.com/Layr-Labs/eigenlayer-middleware/blob/m2-mainnet/src/StakeRegistry.sol#L484
+                            //    weight += uint96(sharesAmount * strategyAndMultiplier.multiplier / WEIGHTING_DIVISOR);
+                            multiplier: 1 ether
+                        });
+                }
+            }
+            lambadaCoprocessorProxyAdmin.upgradeAndCall(
                 TransparentUpgradeableProxy(
                     payable(address(registryCoordinator))
                 ),
                 address(registryCoordinatorImplementation),
                 abi.encodeWithSelector(
-                    blsregcoord
-                        .BLSRegistryCoordinatorWithIndices
-                        .initialize
-                        .selector,
+                    regcoord.RegistryCoordinator.initialize.selector,
                     // we set churnApprover and ejector to communityMultisig because we don't need them
-                    credibleSquaringCommunityMultisig,
-                    credibleSquaringCommunityMultisig,
-                    operatorSetParams,
-                    credibleSquaringPauserReg,
-                    // 0 initialPausedStatus means everything unpaused
-                    0
+                    lambadaCoprocessorCommunityMultisig,
+                    lambadaCoprocessorCommunityMultisig,
+                    lambadaCoprocessorCommunityMultisig,
+                    lambadaCoprocessorPauserReg,
+                    0, // 0 initialPausedStatus means everything unpaused
+                    quorumsOperatorSetParams,
+                    quorumsMinimumStake,
+                    quorumsStrategyParams
                 )
             );
         }
 
-        blsPubkeyRegistryImplementation = new BLSPubkeyRegistry(
+        lambadaCoprocessorServiceManagerImplementation = new LambadaCoprocessorServiceManager(
+            delegationManager,
             registryCoordinator,
-            pubkeyCompendium
-        );
-
-        credibleSquaringProxyAdmin.upgrade(
-            TransparentUpgradeableProxy(payable(address(blsPubkeyRegistry))),
-            address(blsPubkeyRegistryImplementation)
-        );
-
-        indexRegistryImplementation = new IndexRegistry(registryCoordinator);
-
-        credibleSquaringProxyAdmin.upgrade(
-            TransparentUpgradeableProxy(payable(address(indexRegistry))),
-            address(indexRegistryImplementation)
-        );
-
-        credibleSquaringServiceManagerImplementation = new LambadaCoprocessorServiceManager(
-            registryCoordinator,
-            slasher,
-            credibleSquaringTaskManager
+            stakeRegistry,
+            lambadaCoprocessorTaskManager
         );
         // Third, upgrade the proxy contracts to use the correct implementation contracts and initialize them.
-        credibleSquaringProxyAdmin.upgradeAndCall(
+        lambadaCoprocessorProxyAdmin.upgradeAndCall(
             TransparentUpgradeableProxy(
-                payable(address(credibleSquaringServiceManager))
+                payable(address(lambadaCoprocessorServiceManager))
             ),
-            address(credibleSquaringServiceManagerImplementation),
+            address(lambadaCoprocessorServiceManagerImplementation),
             abi.encodeWithSelector(
-                credibleSquaringServiceManager.initialize.selector,
-                credibleSquaringPauserReg,
-                credibleSquaringCommunityMultisig
+                lambadaCoprocessorServiceManager.initialize.selector,
+                lambadaCoprocessorCommunityMultisig
             )
         );
 
-        credibleSquaringTaskManagerImplementation = new LambadaCoprocessorTaskManager(
+        lambadaCoprocessorTaskManagerImplementation = new LambadaCoprocessorTaskManager(
             registryCoordinator,
             TASK_RESPONSE_WINDOW_BLOCK
         );
 
         // Third, upgrade the proxy contracts to use the correct implementation contracts and initialize them.
-        credibleSquaringProxyAdmin.upgradeAndCall(
+        lambadaCoprocessorProxyAdmin.upgradeAndCall(
             TransparentUpgradeableProxy(
-                payable(address(credibleSquaringTaskManager))
+                payable(address(lambadaCoprocessorTaskManager))
             ),
-            address(credibleSquaringTaskManagerImplementation),
+            address(lambadaCoprocessorTaskManagerImplementation),
             abi.encodeWithSelector(
-                credibleSquaringTaskManager.initialize.selector,
-                credibleSquaringPauserReg,
-                credibleSquaringCommunityMultisig,
+                lambadaCoprocessorTaskManager.initialize.selector,
+                lambadaCoprocessorPauserReg,
+                lambadaCoprocessorCommunityMultisig,
                 AGGREGATOR_ADDR,
-                TASK_GENERATOR_ADDR,
-                QUORUM_THRESHOLD_PERCENTAGE
+                TASK_GENERATOR_ADDR
             )
         );
 
@@ -422,32 +399,37 @@ contract CredibleSquaringDeployer is Script, Utils {
         vm.serializeAddress(
             deployed_addresses,
             "credibleSquaringServiceManager",
-            address(credibleSquaringServiceManager)
+            address(lambadaCoprocessorServiceManager)
         );
         vm.serializeAddress(
             deployed_addresses,
             "credibleSquaringServiceManagerImplementation",
-            address(credibleSquaringServiceManagerImplementation)
+            address(lambadaCoprocessorServiceManagerImplementation)
         );
         vm.serializeAddress(
             deployed_addresses,
             "credibleSquaringTaskManager",
-            address(credibleSquaringTaskManager)
+            address(lambadaCoprocessorTaskManager)
         );
         vm.serializeAddress(
             deployed_addresses,
             "credibleSquaringTaskManagerImplementation",
-            address(credibleSquaringTaskManagerImplementation)
+            address(lambadaCoprocessorTaskManagerImplementation)
         );
         vm.serializeAddress(
             deployed_addresses,
             "registryCoordinator",
             address(registryCoordinator)
         );
-        string memory deployed_addresses_output = vm.serializeAddress(
+        vm.serializeAddress(
             deployed_addresses,
             "registryCoordinatorImplementation",
             address(registryCoordinatorImplementation)
+        );
+        string memory deployed_addresses_output = vm.serializeAddress(
+            deployed_addresses,
+            "operatorStateRetriever",
+            address(operatorStateRetriever)
         );
 
         // serialize all the data

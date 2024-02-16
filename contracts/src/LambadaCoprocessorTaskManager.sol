@@ -7,10 +7,11 @@ import "@openzeppelin-upgrades/contracts/proxy/utils/Initializable.sol";
 import "@openzeppelin-upgrades/contracts/access/OwnableUpgradeable.sol";
 import "@eigenlayer/contracts/permissions/Pausable.sol";
 import "@eigenlayer-middleware/src/interfaces/IServiceManager.sol";
-import {BLSPubkeyRegistry} from "@eigenlayer-middleware/src/BLSPubkeyRegistry.sol";
-import {BLSRegistryCoordinatorWithIndices} from "@eigenlayer-middleware/src/BLSRegistryCoordinatorWithIndices.sol";
-import {BLSOperatorStateRetriever} from "@eigenlayer-middleware/src/BLSOperatorStateRetriever.sol";
-import "@eigenlayer/contracts/libraries/BN254.sol";
+import {BLSApkRegistry} from "@eigenlayer-middleware/src/BLSApkRegistry.sol";
+import {RegistryCoordinator} from "@eigenlayer-middleware/src/RegistryCoordinator.sol";
+import {BLSSignatureChecker, IRegistryCoordinator} from "@eigenlayer-middleware/src/BLSSignatureChecker.sol";
+import {OperatorStateRetriever} from "@eigenlayer-middleware/src/OperatorStateRetriever.sol";
+import "@eigenlayer-middleware/src/libraries/BN254.sol";
 import "./ILambadaCoprocessorTaskManager.sol";
 
 contract LambadaCoprocessorTaskManager is
@@ -18,7 +19,7 @@ contract LambadaCoprocessorTaskManager is
     OwnableUpgradeable,
     Pausable,
     BLSSignatureChecker,
-    BLSOperatorStateRetriever,
+    OperatorStateRetriever,
     ILambadaCoprocessorTaskManager
 {
     using BN254 for BN254.G1Point;
@@ -53,7 +54,7 @@ contract LambadaCoprocessorTaskManager is
     }
 
     constructor(
-        IBLSRegistryCoordinatorWithIndices _registryCoordinator,
+        IRegistryCoordinator _registryCoordinator,
         uint32 _taskResponseWindowBlock
     ) BLSSignatureChecker(_registryCoordinator) {
         TASK_RESPONSE_WINDOW_BLOCK = _taskResponseWindowBlock;

@@ -22,9 +22,7 @@ contract LambadaCoprocessorTaskManagerTest is BLSMockAVSDeployer {
         _setUpBLSMockAVSDeployer();
 
         tmImplementation = new LambadaCoprocessorTaskManager(
-            incsqsm.IBLSRegistryCoordinatorWithIndices(
-                address(registryCoordinator)
-            ),
+            incsqsm.IRegistryCoordinator(address(registryCoordinator)),
             TASK_RESPONSE_WINDOW_BLOCK
         );
 
@@ -37,7 +35,7 @@ contract LambadaCoprocessorTaskManagerTest is BLSMockAVSDeployer {
                     abi.encodeWithSelector(
                         tm.initialize.selector,
                         pauserRegistry,
-                        serviceManagerOwner,
+                        registryCoordinatorOwner,
                         aggregator,
                         generator
                     )
