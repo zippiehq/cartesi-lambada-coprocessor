@@ -11,9 +11,10 @@ import (
 	"github.com/urfave/cli"
 
 	"github.com/Layr-Labs/eigensdk-go/chainio/clients/eth"
+	"github.com/Layr-Labs/eigensdk-go/chainio/txmgr"
 	"github.com/Layr-Labs/eigensdk-go/crypto/bls"
 	sdklogging "github.com/Layr-Labs/eigensdk-go/logging"
-	"github.com/Layr-Labs/eigensdk-go/signer"
+	"github.com/Layr-Labs/eigensdk-go/signerv2"
 
 	sdkutils "github.com/Layr-Labs/eigensdk-go/utils"
 )
@@ -27,17 +28,18 @@ type Config struct {
 	EigenMetricsIpPortAddress string
 	// we need the url for the eigensdk currently... eventually standardize api so as to
 	// only take an ethclient or an rpcUrl (and build the ethclient at each constructor site)
-	EthRpcUrl                            string
-	EthHttpClient                        eth.EthClient
-	EthWsClient                          eth.EthClient
-	BlsOperatorStateRetrieverAddr        common.Address
-	LambadaCoprocessorServiceManagerAddr common.Address
-	BlsPublicKeyCompendiumAddress        common.Address
-	SlasherAddr                          common.Address
-	AggregatorServerIpPortAddr           string
-	RegisterOperatorOnStartup            bool
-	Signer                               signer.Signer
-	OperatorAddress                      common.Address
+	EthHttpRpcUrl                             string
+	EthWsRpcUrl                               string
+	EthHttpClient                             eth.EthClient
+	EthWsClient                               eth.EthClient
+	OperatorStateRetrieverAddr                common.Address
+	LambadaCoprocessorRegistryCoordinatorAddr common.Address
+	AggregatorServerIpPortAddr                string
+	RegisterOperatorOnStartup                 bool
+	// json:"-" skips this field when marshaling (only used for logging to stdout), since SignerFn doesnt implement marshalJson
+	SignerFn          signerv2.SignerFn `json:"-"`
+	TxMgr             txmgr.TxManager
+	AggregatorAddress common.Address
 }
 
 // These are read from ConfigFileFlag
@@ -47,47 +49,32 @@ type ConfigRaw struct {
 	EthWsUrl                   string              `yaml:"eth_ws_url"`
 	AggregatorServerIpPortAddr string              `yaml:"aggregator_server_ip_port_address"`
 	RegisterOperatorOnStartup  bool                `yaml:"register_operator_on_startup"`
-	BLSPubkeyCompendiumAddr    string              `yaml:"bls_public_key_compendium_address"`
 }
 
-// These are read from CredibleSquaringDeploymentFileFlag
-type CredibleSquaringDeploymentRaw struct {
-	Addresses CredibleSquaringContractsRaw `json:"addresses"`
+// These are read from LambadaCoprocessorDeploymentFileFlag
+type LambadaCoprocessorDeploymentRaw struct {
+	Addresses LambadaCoprocessorContractsRaw `json:"addresses"`
 }
-type CredibleSquaringContractsRaw struct {
-	LambadaCoprocessorServiceManagerAddr string `json:"credibleSquaringServiceManager"`
-}
-
-// BlsOperatorStateRetriever and BlsPublicKeyCompendium are deployed separately, since they are
-// shared avs contracts (not part of eigenlayer core contracts).
-// the blspubkeycompendium we can get from serviceManager->registryCoordinator->blsregistry->blspubkeycompendium
-// so we don't need it here. The blsOperatorStateRetriever however is an independent contract not pointing to
-// or pointed to from any other contract, so we need its address
-type SharedAvsContractsRaw struct {
-	BlsOperatorStateRetrieverAddr string `json:"blsOperatorStateRetriever"`
+type LambadaCoprocessorContractsRaw struct {
+	RegistryCoordinatorAddr    string `json:"registryCoordinator"`
+	OperatorStateRetrieverAddr string `json:"operatorStateRetriever"`
 }
 
 // Config is shared by challenger and aggregator and so we put in the core.
 // Operator has a different config and is meant to be used by the operator CLI.
 func NewConfig(
-	configFilePath, deploymentFilePath, avsContractsDeploymentFilePath, ecdsaPrivateKeyString string,
+	configFilePath, deploymentFilePath, ecdsaPrivateKeyString string,
 ) (*Config, error) {
 	var configRaw ConfigRaw
 	if configFilePath != "" {
 		sdkutils.ReadYamlConfig(configFilePath, &configRaw)
 	}
 
-	var credibleSquaringDeploymentRaw CredibleSquaringDeploymentRaw
+	var lambadaCoprocessorDeploymentRaw LambadaCoprocessorDeploymentRaw
 	if _, err := os.Stat(deploymentFilePath); errors.Is(err, os.ErrNotExist) {
 		panic("Path " + deploymentFilePath + " does not exist")
 	}
-	sdkutils.ReadJsonConfig(deploymentFilePath, &credibleSquaringDeploymentRaw)
-
-	var sharedAvsContractsDeploymentRaw SharedAvsContractsRaw
-	if _, err := os.Stat(avsContractsDeploymentFilePath); errors.Is(err, os.ErrNotExist) {
-		panic("Path " + avsContractsDeploymentFilePath + " does not exist")
-	}
-	sdkutils.ReadJsonConfig(avsContractsDeploymentFilePath, &sharedAvsContractsDeploymentRaw)
+	sdkutils.ReadJsonConfig(deploymentFilePath, &lambadaCoprocessorDeploymentRaw)
 
 	logger, err := sdklogging.NewZapLogger(configRaw.Environment)
 	if err != nil {
@@ -115,7 +102,7 @@ func NewConfig(
 		return nil, err
 	}
 
-	operatorAddr, err := sdkutils.EcdsaPrivateKeyToAddress(ecdsaPrivateKey)
+	aggregatorAddr, err := sdkutils.EcdsaPrivateKeyToAddress(ecdsaPrivateKey)
 	if err != nil {
 		logger.Error("Cannot get operator address", "err", err)
 		return nil, err
@@ -127,26 +114,26 @@ func NewConfig(
 		return nil, err
 	}
 
-	privateKeySigner, err := signer.NewPrivateKeySigner(ecdsaPrivateKey, chainId)
+	signerV2, _, err := signerv2.SignerFromConfig(signerv2.Config{PrivateKey: ecdsaPrivateKey}, chainId)
 	if err != nil {
-		logger.Error("Cannot create signer", "err", err)
-		return nil, err
+		panic(err)
 	}
+	txMgr := txmgr.NewSimpleTxManager(ethRpcClient, logger, signerV2, aggregatorAddr)
 
 	config := &Config{
-		EcdsaPrivateKey:                      ecdsaPrivateKey,
-		Logger:                               logger,
-		EthRpcUrl:                            configRaw.EthRpcUrl,
-		EthHttpClient:                        ethRpcClient,
-		EthWsClient:                          ethWsClient,
-		BlsOperatorStateRetrieverAddr:        common.HexToAddress(sharedAvsContractsDeploymentRaw.BlsOperatorStateRetrieverAddr),
-		LambadaCoprocessorServiceManagerAddr: common.HexToAddress(credibleSquaringDeploymentRaw.Addresses.LambadaCoprocessorServiceManagerAddr),
-		SlasherAddr:                          common.HexToAddress(""),
-		AggregatorServerIpPortAddr:           configRaw.AggregatorServerIpPortAddr,
-		RegisterOperatorOnStartup:            configRaw.RegisterOperatorOnStartup,
-		Signer:                               privateKeySigner,
-		OperatorAddress:                      operatorAddr,
-		BlsPublicKeyCompendiumAddress:        common.HexToAddress(configRaw.BLSPubkeyCompendiumAddr),
+		EcdsaPrivateKey:            ecdsaPrivateKey,
+		Logger:                     logger,
+		EthWsRpcUrl:                configRaw.EthWsUrl,
+		EthHttpRpcUrl:              configRaw.EthRpcUrl,
+		EthHttpClient:              ethRpcClient,
+		EthWsClient:                ethWsClient,
+		OperatorStateRetrieverAddr: common.HexToAddress(lambadaCoprocessorDeploymentRaw.Addresses.OperatorStateRetrieverAddr),
+		LambadaCoprocessorRegistryCoordinatorAddr: common.HexToAddress(lambadaCoprocessorDeploymentRaw.Addresses.RegistryCoordinatorAddr),
+		AggregatorServerIpPortAddr:                configRaw.AggregatorServerIpPortAddr,
+		RegisterOperatorOnStartup:                 configRaw.RegisterOperatorOnStartup,
+		SignerFn:                                  signerV2,
+		TxMgr:                                     txMgr,
+		AggregatorAddress:                         aggregatorAddr,
 	}
 	config.validate()
 
@@ -156,20 +143,19 @@ func NewConfig(
 // NewConfigFromCLI parses config file to read from from flags or environment variables
 func NewConfigFromCLI(ctx *cli.Context) (*Config, error) {
 	configFilePath := ctx.GlobalString(ConfigFileFlag.Name)
-	deploymentFilePath := ctx.GlobalString(CredibleSquaringDeploymentFileFlag.Name)
-	avsContractsDeploymentFilePath := ctx.GlobalString(SharedAvsContractsDeploymentFileFlag.Name)
+	deploymentFilePath := ctx.GlobalString(LambadaCoprocessorDeploymentFileFlag.Name)
 	ecdsaPrivateKeyString := ctx.GlobalString(EcdsaPrivateKeyFlag.Name)
 
-	return NewConfig(configFilePath, deploymentFilePath, avsContractsDeploymentFilePath, ecdsaPrivateKeyString)
+	return NewConfig(configFilePath, deploymentFilePath, ecdsaPrivateKeyString)
 }
 
 func (c *Config) validate() {
 	// TODO: make sure every pointer is non-nil
-	if c.BlsOperatorStateRetrieverAddr == common.HexToAddress("") {
+	if c.OperatorStateRetrieverAddr == common.HexToAddress("") {
 		panic("Config: BLSOperatorStateRetrieverAddr is required")
 	}
-	if c.LambadaCoprocessorServiceManagerAddr == common.HexToAddress("") {
-		panic("Config: LambadaCoprocessorServiceManagerAddr is required")
+	if c.LambadaCoprocessorRegistryCoordinatorAddr == common.HexToAddress("") {
+		panic("Config: InlambadaCoprocessorRegistryCoordinatorAddr is required")
 	}
 }
 
@@ -180,15 +166,10 @@ var (
 		Required: true,
 		Usage:    "Load configuration from `FILE`",
 	}
-	CredibleSquaringDeploymentFileFlag = cli.StringFlag{
+	LambadaCoprocessorDeploymentFileFlag = cli.StringFlag{
 		Name:     "credible-squaring-deployment",
 		Required: true,
 		Usage:    "Load credible squaring contract addresses from `FILE`",
-	}
-	SharedAvsContractsDeploymentFileFlag = cli.StringFlag{
-		Name:     "shared-avs-contracts-deployment",
-		Required: true,
-		Usage:    "Load shared avs contract addresses from `FILE`",
 	}
 	EcdsaPrivateKeyFlag = cli.StringFlag{
 		Name:     "ecdsa-private-key",
@@ -201,8 +182,7 @@ var (
 
 var requiredFlags = []cli.Flag{
 	ConfigFileFlag,
-	CredibleSquaringDeploymentFileFlag,
-	SharedAvsContractsDeploymentFileFlag,
+	LambadaCoprocessorDeploymentFileFlag,
 	EcdsaPrivateKeyFlag,
 }
 
