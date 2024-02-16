@@ -6,10 +6,15 @@ import (
 	"io"
 	"net/http"
 	"testing"
+	"time"
+
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/stretchr/testify/assert"
 
 	sdktypes "github.com/Layr-Labs/eigensdk-go/types"
 
 	"github.com/zippiehq/cartesi-lambada-coprocessor/aggregator/types"
+	tm "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/LambadaCoprocessorTaskManager"
 	"github.com/zippiehq/cartesi-lambada-coprocessor/core/chainio"
 	"github.com/zippiehq/cartesi-lambada-coprocessor/core/config"
 )
@@ -48,25 +53,87 @@ func TestIntegration(t *testing.T) {
 			},
 			{
 				ProgramID: "program1",
-				Input:     "intput1",
+				Input:     "input2",
 			},
 		},
+		// batch 1
+		{
+			{
+				ProgramID: "program2",
+				Input:     "input1",
+			},
+			{
+				ProgramID: "program2",
+				Input:     "input2",
+			},
+		},
+		// batch 2
 	}
 
-	for _, b := range batches {
-		checkTaskBatch(t, b, avsReader, avsSubscriber)
+	batchIdx := uint32(0)
+	taskIdx := uint32(len(batches[0]) - 1)
+	for _, tasks := range batches[1:] {
+		checkTaskBatch(t, batchIdx, taskIdx, tasks, avsReader, avsSubscriber)
+		batchIdx += 1
+		taskIdx += uint32(len(tasks))
 	}
 }
 
-func checkTaskBatch(t *testing.T, tasks []task, avsReader *chainio.AvsReader, avsSubscriber *chainio.AvsSubscriber) {
-	batchIdx, taskIdx, err := submitTasks(tasks)
+func checkTaskBatch(
+	t *testing.T,
+	batchIdx types.TaskBatchIndex, taskIdx sdktypes.TaskIndex,
+	tasks []task,
+	avsReader *chainio.AvsReader, avsSubscriber *chainio.AvsSubscriber,
+) {
+	batchCh := make(chan *tm.ContractLambadaCoprocessorTaskManagerTaskBatchRegistered)
+	if _, err := avsSubscriber.SubscribeToNewBatches(batchCh); err != nil {
+		t.Fatalf("failed to subscribe to new task batches - %s", err)
+	}
+
+	respCh := make(chan *tm.ContractLambadaCoprocessorTaskManagerTaskResponded)
+	if _, err := avsSubscriber.SubscribeToTaskResponses(respCh); err != nil {
+		t.Fatalf("failed to subscribe to task responses - %s", err)
+	}
+
+	aggBatchIdx, aggTaskIdx, err := submitTasks(tasks)
 	if err != nil {
 		t.Fatalf("failed to submit tasks - %s", err)
 	}
+	assert.Equal(t, batchIdx, aggBatchIdx)
+	assert.Equal(t, taskIdx, aggTaskIdx)
 
-	// Wait for batch and comapre batch hash. Compare batch index.
+	// Validate batch.
+	batchTimeout := time.NewTimer(5 * time.Second)
+	select {
+	case batch := <-batchCh:
+		// Check next batch index
+		nextBatchIdx, err := avsReader.AvsServiceBindings.TaskManager.NextBatchIndex(&bind.CallOpts{})
+		if err != nil {
+			t.Fatalf("failed to fetch next batch index - %s", err)
+		}
+		assert.Equal(t, batchIdx, batch.Batch.Index)
+		assert.Equal(t, batchIdx+1, nextBatchIdx)
+		break
 
-	// Wait for task reponse and compare task response hash.
+		// Compare batch hashes
+		/*
+			batchHash, err := avsReader.AvsServiceBindings.TaskManager.AllBatchHashes(&bind.CallOpts{}, batchIdx)
+			if err != nil {
+				t.Fatalf("failed to fetch batch hash - %s", err)
+			}
+		*/
+
+	case <-batchTimeout.C:
+		t.Fatalf("failed to get new batch in 5 seconds")
+	}
+
+	// Validate response hash.
+	responseTimeout := time.NewTimer(120 * time.Second)
+	select {
+	case _ = <-respCh:
+	case <-responseTimeout.C:
+		t.Fatalf("failed to get task response in 120 seconds")
+	}
 }
 
 func submitTasks(tasks []task) (types.TaskBatchIndex, sdktypes.TaskIndex, error) {
@@ -95,6 +162,10 @@ func submitTasks(tasks []task) (types.TaskBatchIndex, sdktypes.TaskIndex, error)
 	}
 
 	return respJSON.BatchIndex, respJSON.TaskIndex, nil
+}
+
+func batchMerkleRoot(tasks []task, startTaskIndex sdktypes.TaskIndex) {
+	// Tasks in aggregator must be in order
 }
 
 // TODO: update tests
