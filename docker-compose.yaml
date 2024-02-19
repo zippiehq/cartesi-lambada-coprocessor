@@ -69,8 +69,8 @@ services:
       - IPFS_ADDRESS=machine1:5001
       - LAMBADA_ADDRESS=machine1:3033
       - LAMBADA_COMPUTE_CID=bafybeigwjqf46kb7b2t37z4hrav6n73yagjghdxp54nlfwsl7d5e4yhy2q
-      - OPERATOR_BLS_KEY_PASSWORD=Nk6VDh3SDFU1ip6CqDvw
-      - OPERATOR_ECDSA_KEY_PASSWORD=VLK0Z4tkYbs9VKXFIp6S
+      - OPERATOR_BLS_KEY_PASSWORD=jYIawEWJpfSrdmGu3MDM
+      - OPERATOR_ECDSA_KEY_PASSWORD=XgE0SHAzyPOLoUs7tJlT
     volumes:
       - ./:/lambada-coprocessor/
     working_dir: /lambada-coprocessor
@@ -105,8 +105,8 @@ services:
       - IPFS_ADDRESS=machine2:5001
       - LAMBADA_ADDRESS=machine2:3033
       - LAMBADA_COMPUTE_CID=bafybeigwjqf46kb7b2t37z4hrav6n73yagjghdxp54nlfwsl7d5e4yhy2q
-      - OPERATOR_BLS_KEY_PASSWORD=uBH2NhOjLVzAgU7YuXRO
-      - OPERATOR_ECDSA_KEY_PASSWORD=1gCRfbrLjQCK5qZFavAD
+      - OPERATOR_BLS_KEY_PASSWORD=Jt2yNMUiUS0CVjjXUL8h
+      - OPERATOR_ECDSA_KEY_PASSWORD=wnXG0Z9mKvOv3JUUZGbj
     volumes:
       - ./:/lambada-coprocessor/
     working_dir: /lambada-coprocessor
@@ -141,8 +141,8 @@ services:
       - IPFS_ADDRESS=machine3:5001
       - LAMBADA_ADDRESS=machine3:3033
       - LAMBADA_COMPUTE_CID=bafybeigwjqf46kb7b2t37z4hrav6n73yagjghdxp54nlfwsl7d5e4yhy2q
-      - OPERATOR_BLS_KEY_PASSWORD=v8EjgECCcdEeceW1zD5n
-      - OPERATOR_ECDSA_KEY_PASSWORD=IfIU3TMY58o2lvNMDgKT
+      - OPERATOR_BLS_KEY_PASSWORD=sen9gOmtZpsLMhxTcNfS
+      - OPERATOR_ECDSA_KEY_PASSWORD=wysZpyFnZzWNGFGEfEl8
     volumes:
       - ./:/lambada-coprocessor/
     working_dir: /lambada-coprocessor
