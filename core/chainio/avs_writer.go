@@ -7,7 +7,7 @@ import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 
-	"github.com/Layr-Labs/eigensdk-go/chainio/avsregistry"
+	"github.com/Layr-Labs/eigensdk-go/chainio/clients/avsregistry"
 	"github.com/Layr-Labs/eigensdk-go/chainio/clients/eth"
 	"github.com/Layr-Labs/eigensdk-go/chainio/txmgr"
 	logging "github.com/Layr-Labs/eigensdk-go/logging"
@@ -77,7 +77,11 @@ func (w *AvsWriter) RegisterNewTaskBatch(
 	quorumThresholdPercentage uint32,
 	quorumNumbers []byte,
 ) (taskmanager.ILambadaCoprocessorTaskManagerTaskBatch, error) {
-	txOpts := w.TxMgr.GetNoSendTxOpts()
+	txOpts, err := w.TxMgr.GetNoSendTxOpts()
+	if err != nil {
+		return taskmanager.ILambadaCoprocessorTaskManagerTaskBatch{},
+			fmt.Errorf("failed to get tx opts - %s", err)
+	}
 	tx, err := w.AvsContractBindings.TaskManager.RegisterNewTaskBatch(
 		txOpts, batchRoot, quorumThresholdPercentage, quorumNumbers,
 	)

@@ -3,12 +3,14 @@ package actions
 import (
 	"encoding/json"
 	"log"
+	"os"
 
+	sdkecdsa "github.com/Layr-Labs/eigensdk-go/crypto/ecdsa"
 	sdkutils "github.com/Layr-Labs/eigensdk-go/utils"
+	"github.com/Layr-Labs/incredible-squaring-avs/core/config"
+	"github.com/Layr-Labs/incredible-squaring-avs/operator"
+	"github.com/Layr-Labs/incredible-squaring-avs/types"
 	"github.com/urfave/cli"
-	"github.com/zippiehq/cartesi-lambada-coprocessor/core/config"
-	"github.com/zippiehq/cartesi-lambada-coprocessor/operator"
-	"github.com/zippiehq/cartesi-lambada-coprocessor/types"
 )
 
 func RegisterOperatorWithAvs(ctx *cli.Context) error {
@@ -33,7 +35,19 @@ func RegisterOperatorWithAvs(ctx *cli.Context) error {
 		return err
 	}
 
-	err = operator.RegisterOperatorWithAvs()
+	ecdsaKeyPassword, ok := os.LookupEnv("OPERATOR_ECDSA_KEY_PASSWORD")
+	if !ok {
+		log.Printf("OPERATOR_ECDSA_KEY_PASSWORD env var not set. using empty string")
+	}
+	operatorEcdsaPrivKey, err := sdkecdsa.ReadKey(
+		nodeConfig.EcdsaPrivateKeyStorePath,
+		ecdsaKeyPassword,
+	)
+	if err != nil {
+		return err
+	}
+
+	err = operator.RegisterOperatorWithAvs(operatorEcdsaPrivKey)
 	if err != nil {
 		return err
 	}
