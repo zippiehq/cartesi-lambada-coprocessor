@@ -37,8 +37,6 @@ services:
       - config-files/aggregator-docker-compose.yaml
       - --credible-squaring-deployment 
       - contracts/script/output/31337/credible_squaring_avs_deployment_output.json
-      - --shared-avs-contracts-deployment 
-      - contracts/script/output/31337/shared_avs_contracts_deployment_output.json
       - --ecdsa-private-key 
       - "0x2a871d0798f97d79848a013d4936a73bf4cc922c825d33c1cf7073dff6d409c6"
     networks:
@@ -71,8 +69,8 @@ services:
       - IPFS_ADDRESS=machine1:5001
       - LAMBADA_ADDRESS=machine1:3033
       - LAMBADA_COMPUTE_CID=bafybeigwjqf46kb7b2t37z4hrav6n73yagjghdxp54nlfwsl7d5e4yhy2q
-      - OPERATOR_BLS_KEY_PASSWORD=gwW2yQLIg0tgE8S2Ucwq
-      - OPERATOR_ECDSA_KEY_PASSWORD=0FUw28zQyaQphEdFRZgt
+      - OPERATOR_BLS_KEY_PASSWORD=Nk6VDh3SDFU1ip6CqDvw
+      - OPERATOR_ECDSA_KEY_PASSWORD=VLK0Z4tkYbs9VKXFIp6S
     volumes:
       - ./:/lambada-coprocessor/
     working_dir: /lambada-coprocessor
@@ -107,8 +105,8 @@ services:
       - IPFS_ADDRESS=machine2:5001
       - LAMBADA_ADDRESS=machine2:3033
       - LAMBADA_COMPUTE_CID=bafybeigwjqf46kb7b2t37z4hrav6n73yagjghdxp54nlfwsl7d5e4yhy2q
-      - OPERATOR_BLS_KEY_PASSWORD=UOh8seyFU1nesxkLfVAv
-      - OPERATOR_ECDSA_KEY_PASSWORD=1GeM5y94AXuRxmVPD4AA
+      - OPERATOR_BLS_KEY_PASSWORD=uBH2NhOjLVzAgU7YuXRO
+      - OPERATOR_ECDSA_KEY_PASSWORD=1gCRfbrLjQCK5qZFavAD
     volumes:
       - ./:/lambada-coprocessor/
     working_dir: /lambada-coprocessor
@@ -143,8 +141,8 @@ services:
       - IPFS_ADDRESS=machine3:5001
       - LAMBADA_ADDRESS=machine3:3033
       - LAMBADA_COMPUTE_CID=bafybeigwjqf46kb7b2t37z4hrav6n73yagjghdxp54nlfwsl7d5e4yhy2q
-      - OPERATOR_BLS_KEY_PASSWORD=T4gZRPiByJ0ts55qsa8N
-      - OPERATOR_ECDSA_KEY_PASSWORD=OLgbaMtTPFtyr6jcFLbt
+      - OPERATOR_BLS_KEY_PASSWORD=v8EjgECCcdEeceW1zD5n
+      - OPERATOR_ECDSA_KEY_PASSWORD=IfIU3TMY58o2lvNMDgKT
     volumes:
       - ./:/lambada-coprocessor/
     working_dir: /lambada-coprocessor
