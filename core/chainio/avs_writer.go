@@ -38,37 +38,43 @@ type AvsWriterer interface {
 
 type AvsWriter struct {
 	avsregistry.AvsRegistryWriter
+
 	AvsContractBindings *AvsManagersBindings
-	logger              logging.Logger
+	log                 logging.Logger
 	TxMgr               txmgr.TxManager
 	client              eth.EthClient
 }
-
-var _ AvsWriterer = (*AvsWriter)(nil)
 
 func BuildAvsWriterFromConfig(c *config.Config) (*AvsWriter, error) {
 	return BuildAvsWriter(c.TxMgr, c.LambadaCoprocessorRegistryCoordinatorAddr, c.OperatorStateRetrieverAddr, c.EthHttpClient, c.Logger)
 }
 
-func BuildAvsWriter(txMgr txmgr.TxManager, registryCoordinatorAddr, operatorStateRetrieverAddr gethcommon.Address, ethHttpClient eth.EthClient, logger logging.Logger) (*AvsWriter, error) {
-	avsServiceBindings, err := NewAvsManagersBindings(registryCoordinatorAddr, operatorStateRetrieverAddr, ethHttpClient, logger)
+func BuildAvsWriter(
+	txMgr txmgr.TxManager,
+	registryCoordinatorAddr,
+	operatorStateRetrieverAddr gethcommon.Address,
+	ethHttpClient eth.EthClient,
+	log logging.Logger,
+) (*AvsWriter, error) {
+	avsServiceBindings, err := NewAvsManagersBindings(registryCoordinatorAddr, operatorStateRetrieverAddr, ethHttpClient, log)
 	if err != nil {
-		logger.Error("Failed to create contract bindings", "err", err)
 		return nil, err
 	}
-	avsRegistryWriter, err := avsregistry.BuildAvsRegistryChainWriter(registryCoordinatorAddr, operatorStateRetrieverAddr, logger, ethHttpClient, txMgr)
+	avsRegistryWriter, err := avsregistry.BuildAvsRegistryChainWriter(registryCoordinatorAddr, operatorStateRetrieverAddr, log, ethHttpClient, txMgr)
 	if err != nil {
 		return nil, err
 	}
-	return NewAvsWriter(avsRegistryWriter, avsServiceBindings, logger, txMgr), nil
-}
-func NewAvsWriter(avsRegistryWriter avsregistry.AvsRegistryWriter, avsServiceBindings *AvsManagersBindings, logger logging.Logger, txMgr txmgr.TxManager) *AvsWriter {
-	return &AvsWriter{
-		AvsRegistryWriter:   avsRegistryWriter,
+
+	writer := AvsWriter{
+		AvsRegistryWriter: avsRegistryWriter,
+
 		AvsContractBindings: avsServiceBindings,
-		logger:              logger,
+		log:                 log,
 		TxMgr:               txMgr,
+		client:              ethHttpClient,
 	}
+
+	return &writer, nil
 }
 
 func (w *AvsWriter) RegisterNewTaskBatch(
@@ -80,17 +86,23 @@ func (w *AvsWriter) RegisterNewTaskBatch(
 	txOpts, err := w.TxMgr.GetNoSendTxOpts()
 	if err != nil {
 		return taskmanager.ILambadaCoprocessorTaskManagerTaskBatch{},
-			fmt.Errorf("failed to get tx opts - %s", err)
+			fmt.Errorf("failed to create opts for RegisterNewTaskBatch tx - %s", err)
 	}
+
 	tx, err := w.AvsContractBindings.TaskManager.RegisterNewTaskBatch(
 		txOpts, batchRoot, quorumThresholdPercentage, quorumNumbers,
 	)
 	if err != nil {
 		return taskmanager.ILambadaCoprocessorTaskManagerTaskBatch{},
-			fmt.Errorf("failed to send registerNewTaskBatch transaction - %s", err)
+			fmt.Errorf("failed to create RegisterNewTaskBatch tx - %s", err)
 	}
 
-	receipt := w.client.WaitForTransactionReceipt(ctx, tx.Hash())
+	receipt, err := w.TxMgr.Send(ctx, tx)
+	if err != nil {
+		return taskmanager.ILambadaCoprocessorTaskManagerTaskBatch{},
+			fmt.Errorf("failed to send RegisterNewTaskBatch tx - %s", err)
+	}
+
 	event, err := w.AvsContractBindings.TaskManager.ContractLambadaCoprocessorTaskManagerFilterer.
 		ParseTaskBatchRegistered(*receipt.Logs[0])
 	if err != nil {
@@ -110,14 +122,21 @@ func (w *AvsWriter) RespondTask(
 	nonSignerStakesAndSignature taskmanager.IBLSSignatureCheckerNonSignerStakesAndSignature,
 ) (*types.Receipt, error) {
 	txOpts, err := w.TxMgr.GetNoSendTxOpts()
+	if err != nil {
+		return nil, fmt.Errorf("failed create opts for RespondTask tx - %s", err)
+	}
+
 	tx, err := w.AvsContractBindings.TaskManager.RespondTask(
 		txOpts, taskBatch, task, taskProof, taskResponse, nonSignerStakesAndSignature,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to send respondTask trasaction - %s", err)
+		return nil, fmt.Errorf("failed to create RespondTask tx - %s", err)
 	}
 
-	receipt := w.client.WaitForTransactionReceipt(ctx, tx.Hash())
+	receipt, err := w.TxMgr.Send(ctx, tx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to send CreateNewTask tx - %s", err)
+	}
 
 	return receipt, nil
 }

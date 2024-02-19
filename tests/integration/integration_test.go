@@ -107,7 +107,7 @@ func checkTaskBatch(
 	select {
 	case batch := <-batchCh:
 		// Check next batch index
-		nextBatchIdx, err := avsReader.AvsServiceBindings.TaskManager.NextBatchIndex(&bind.CallOpts{})
+		nextBatchIdx, err := avsReader.AvsManagersBindings.TaskManager.NextBatchIndex(&bind.CallOpts{})
 		if err != nil {
 			t.Fatalf("failed to fetch next batch index - %s", err)
 		}

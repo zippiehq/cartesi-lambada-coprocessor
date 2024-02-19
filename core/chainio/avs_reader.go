@@ -31,11 +31,10 @@ type AvsReaderer interface {
 
 type AvsReader struct {
 	sdkavsregistry.AvsRegistryReader
-	AvsServiceBindings *AvsManagersBindings
-	logger             logging.Logger
-}
 
-var _ AvsReaderer = (*AvsReader)(nil)
+	AvsManagersBindings *AvsManagersBindings
+	log                 logging.Logger
+}
 
 func BuildAvsReaderFromConfig(c *config.Config) (*AvsReader, error) {
 	return BuildAvsReader(c.LambadaCoprocessorRegistryCoordinatorAddr, c.OperatorStateRetrieverAddr, c.EthHttpClient, c.Logger)
@@ -50,21 +49,20 @@ func BuildAvsReader(registryCoordinatorAddr, operatorStateRetrieverAddr gethcomm
 	if err != nil {
 		return nil, err
 	}
-	return NewAvsReader(avsRegistryReader, avsManagersBindings, logger)
-}
 
-func NewAvsReader(avsRegistryReader sdkavsregistry.AvsRegistryReader, avsServiceBindings *AvsManagersBindings, logger logging.Logger) (*AvsReader, error) {
-	return &AvsReader{
-		AvsRegistryReader:  avsRegistryReader,
-		AvsServiceBindings: avsServiceBindings,
-		logger:             logger,
-	}, nil
+	reader := AvsReader{
+		AvsRegistryReader:   avsRegistryReader,
+		AvsManagersBindings: avsManagersBindings,
+		log:                 logger,
+	}
+
+	return &reader, nil
 }
 
 func (r *AvsReader) CheckSignatures(
 	ctx context.Context, msgHash [32]byte, quorumNumbers []byte, referenceBlockNumber uint32, nonSignerStakesAndSignature taskmanager.IBLSSignatureCheckerNonSignerStakesAndSignature,
 ) (taskmanager.IBLSSignatureCheckerQuorumStakeTotals, error) {
-	stakeTotalsPerQuorum, _, err := r.AvsServiceBindings.TaskManager.CheckSignatures(
+	stakeTotalsPerQuorum, _, err := r.AvsManagersBindings.TaskManager.CheckSignatures(
 		&bind.CallOpts{}, msgHash, quorumNumbers, referenceBlockNumber, nonSignerStakesAndSignature,
 	)
 	if err != nil {
@@ -74,9 +72,9 @@ func (r *AvsReader) CheckSignatures(
 }
 
 func (r *AvsReader) GetErc20Mock(ctx context.Context, tokenAddr gethcommon.Address) (*erc20mock.ContractERC20Mock, error) {
-	erc20Mock, err := r.AvsServiceBindings.GetErc20Mock(tokenAddr)
+	erc20Mock, err := r.AvsManagersBindings.GetErc20Mock(tokenAddr)
 	if err != nil {
-		r.logger.Error("Failed to fetch ERC20Mock contract", "err", err)
+		r.log.Error("Failed to fetch ERC20Mock contract", "err", err)
 		return nil, err
 	}
 	return erc20Mock, nil
