@@ -26,7 +26,7 @@ import (
 )
 
 // run beofer executing:
-// anvil --load-state tests/integration/avs-and-eigenlayer-deployed-anvil-state.json --dump-state docker-compose/anvil-state.json
+// anvil --load-state tests/anvil/avs-and-eigenlayer-deployed-anvil-state.json --dump-state docker-compose/anvil-state.json
 
 func GenerateDockerCompose(ctx *cli.Context) error {
 	operatorCount := ctx.Uint("operators")
@@ -305,7 +305,7 @@ func depositIntoStrategy(configPath, blsPwd, ecdsaPwd string) error {
 		return err
 	}
 
-	strategyAddr := common.HexToAddress("0x7a2088a1bFc9d81c55368AE168C2C02570cB814F")
+	strategyAddr := common.HexToAddress("0xa85233C63b9Ee964Add6F2cffe00Fd84eb32338f")
 	err = operator.DepositIntoStrategy(strategyAddr, big.NewInt(10))
 	if err != nil {
 		return err
