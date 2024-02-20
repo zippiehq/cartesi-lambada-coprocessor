@@ -13,8 +13,10 @@ import (
 
 	sdktypes "github.com/Layr-Labs/eigensdk-go/types"
 
-	"github.com/zippiehq/cartesi-lambada-coprocessor/aggregator/types"
+	"github.com/zippiehq/cartesi-lambada-coprocessor/aggregator"
+	aggtypes "github.com/zippiehq/cartesi-lambada-coprocessor/aggregator/types"
 	tm "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/LambadaCoprocessorTaskManager"
+	"github.com/zippiehq/cartesi-lambada-coprocessor/core"
 	"github.com/zippiehq/cartesi-lambada-coprocessor/core/chainio"
 	"github.com/zippiehq/cartesi-lambada-coprocessor/core/config"
 )
@@ -28,18 +30,17 @@ func TestIntegration(t *testing.T) {
 	config, err := config.NewConfig(
 		"../../config-files/aggregator.yaml",
 		"../../contracts/script/output/31337/credible_squaring_avs_deployment_output.json",
-		"../../contracts/script/output/31337/shared_avs_contracts_deployment_output.json",
 		"0x2a871d0798f97d79848a013d4936a73bf4cc922c825d33c1cf7073dff6d409c6",
 	)
 	if err != nil {
 		t.Fatalf("failed to create avs config - %s", err)
 	}
 
-	avsReader, err := chainio.NewAvsReaderFromConfig(config)
+	avsReader, err := chainio.BuildAvsReaderFromConfig(config)
 	if err != nil {
 		t.Fatalf("failed to create avs reader - %s", err)
 	}
-	avsSubscriber, err := chainio.NewAvsSubscriberFromConfig(config)
+	avsSubscriber, err := chainio.BuildAvsSubscriberFromConfig(config)
 	if err != nil {
 		t.Fatalf("failed to create avs subscriber - %s", err)
 	}
@@ -66,6 +67,14 @@ func TestIntegration(t *testing.T) {
 				ProgramID: "program2",
 				Input:     "input2",
 			},
+			{
+				ProgramID: "program2",
+				Input:     "input3",
+			},
+			{
+				ProgramID: "program2",
+				Input:     "input4",
+			},
 		},
 		// batch 2
 	}
@@ -81,7 +90,7 @@ func TestIntegration(t *testing.T) {
 
 func checkTaskBatch(
 	t *testing.T,
-	batchIdx types.TaskBatchIndex, taskIdx sdktypes.TaskIndex,
+	batchIdx aggtypes.TaskBatchIndex, taskIdx sdktypes.TaskIndex,
 	tasks []task,
 	avsReader *chainio.AvsReader, avsSubscriber *chainio.AvsSubscriber,
 ) {
@@ -105,23 +114,38 @@ func checkTaskBatch(
 	// Validate batch.
 	batchTimeout := time.NewTimer(5 * time.Second)
 	select {
-	case batch := <-batchCh:
+	case onchainBatch := <-batchCh:
 		// Check next batch index
 		nextBatchIdx, err := avsReader.AvsManagersBindings.TaskManager.NextBatchIndex(&bind.CallOpts{})
 		if err != nil {
 			t.Fatalf("failed to fetch next batch index - %s", err)
 		}
-		assert.Equal(t, batchIdx, batch.Batch.Index)
+		assert.Equal(t, batchIdx, onchainBatch.Batch.Index)
 		assert.Equal(t, batchIdx+1, nextBatchIdx)
-		break
 
 		// Compare batch hashes
-		/*
-			batchHash, err := avsReader.AvsServiceBindings.TaskManager.AllBatchHashes(&bind.CallOpts{}, batchIdx)
-			if err != nil {
-				t.Fatalf("failed to fetch batch hash - %s", err)
-			}
-		*/
+		onchainBatchHash, err := avsReader.AvsManagersBindings.TaskManager.AllBatchHashes(&bind.CallOpts{}, batchIdx)
+		if err != nil {
+			t.Fatalf("failed to fetch batch hash - %s", err)
+		}
+		batchMerkleRoot, err := batchMerkleRoot(tasks, taskIdx)
+		if err != nil {
+			t.Fatalf("failed to compute merkle root for task batch - %s", err)
+		}
+		batch := tm.ILambadaCoprocessorTaskManagerTaskBatch{
+			Index:                     batchIdx,
+			BlockNumber:               onchainBatch.Batch.Index, // TODO: fetch from Anvil?
+			MerkeRoot:                 batchMerkleRoot,
+			QuorumNumbers:             onchainBatch.Batch.QuorumNumbers,             // TODO: constant from aggregator?
+			QuorumThresholdPercentage: onchainBatch.Batch.QuorumThresholdPercentage, // TODO: constant from aggregator?
+		}
+		batchHash, err := core.GetTaskBatchDigest(&batch)
+		if err != nil {
+			t.Fatalf("failed to compute task batch digest - %s", err)
+		}
+		assert.Equal(t, batchHash, onchainBatchHash)
+
+		break
 
 	case <-batchTimeout.C:
 		t.Fatalf("failed to get new batch in 5 seconds")
@@ -136,7 +160,7 @@ func checkTaskBatch(
 	}
 }
 
-func submitTasks(tasks []task) (types.TaskBatchIndex, sdktypes.TaskIndex, error) {
+func submitTasks(tasks []task) (aggtypes.TaskBatchIndex, sdktypes.TaskIndex, error) {
 	body, err := json.Marshal(tasks)
 	if err != nil {
 		return 0, 0, err
@@ -154,8 +178,8 @@ func submitTasks(tasks []task) (types.TaskBatchIndex, sdktypes.TaskIndex, error)
 	}
 
 	respJSON := struct {
-		BatchIndex types.TaskBatchIndex `json:"batchIndex"`
-		TaskIndex  sdktypes.TaskIndex   `json:"taskIndex"`
+		BatchIndex aggtypes.TaskBatchIndex `json:"batchIndex"`
+		TaskIndex  sdktypes.TaskIndex      `json:"taskIndex"`
 	}{}
 	if err = json.Unmarshal(respData, &respJSON); err != nil {
 		return 0, 0, err
@@ -164,8 +188,26 @@ func submitTasks(tasks []task) (types.TaskBatchIndex, sdktypes.TaskIndex, error)
 	return respJSON.BatchIndex, respJSON.TaskIndex, nil
 }
 
-func batchMerkleRoot(tasks []task, startTaskIndex sdktypes.TaskIndex) {
+func batchMerkleRoot(tasks []task, aggTaskIndex sdktypes.TaskIndex) ([32]byte, error) {
 	// Tasks in aggregator must be in order
+	aggTasks := make([]aggtypes.Task, len(tasks))
+	for i, t := range tasks {
+		aggTasks[i] = aggtypes.Task{
+			ILambadaCoprocessorTaskManagerTask: tm.ILambadaCoprocessorTaskManagerTask{
+				ProgramId: []byte(t.ProgramID),
+				Input:     []byte(t.ProgramID),
+			},
+			Index: aggTaskIndex + uint32(i),
+		}
+	}
+
+	_, stm, err := aggregator.BuildBatchMerkle(aggTasks)
+	if err != nil {
+		var nullRoot [32]byte
+		return nullRoot, err
+	}
+
+	return [32]byte(stm.GetRoot()), nil
 }
 
 // TODO: update tests
@@ -280,7 +322,7 @@ func TestIntegration(t *testing.T) {
 	}
 
 	// Prepare the config file for operator
-	nodeConfig := types.NodeConfig{}
+	nodeConfig := aggtypes.NodeConfig{}
 	nodeConfigFilePath := "../../config-files/operator.anvil.yaml"
 	err = sdkutils.ReadYamlConfig(nodeConfigFilePath, &nodeConfig)
 	if err != nil {

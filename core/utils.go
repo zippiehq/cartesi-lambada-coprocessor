@@ -27,6 +27,37 @@ func GetTaskResponseDigest(r *taskmanager.ILambadaCoprocessorTaskManagerTaskResp
 	return hashObject(t, r)
 }
 
+// GetTaskBatchDigest returns the hash of the TaskBatch
+func GetTaskBatchDigest(b *taskmanager.ILambadaCoprocessorTaskManagerTaskBatch) ([32]byte, error) {
+	t, err := abi.NewType("tuple", "", []abi.ArgumentMarshaling{
+		{
+			Name: "index",
+			Type: "uint32",
+		},
+		{
+			Name: "blockNumber",
+			Type: "uint32",
+		},
+		{
+			Name: "merkeRoot",
+			Type: "bytes32",
+		},
+		{
+			Name: "quorumNumbers",
+			Type: "bytes32",
+		},
+		{
+			Name: "quorumThresholdPercentage",
+			Type: "uint32",
+		},
+	})
+	if err != nil {
+		return [32]byte{}, err
+	}
+
+	return hashObject(t, b)
+}
+
 func hashObject(t abi.Type, value interface{}) ([32]byte, error) {
 	// Pack object to bytes - abi.encode()
 	arguments := abi.Arguments{
