@@ -8,9 +8,9 @@ import (
 
 	"github.com/urfave/cli"
 
-	"github.com/Layr-Labs/incredible-squaring-avs/core/config"
-	"github.com/Layr-Labs/incredible-squaring-avs/operator"
-	"github.com/Layr-Labs/incredible-squaring-avs/types"
+	"github.com/zippiehq/cartesi-lambada-coprocessor/core/config"
+	"github.com/zippiehq/cartesi-lambada-coprocessor/operator"
+	"github.com/zippiehq/cartesi-lambada-coprocessor/types"
 
 	sdkutils "github.com/Layr-Labs/eigensdk-go/utils"
 )
@@ -20,7 +20,7 @@ func main() {
 	app.Flags = []cli.Flag{config.ConfigFileFlag}
 	app.Name = "credible-squaring-operator"
 	app.Usage = "Credible Squaring Operator"
-	app.Description = "Service that reads numbers onchain, squares, signs, and sends them to the aggregator."
+	app.Description = "Service that reads input onchain, echoes it, signs, and sends them to the aggregator."
 
 	app.Action = operatorMain
 	err := app.Run(os.Args)

@@ -295,7 +295,7 @@
             "uid": "prometheus"
           },
           "editorMode": "builder",
-          "expr": "eigen_performance_score{avs_name=\"incredible-squaring\"}",
+          "expr": "eigen_performance_score{avs_name=\"lambada-coprocessor\"}",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"

@@ -9,8 +9,8 @@ import (
 
 	"github.com/urfave/cli"
 
-	"github.com/Layr-Labs/incredible-squaring-avs/aggregator"
-	"github.com/Layr-Labs/incredible-squaring-avs/core/config"
+	"github.com/zippiehq/cartesi-lambada-coprocessor/aggregator"
+	"github.com/zippiehq/cartesi-lambada-coprocessor/core/config"
 )
 
 var (
@@ -27,7 +27,7 @@ func main() {
 	app.Version = fmt.Sprintf("%s-%s-%s", Version, GitCommit, GitDate)
 	app.Name = "credible-squaring-aggregator"
 	app.Usage = "Credible Squaring Aggregator"
-	app.Description = "Service that sends number to be credibly squared by operator nodes."
+	app.Description = "Service that input to be credibly echoed by operator nodes."
 
 	app.Action = aggregatorMain
 	err := app.Run(os.Args)
@@ -39,7 +39,7 @@ func main() {
 func aggregatorMain(ctx *cli.Context) error {
 
 	log.Println("Initializing Aggregator")
-	config, err := config.NewConfig(ctx)
+	config, err := config.NewConfigFromCLI(ctx)
 	if err != nil {
 		return err
 	}

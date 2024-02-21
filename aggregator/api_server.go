@@ -4,10 +4,9 @@ import (
 	"encoding/json"
 	"io"
 	"log"
-	"math/big"
 	"net/http"
 
-	"github.com/Layr-Labs/incredible-squaring-avs/aggregator/types"
+	sdktypes "github.com/Layr-Labs/eigensdk-go/types"
 )
 
 func (agg *Aggregator) startAPIServer() error {
@@ -27,22 +26,28 @@ func (agg *Aggregator) createTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	task := struct {
-		Number int64 `json:"number"`
-	}{}
-	if err = json.Unmarshal(taskData, &task); err != nil {
+	tasks := make(
+		[]struct {
+			ProgramID string `json:"programId"`
+			Input     string `json:"input"`
+		},
+		0,
+	)
+	if err = json.Unmarshal(taskData, &tasks); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	taskIndex, err := agg.sendNewTask(big.NewInt(task.Number))
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+	var taskIndex sdktypes.TaskIndex
+	for _, t := range tasks {
+		if taskIndex, err = agg.addTask([]byte(t.ProgramID), []byte(t.Input)); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 
 	resp := struct {
-		TaskIndex types.TaskIndex `json:"taskIndex"`
+		TaskIndex sdktypes.TaskIndex `json:"taskIndex"`
 	}{
 		TaskIndex: taskIndex,
 	}

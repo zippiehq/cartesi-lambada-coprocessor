@@ -18,18 +18,15 @@ DEPLOYMENT_FILES_DIR=contracts/script/output/${CHAINID}
 ___CONTRACTS___: ## 
 
 deploy-eigenlayer-contracts-to-anvil-and-save-state: ## Deploy eigenlayer
-	./tests/integration/deploy-eigenlayer-save-anvil-state.sh
+	./tests/anvil/deploy-eigenlayer-save-anvil-state.sh
 
-deploy-shared-avs-contracts-to-anvil-and-save-state: ## Deploy blspubkeycompendium and blsstateoperatorretriever
-	./tests/integration/deploy-shared-avs-contracts-save-anvil-state.sh
+deploy-lambada-coprocessor-contracts-to-anvil-and-save-state: ## Deploy avs
+	./tests/anvil/deploy-avs-save-anvil-state.sh
 
-deploy-incredible-squaring-contracts-to-anvil-and-save-state: ## Deploy avs
-	./tests/integration/deploy-avs-save-anvil-state.sh
-
-deploy-all-to-anvil-and-save-state: deploy-eigenlayer-contracts-to-anvil-and-save-state deploy-shared-avs-contracts-to-anvil-and-save-state deploy-incredible-squaring-contracts-to-anvil-and-save-state ## deploy eigenlayer, shared avs contracts, and inc-sq contracts 
+deploy-all-to-anvil-and-save-state: deploy-eigenlayer-contracts-to-anvil-and-save-state deploy-lambada-coprocessor-contracts-to-anvil-and-save-state 
 
 start-anvil-chain-with-el-and-avs-deployed: ## starts anvil from a saved state file (with el and avs contracts deployed)
-	anvil --load-state tests/integration/avs-and-eigenlayer-deployed-anvil-state.json
+	./tests/anvil/start-anvil-chain-with-el-and-avs-deployed.sh
 
 bindings: ## generates contract bindings
 	cd contracts && ./generate-go-bindings.sh
@@ -40,9 +37,6 @@ cli-setup-operator: send-fund cli-register-operator-with-eigenlayer cli-register
 
 cli-register-operator-with-eigenlayer: ## registers operator with delegationManager
 	go run cli/main.go --config config-files/operator.anvil.yaml register-operator-with-eigenlayer
-
-cli-register-operator-bls-pubkeys: ## registers operator's bls public keys with blsPublicKeyCompendium
-	go run cli/main.go --config config-files/operator.anvil.yaml register-operator-bls-pubkeys
 
 cli-deposit-into-mocktoken-strategy: ## 
 	go run cli/main.go --config config-files/operator.anvil.yaml deposit-into-strategy --strategy-addr ${STRATEGY_ADDRESS} --amount 100
@@ -74,25 +68,10 @@ start-operator: ##
 	go run operator/cmd/main.go --config config-files/operator.anvil.yaml \
 		2>&1 | zap-pretty
 
-start-challenger: ## 
-	go run challenger/cmd/main.go --config config-files/challenger.yaml \
-		--credible-squaring-deployment ${DEPLOYMENT_FILES_DIR}/credible_squaring_avs_deployment_output.json \
-		--shared-avs-contracts-deployment ${DEPLOYMENT_FILES_DIR}/shared_avs_contracts_deployment_output.json \
-		--ecdsa-private-key ${CHALLENGER_ECDSA_PRIV_KEY} \
-		2>&1 | zap-pretty
-
 run-plugin: ## 
 	go run plugin/cmd/main.go --config config-files/operator.anvil.yaml
 -----------------------------: ## 
 _____HELPER_____: ## 
-mocks: ## generates mocks for tests
-	go install go.uber.org/mock/mockgen@v0.3.0
-	go generate ./...
-
-tests-unit: ## runs all unit tests
-	go test $$(go list ./... | grep -v /integration) -coverprofile=coverage.out -covermode=atomic --timeout 15s
-	go tool cover -html=coverage.out -o coverage.html
-
 tests-contract: ## runs all forge tests
 	cd contracts && forge test
 

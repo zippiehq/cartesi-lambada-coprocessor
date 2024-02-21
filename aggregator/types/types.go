@@ -1,8 +1,12 @@
 package types
 
 import (
-	sdktypes "github.com/Layr-Labs/eigensdk-go/types"
+	smt "github.com/FantasyJony/openzeppelin-merkle-tree-go/standard_merkle_tree"
 	"github.com/ethereum/go-ethereum/common"
+
+	sdktypes "github.com/Layr-Labs/eigensdk-go/types"
+
+	tm "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/LambadaCoprocessorTaskManager"
 )
 
 // TODO: Hardcoded for now
@@ -16,9 +20,32 @@ const QUERY_FILTER_FROM_BLOCK = uint64(1)
 var QUORUM_NUMBERS = []byte{0}
 
 type BlockNumber = uint32
-type TaskIndex = uint32
 
 type OperatorInfo struct {
 	OperatorPubkeys sdktypes.OperatorPubkeys
 	OperatorAddr    common.Address
+}
+
+type TaskBatchIndex = uint32
+
+type TaskDigest [32]byte
+
+type Task struct {
+	tm.ILambadaCoprocessorTaskManagerTask
+	Index sdktypes.TaskIndex
+}
+
+type TaskBatch struct {
+	tm.ILambadaCoprocessorTaskManagerTaskBatch
+	Tasks  []Task
+	Merkle *smt.StandardTree
+}
+
+func (b *TaskBatch) TaskByIndex(idx sdktypes.TaskIndex) (Task, int, bool) {
+	for i, t := range b.Tasks {
+		if t.Index == idx {
+			return t, i, true
+		}
+	}
+	return Task{}, 0, false
 }

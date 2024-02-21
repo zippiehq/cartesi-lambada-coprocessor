@@ -3,50 +3,57 @@ package operator
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"io"
-	"math/big"
-	"math/rand"
 	"net/http"
 	"os"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/go-faster/xor"
 	ipfs_files "github.com/ipfs/boxo/files"
 	ipfs_path "github.com/ipfs/boxo/path"
 	"github.com/ipfs/go-cid"
 	ipfs_api "github.com/ipfs/kubo/client/rpc"
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/Layr-Labs/incredible-squaring-avs/aggregator"
-	cstaskmanager "github.com/Layr-Labs/incredible-squaring-avs/contracts/bindings/IncredibleSquaringTaskManager"
-	"github.com/Layr-Labs/incredible-squaring-avs/core"
-	"github.com/Layr-Labs/incredible-squaring-avs/core/chainio"
-	"github.com/Layr-Labs/incredible-squaring-avs/metrics"
-	"github.com/Layr-Labs/incredible-squaring-avs/types"
-
-	sdkavsregistry "github.com/Layr-Labs/eigensdk-go/chainio/avsregistry"
-	sdkclients "github.com/Layr-Labs/eigensdk-go/chainio/clients"
+	"github.com/Layr-Labs/eigensdk-go/chainio/clients"
+	sdkelcontracts "github.com/Layr-Labs/eigensdk-go/chainio/clients/elcontracts"
 	"github.com/Layr-Labs/eigensdk-go/chainio/clients/eth"
-	sdkelcontracts "github.com/Layr-Labs/eigensdk-go/chainio/elcontracts"
+	"github.com/Layr-Labs/eigensdk-go/chainio/txmgr"
 	"github.com/Layr-Labs/eigensdk-go/crypto/bls"
+	sdkecdsa "github.com/Layr-Labs/eigensdk-go/crypto/ecdsa"
 	"github.com/Layr-Labs/eigensdk-go/logging"
 	sdklogging "github.com/Layr-Labs/eigensdk-go/logging"
 	sdkmetrics "github.com/Layr-Labs/eigensdk-go/metrics"
 	"github.com/Layr-Labs/eigensdk-go/metrics/collectors/economic"
 	rpccalls "github.com/Layr-Labs/eigensdk-go/metrics/collectors/rpc_calls"
 	"github.com/Layr-Labs/eigensdk-go/nodeapi"
-	"github.com/Layr-Labs/eigensdk-go/signer"
+	"github.com/Layr-Labs/eigensdk-go/signerv2"
 	sdktypes "github.com/Layr-Labs/eigensdk-go/types"
+
+	"github.com/zippiehq/cartesi-lambada-coprocessor/aggregator"
+	tm "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/LambadaCoprocessorTaskManager"
+	"github.com/zippiehq/cartesi-lambada-coprocessor/core"
+	"github.com/zippiehq/cartesi-lambada-coprocessor/core/chainio"
+	"github.com/zippiehq/cartesi-lambada-coprocessor/metrics"
+	"github.com/zippiehq/cartesi-lambada-coprocessor/types"
 )
 
-const AVS_NAME = "incredible-squaring"
+const AVS_NAME = "lambada-coprocessor"
 const SEM_VER = "0.0.1"
 
 type Operator struct {
-	config     types.NodeConfig
-	logger     logging.Logger
+	config types.NodeConfig
+
+	operatorAddr common.Address
+	operatorId   bls.OperatorId
+	blsKeypair   *bls.KeyPair
+
+	log        logging.Logger
 	ethClient  eth.EthClient
 	ipfsClient *ipfs_api.HttpApi
 	// TODO(samlaf): remove both avsWriter and eigenlayerWrite from operator
@@ -62,17 +69,13 @@ type Operator struct {
 	avsSubscriber    chainio.AvsSubscriberer
 	eigenlayerReader sdkelcontracts.ELReader
 	eigenlayerWriter sdkelcontracts.ELWriter
-	blsKeypair       *bls.KeyPair
-	operatorId       bls.OperatorId
-	operatorAddr     common.Address
-	// receive new tasks in this chan (typically from listening to onchain event)
-	newTaskCreatedChan chan *cstaskmanager.ContractIncredibleSquaringTaskManagerNewTaskCreated
 	// ip address of aggregator
 	aggregatorServerIpPortAddr string
-	// rpc client to send signed task responses to aggregator
+	// rpc client to query tasks from batch and send signed responses to aggregator
 	aggregatorRpcClient AggregatorRpcClienter
-	// needed when opting in to avs (allow this service manager contract to slash operator)
-	credibleSquaringServiceManagerAddr common.Address
+
+	// receive new tasks in this chan (typically from listening to onchain event)
+	newBatchChan chan *tm.ContractLambadaCoprocessorTaskManagerTaskBatchRegistered
 }
 
 func NewOperatorFromConfig(c types.NodeConfig) (*Operator, error) {
@@ -149,84 +152,49 @@ func NewOperatorFromConfig(c types.NodeConfig) (*Operator, error) {
 		logger.Warnf("OPERATOR_ECDSA_KEY_PASSWORD env var not set. using empty string")
 	}
 
-	sgn, err := signer.NewPrivateKeyFromKeystoreSigner(c.EcdsaPrivateKeyStorePath, ecdsaKeyPassword, chainId)
+	signerV2, _, err := signerv2.SignerFromConfig(signerv2.Config{
+		KeystorePath: c.EcdsaPrivateKeyStorePath,
+		Password:     ecdsaKeyPassword,
+	}, chainId)
 	if err != nil {
-		logger.Errorf("Cannot create signer", "err", err)
-		return nil, err
+		panic(err)
 	}
+	chainioConfig := clients.BuildAllConfig{
+		EthHttpUrl:                 c.EthRpcUrl,
+		EthWsUrl:                   c.EthWsUrl,
+		RegistryCoordinatorAddr:    c.AVSRegistryCoordinatorAddress,
+		OperatorStateRetrieverAddr: c.OperatorStateRetrieverAddress,
+		AvsName:                    AVS_NAME,
+		PromMetricsIpPortAddress:   c.EigenMetricsIpPortAddress,
+	}
+	sdkClients, err := clients.BuildAll(chainioConfig, common.HexToAddress(c.OperatorAddress), signerV2, logger)
+	if err != nil {
+		panic(err)
+	}
+	txMgr := txmgr.NewSimpleTxManager(ethRpcClient, logger, signerV2, common.HexToAddress(c.OperatorAddress))
 
-	avsWriter, err := chainio.NewAvsWriter(sgn, common.HexToAddress(c.AVSServiceManagerAddress),
-		common.HexToAddress(c.BLSOperatorStateRetrieverAddress), ethRpcClient, logger,
+	avsWriter, err := chainio.BuildAvsWriter(
+		txMgr, common.HexToAddress(c.AVSRegistryCoordinatorAddress),
+		common.HexToAddress(c.OperatorStateRetrieverAddress), ethRpcClient, logger,
 	)
 	if err != nil {
 		logger.Error("Cannot create AvsWriter", "err", err)
 		return nil, err
 	}
 
-	avsServiceBindings, err := chainio.NewAvsServiceBindings(
-		common.HexToAddress(c.AVSServiceManagerAddress),
-		common.HexToAddress(c.BLSOperatorStateRetrieverAddress),
-		ethRpcClient,
-		logger,
-	)
-	if err != nil {
-		return nil, err
-	}
-	blsRegistryCoordinatorAddr, err := avsServiceBindings.ServiceManager.RegistryCoordinator(&bind.CallOpts{})
-	if err != nil {
-		return nil, err
-	}
-	stakeRegistryAddr, err := avsServiceBindings.ServiceManager.StakeRegistry(&bind.CallOpts{})
-	if err != nil {
-		return nil, err
-	}
-	blsPubkeyRegistryAddr, err := avsServiceBindings.ServiceManager.BlsPubkeyRegistry(&bind.CallOpts{})
-	if err != nil {
-		return nil, err
-	}
-	avsRegistryContractClient, err := sdkclients.NewAvsRegistryContractsChainClient(
-		blsRegistryCoordinatorAddr, common.HexToAddress(c.BLSOperatorStateRetrieverAddress), stakeRegistryAddr, blsPubkeyRegistryAddr, ethRpcClient, logger,
-	)
-	if err != nil {
-		return nil, err
-	}
-	avsRegistryReader, err := sdkavsregistry.NewAvsRegistryReader(avsRegistryContractClient, logger, ethRpcClient)
-	if err != nil {
-		return nil, err
-	}
-	avsReader, err := chainio.NewAvsReader(avsRegistryReader, avsServiceBindings, logger)
+	avsReader, err := chainio.BuildAvsReader(
+		common.HexToAddress(c.AVSRegistryCoordinatorAddress),
+		common.HexToAddress(c.OperatorStateRetrieverAddress),
+		ethRpcClient, logger)
 	if err != nil {
 		logger.Error("Cannot create AvsReader", "err", err)
 		return nil, err
 	}
-	avsSubscriber, err := chainio.NewAvsSubscriber(common.HexToAddress(c.AVSServiceManagerAddress),
-		common.HexToAddress(c.BLSOperatorStateRetrieverAddress), ethWsClient, logger,
+	avsSubscriber, err := chainio.BuildAvsSubscriber(common.HexToAddress(c.AVSRegistryCoordinatorAddress),
+		common.HexToAddress(c.OperatorStateRetrieverAddress), ethWsClient, logger,
 	)
 	if err != nil {
 		logger.Error("Cannot create AvsSubscriber", "err", err)
-		return nil, err
-	}
-
-	slasherAddr, err := avsReader.AvsServiceBindings.ServiceManager.Slasher(&bind.CallOpts{})
-	if err != nil {
-		logger.Error("Cannot get slasher address", "err", err)
-		return nil, err
-	}
-
-	elContractsClient, err := sdkclients.NewELContractsChainClient(slasherAddr, common.HexToAddress(c.BlsPublicKeyCompendiumAddress), ethRpcClient, ethWsClient, logger)
-	if err != nil {
-		logger.Error("Cannot create ELContractsChainClient", "err", err)
-		return nil, err
-	}
-
-	eigenlayerWriter := sdkelcontracts.NewELChainWriter(elContractsClient, ethRpcClient, sgn, logger, eigenMetrics)
-	if err != nil {
-		logger.Error("Cannot create EigenLayerWriter", "err", err)
-		return nil, err
-	}
-	eigenlayerReader, err := sdkelcontracts.NewELChainReader(elContractsClient, logger, ethRpcClient)
-	if err != nil {
-		logger.Error("Cannot create EigenLayerReader", "err", err)
 		return nil, err
 	}
 
@@ -235,7 +203,9 @@ func NewOperatorFromConfig(c types.NodeConfig) (*Operator, error) {
 	quorumNames := map[sdktypes.QuorumNum]string{
 		0: "quorum0",
 	}
-	economicMetricsCollector := economic.NewCollector(eigenlayerReader, avsRegistryReader, AVS_NAME, logger, common.HexToAddress(c.OperatorAddress), quorumNames)
+	economicMetricsCollector := economic.NewCollector(
+		sdkClients.ElChainReader, sdkClients.AvsRegistryChainReader,
+		AVS_NAME, logger, common.HexToAddress(c.OperatorAddress), quorumNames)
 	reg.MustRegister(economicMetricsCollector)
 
 	aggregatorRpcClient, err := NewAggregatorRpcClient(c.AggregatorServerIpPortAddress, logger, avsAndEigenMetrics)
@@ -245,34 +215,42 @@ func NewOperatorFromConfig(c types.NodeConfig) (*Operator, error) {
 	}
 
 	operator := &Operator{
-		config:                             c,
-		logger:                             logger,
-		metricsReg:                         reg,
-		metrics:                            avsAndEigenMetrics,
-		nodeApi:                            nodeApi,
-		ethClient:                          ethRpcClient,
-		ipfsClient:                         ipfsApi,
-		avsWriter:                          avsWriter,
-		avsReader:                          avsReader,
-		avsSubscriber:                      avsSubscriber,
-		eigenlayerReader:                   eigenlayerReader,
-		eigenlayerWriter:                   eigenlayerWriter,
-		blsKeypair:                         blsKeyPair,
-		operatorAddr:                       common.HexToAddress(c.OperatorAddress),
-		aggregatorServerIpPortAddr:         c.AggregatorServerIpPortAddress,
-		aggregatorRpcClient:                aggregatorRpcClient,
-		newTaskCreatedChan:                 make(chan *cstaskmanager.ContractIncredibleSquaringTaskManagerNewTaskCreated),
-		credibleSquaringServiceManagerAddr: common.HexToAddress(c.AVSServiceManagerAddress),
-		operatorId:                         [32]byte{0}, // this is set below
+		config: c,
 
+		operatorAddr: common.HexToAddress(c.OperatorAddress),
+		operatorId:   [32]byte{0}, // this is set below
+		blsKeypair:   blsKeyPair,
+
+		log:                        logger,
+		metricsReg:                 reg,
+		metrics:                    avsAndEigenMetrics,
+		nodeApi:                    nodeApi,
+		ethClient:                  ethRpcClient,
+		ipfsClient:                 ipfsApi,
+		avsWriter:                  avsWriter,
+		avsReader:                  avsReader,
+		avsSubscriber:              avsSubscriber,
+		eigenlayerReader:           sdkClients.ElChainReader,
+		eigenlayerWriter:           sdkClients.ElChainWriter,
+		aggregatorServerIpPortAddr: c.AggregatorServerIpPortAddress,
+		aggregatorRpcClient:        aggregatorRpcClient,
+
+		newBatchChan: make(chan *tm.ContractLambadaCoprocessorTaskManagerTaskBatchRegistered),
 	}
 
 	if c.RegisterOperatorOnStartup {
-		operator.registerOperatorOnStartup(common.HexToAddress(c.BlsPublicKeyCompendiumAddress))
+		operatorEcdsaPrivateKey, err := sdkecdsa.ReadKey(
+			c.EcdsaPrivateKeyStorePath,
+			ecdsaKeyPassword,
+		)
+		if err != nil {
+			return nil, err
+		}
+		operator.registerOperatorOnStartup(operatorEcdsaPrivateKey, common.HexToAddress(c.TokenStrategyAddr))
 	}
 
 	// OperatorId is set in contract during registration so we get it after registering operator.
-	operatorId, err := avsRegistryReader.GetOperatorId(context.Background(), operator.operatorAddr)
+	operatorId, err := sdkClients.AvsRegistryChainReader.GetOperatorId(&bind.CallOpts{}, operator.operatorAddr)
 	if err != nil {
 		logger.Error("Cannot get operator id", "err", err)
 		return nil, err
@@ -290,9 +268,9 @@ func NewOperatorFromConfig(c types.NodeConfig) (*Operator, error) {
 }
 
 func (o *Operator) Start(ctx context.Context) error {
-	operatorIsRegistered, err := o.avsReader.IsOperatorRegistered(ctx, o.operatorAddr)
+	operatorIsRegistered, err := o.avsReader.IsOperatorRegistered(&bind.CallOpts{}, o.operatorAddr)
 	if err != nil {
-		o.logger.Error("Error checking if operator is registered", "err", err)
+		o.log.Error("Error checking if operator is registered", "err", err)
 		return err
 	}
 	if !operatorIsRegistered {
@@ -301,7 +279,7 @@ func (o *Operator) Start(ctx context.Context) error {
 		return fmt.Errorf("operator is not registered. Registering operator using the operator-cli before starting operator")
 	}
 
-	o.logger.Infof("Starting operator.")
+	o.log.Infof("Starting operator.")
 
 	if o.config.EnableNodeApi {
 		o.nodeApi.Start()
@@ -314,7 +292,11 @@ func (o *Operator) Start(ctx context.Context) error {
 	}
 
 	// TODO(samlaf): wrap this call with increase in avs-node-spec metric
-	sub := o.avsSubscriber.SubscribeToNewTasks(o.newTaskCreatedChan)
+	sub, err := o.avsSubscriber.SubscribeToNewBatches(o.newBatchChan)
+	if err != nil {
+		o.log.Errorf("failed to subscribe to task batches - %s", err)
+	}
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -322,125 +304,140 @@ func (o *Operator) Start(ctx context.Context) error {
 		case err := <-metricsErrChan:
 			// TODO(samlaf); we should also register the service as unhealthy in the node api
 			// https://eigen.nethermind.io/docs/spec/api/
-			o.logger.Fatal("Error in metrics server", "err", err)
+			o.log.Fatal("Error in metrics server", "err", err)
 		case err := <-sub.Err():
-			o.logger.Error("Error in websocket subscription", "err", err)
+			o.log.Error("Error in websocket subscription", "err", err)
 			// TODO(samlaf): write unit tests to check if this fixed the issues we were seeing
 			sub.Unsubscribe()
 			// TODO(samlaf): wrap this call with increase in avs-node-spec metric
-			sub = o.avsSubscriber.SubscribeToNewTasks(o.newTaskCreatedChan)
-		case newTaskCreatedLog := <-o.newTaskCreatedChan:
-			o.metrics.IncNumTasksReceived()
-			taskResponse := o.ProcessNewTaskCreatedLog(newTaskCreatedLog)
-			signedTaskResponse, err := o.SignTaskResponse(taskResponse)
+			sub, err = o.avsSubscriber.SubscribeToNewBatches(o.newBatchChan)
 			if err != nil {
-				continue
+				o.log.Errorf("failed to subscribe to task batches - %s", err)
 			}
-			go o.aggregatorRpcClient.SendSignedTaskResponseToAggregator(signedTaskResponse)
+		case newTaskCreatedLog := <-o.newBatchChan:
+			o.metrics.IncNumTasksReceived()
+			if err := o.processTaskBatch(newTaskCreatedLog); err != nil {
+				o.log.Errorf("failed to process task batch - %s", err)
+			}
 		}
 	}
 }
 
 // Takes a NewTaskCreatedLog struct as input and returns a TaskResponseHeader struct.
 // The TaskResponseHeader struct is the struct that is signed and sent to the contract as a task response.
-func (o *Operator) ProcessNewTaskCreatedLog(newTaskCreatedLog *cstaskmanager.ContractIncredibleSquaringTaskManagerNewTaskCreated) *cstaskmanager.IIncredibleSquaringTaskManagerTaskResponse {
-	o.logger.Debug("Received new task", "task", newTaskCreatedLog)
-	o.logger.Info("Received new task",
-		"numberToBeSquared", newTaskCreatedLog.Task.NumberToBeSquared,
-		"taskIndex", newTaskCreatedLog.TaskIndex,
-		"taskCreatedBlock", newTaskCreatedLog.Task.TaskCreatedBlock,
-		"quorumNumbers", newTaskCreatedLog.Task.QuorumNumbers,
-		"QuorumThresholdPercentage", newTaskCreatedLog.Task.QuorumThresholdPercentage,
+func (o *Operator) processTaskBatch(newBatch *tm.ContractLambadaCoprocessorTaskManagerTaskBatchRegistered) error {
+	o.log.Debug("Received new task batch", "task", newBatch)
+
+	o.log.Info("Received new task batch",
+		"index", newBatch.Batch.Index,
+		"blockNumber", newBatch.Batch.BlockNumber,
+		"merkleRoot", newBatch.Batch.MerkeRoot,
+		"quorumNumbers", newBatch.Batch.QuorumNumbers,
+		`quroumThresholdPrecentage`, newBatch.Batch.QuorumThresholdPercentage,
 	)
 
-	//numberSquared := big.NewInt(0).Exp(newTaskCreatedLog.Task.NumberToBeSquared, big.NewInt(2), nil)
-	numberSquared, err := o.requestSquaredNumber(newTaskCreatedLog.Task.NumberToBeSquared)
+	tasks, err := o.aggregatorRpcClient.GetBatchTasks(newBatch.Batch.Index)
 	if err != nil {
-		fake := fakeNumberSquare()
-		o.logger.Errorf("failed to request squared number from lambada service -%s, faking result - %s",
-			err, fake.String())
-		return &cstaskmanager.IIncredibleSquaringTaskManagerTaskResponse{
-			ReferenceTaskIndex: newTaskCreatedLog.TaskIndex,
-			NumberSquared:      fake,
+		return err
+	}
+
+	for _, t := range tasks {
+		cid, output, err := o.computeTaskOutput(t.Input)
+		if err != nil {
+			cid, output = fakeOutput(len(t.Input))
+			o.log.Errorf("failed to request echo from lambada service -%s, faking result - %s, %s",
+				err, cid, string(output))
 		}
-	} else {
-		return &cstaskmanager.IIncredibleSquaringTaskManagerTaskResponse{
-			ReferenceTaskIndex: newTaskCreatedLog.TaskIndex,
-			NumberSquared:      numberSquared,
+
+		if err = o.sendTaskOutput(t.Index, hashOutput(cid, output)); err != nil {
+			return err
 		}
 	}
+
+	return nil
 }
 
-func (o *Operator) requestSquaredNumber(n *big.Int) (*big.Int, error) {
+func (o *Operator) computeTaskOutput(input []byte) (string, []byte, error) {
 	// Query lambada compute endpoint.
 	requestURL := fmt.Sprintf("http://%s/compute/%s",
 		os.Getenv("LAMBADA_ADDRESS"),
 		os.Getenv("LAMBADA_COMPUTE_CID"),
 	)
-	requestBody := []byte(n.String())
-	resp, err := http.Post(requestURL, "application/octet-stream", bytes.NewBuffer(requestBody))
+	resp, err := http.Post(requestURL, "application/octet-stream", bytes.NewBuffer(input))
 	if err != nil {
-		return nil, err
+		return "", nil, err
 	}
 
-	// Parse CID with squared number.
+	// Parse CID with echo output.
 	defer resp.Body.Close()
 	respData, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return "", nil, err
 	}
 	jsonCID := struct {
 		CID string `json:"cid"`
 	}{}
 	if err = json.Unmarshal(respData, &jsonCID); err != nil {
-		return nil, err
+		return "", nil, err
 	}
 	cid, err := cid.Decode(jsonCID.CID)
 	if err != nil {
-		return nil, err
+		return "", nil, err
 	}
 
-	// Query squared number from IPFS.
-	squaredNumberPath, err := ipfs_path.NewPath(fmt.Sprintf("/ipfs/%s/output", cid.String()))
+	// Query echo output from IPFS.
+	outputPath, err := ipfs_path.NewPath(fmt.Sprintf("/ipfs/%s/output", cid.String()))
 	if err != nil {
-		return nil, err
+		return "", nil, err
 	}
-	squaredNumberNode, err := o.ipfsClient.Unixfs().Get(context.TODO(), squaredNumberPath)
+	outputNode, err := o.ipfsClient.Unixfs().Get(context.TODO(), outputPath)
 	if err != nil {
-		return nil, err
+		return "", nil, err
 	}
-	squaredNumberFile := ipfs_files.ToFile(squaredNumberNode)
-	defer squaredNumberFile.Close()
-	squaredNumberData, err := io.ReadAll(squaredNumberFile)
+	outputFile := ipfs_files.ToFile(outputNode)
+	defer outputFile.Close()
+	output, err := io.ReadAll(outputFile)
 	if err != nil {
-		return nil, err
+		return "", nil, err
 	}
 
-	squaredNumber := new(big.Int)
-	if _, err := fmt.Sscan(string(squaredNumberData), squaredNumber); err != nil {
-		return nil, err
-	}
-
-	return squaredNumber, nil
+	return cid.String(), output, nil
 }
 
-func (o *Operator) SignTaskResponse(taskResponse *cstaskmanager.IIncredibleSquaringTaskManagerTaskResponse) (*aggregator.SignedTaskResponse, error) {
-	taskResponseHash, err := core.GetTaskResponseDigest(taskResponse)
+func (o *Operator) sendTaskOutput(taskIdx sdktypes.TaskIndex, outputHash [32]byte) error {
+	// Sign task response;
+	resp := tm.ILambadaCoprocessorTaskManagerTaskResponse{
+		OutputHash: outputHash,
+	}
+	taskResponseHash, err := core.GetTaskResponseDigest(&resp)
 	if err != nil {
-		o.logger.Error("Error getting task response header hash. skipping task (this is not expected and should be investigated)", "err", err)
-		return nil, err
+		return fmt.Errorf("failed to compute task response digest - %s", err)
 	}
 	blsSignature := o.blsKeypair.SignMessage(taskResponseHash)
+
+	// Send task to aggregator
 	signedTaskResponse := &aggregator.SignedTaskResponse{
-		TaskResponse: *taskResponse,
+		ILambadaCoprocessorTaskManagerTaskResponse: resp,
+		TaskIndex:    taskIdx,
 		BlsSignature: *blsSignature,
 		OperatorId:   o.operatorId,
 	}
-	o.logger.Debug("Signed task response", "signedTaskResponse", signedTaskResponse)
-	return signedTaskResponse, nil
+	go o.aggregatorRpcClient.SendSignedTaskResponseToAggregator(signedTaskResponse)
+
+	return nil
 }
 
-func fakeNumberSquare() *big.Int {
-	fakeResult := rand.Int()
-	return big.NewInt(int64(fakeResult))
+func fakeOutput(size int) (string, []byte) {
+	cid := "bafybeif5liyov4oltxvc34qh3uyyxy5znisbmarsorxrp4nr3o7ywjuo5u"
+	output := make([]byte, size)
+	rand.Read(output)
+	return cid, output
+}
+
+func hashOutput(ouputCID string, output []byte) [32]byte {
+	cidHash := sha256.Sum256([]byte(ouputCID))
+	outputHash := sha256.Sum256(output)
+	var hash [32]byte
+	xor.Bytes(hash[:], cidHash[:], outputHash[:])
+	return hash
 }

@@ -1,0 +1,151 @@
+version: "3"
+
+networks:
+  lambada-coprocessor-network:
+    name: lambada-coprocessor-network
+    driver: bridge
+
+services:
+
+  anvil:
+    image: ghcr.io/foundry-rs/foundry
+    container_name: anvil
+    ports:
+      - 8545:8545
+    entrypoint: anvil
+    volumes:
+      - ./docker-compose/anvil-state.json:/root/.anvil/state.json
+    command: --host 0.0.0.0 --load-state /root/.anvil/state.json
+    networks:
+      - lambada-coprocessor-network
+
+  aggregator:
+    build:
+      context: .
+      dockerfile: aggregator.Dockerfile
+    container_name: lambada-coprocessor-aggregator
+    ports:
+      - 8080:8080
+    depends_on:
+      anvil:
+        condition: service_started
+    volumes:
+      - ./:/lambada-coprocessor/
+    working_dir: /lambada-coprocessor
+    command: 
+      - --config 
+      - config-files/aggregator-docker-compose.yaml
+      - --credible-squaring-deployment 
+      - contracts/script/output/31337/credible_squaring_avs_deployment_output.json
+      - --ecdsa-private-key 
+      - "0x2a871d0798f97d79848a013d4936a73bf4cc922c825d33c1cf7073dff6d409c6"
+    networks:
+      - lambada-coprocessor-network
+
+  machine1:
+    image: zippiehq/cartesi-lambada:1.6
+    container_name: lambada-coprocessor-machine1
+    volumes:
+      - ./docker-compose/operators/data/operator1:/data
+      - ./machine:/data/preload
+    networks:
+      - lambada-coprocessor-network
+    environment:
+      - COMPUTE_ONLY=1
+
+  operator1:
+    build:
+      context: .
+      dockerfile: operator.Dockerfile
+    container_name: lambada-coprocessor-operator1
+    depends_on:
+      anvil:
+        condition: service_started
+      aggregator:
+        condition: service_started
+      machine1:
+        condition: service_started
+    environment:
+      - IPFS_ADDRESS=machine1:5001
+      - LAMBADA_ADDRESS=machine1:3033
+      - LAMBADA_COMPUTE_CID=bafybeigwjqf46kb7b2t37z4hrav6n73yagjghdxp54nlfwsl7d5e4yhy2q
+      - OPERATOR_BLS_KEY_PASSWORD=jYIawEWJpfSrdmGu3MDM
+      - OPERATOR_ECDSA_KEY_PASSWORD=XgE0SHAzyPOLoUs7tJlT
+    volumes:
+      - ./:/lambada-coprocessor/
+    working_dir: /lambada-coprocessor
+    command: --config docker-compose/operators/configs/operator1.yaml
+    networks:
+      - lambada-coprocessor-network
+
+  machine2:
+    image: zippiehq/cartesi-lambada:1.6
+    container_name: lambada-coprocessor-machine2
+    volumes:
+      - ./docker-compose/operators/data/operator2:/data
+      - ./machine:/data/preload
+    networks:
+      - lambada-coprocessor-network
+    environment:
+      - COMPUTE_ONLY=1
+
+  operator2:
+    build:
+      context: .
+      dockerfile: operator.Dockerfile
+    container_name: lambada-coprocessor-operator2
+    depends_on:
+      anvil:
+        condition: service_started
+      aggregator:
+        condition: service_started
+      machine1:
+        condition: service_started
+    environment:
+      - IPFS_ADDRESS=machine2:5001
+      - LAMBADA_ADDRESS=machine2:3033
+      - LAMBADA_COMPUTE_CID=bafybeigwjqf46kb7b2t37z4hrav6n73yagjghdxp54nlfwsl7d5e4yhy2q
+      - OPERATOR_BLS_KEY_PASSWORD=Jt2yNMUiUS0CVjjXUL8h
+      - OPERATOR_ECDSA_KEY_PASSWORD=wnXG0Z9mKvOv3JUUZGbj
+    volumes:
+      - ./:/lambada-coprocessor/
+    working_dir: /lambada-coprocessor
+    command: --config docker-compose/operators/configs/operator2.yaml
+    networks:
+      - lambada-coprocessor-network
+
+  machine3:
+    image: zippiehq/cartesi-lambada:1.6
+    container_name: lambada-coprocessor-machine3
+    volumes:
+      - ./docker-compose/operators/data/operator3:/data
+      - ./machine:/data/preload
+    networks:
+      - lambada-coprocessor-network
+    environment:
+      - COMPUTE_ONLY=1
+
+  operator3:
+    build:
+      context: .
+      dockerfile: operator.Dockerfile
+    container_name: lambada-coprocessor-operator3
+    depends_on:
+      anvil:
+        condition: service_started
+      aggregator:
+        condition: service_started
+      machine1:
+        condition: service_started
+    environment:
+      - IPFS_ADDRESS=machine3:5001
+      - LAMBADA_ADDRESS=machine3:3033
+      - LAMBADA_COMPUTE_CID=bafybeigwjqf46kb7b2t37z4hrav6n73yagjghdxp54nlfwsl7d5e4yhy2q
+      - OPERATOR_BLS_KEY_PASSWORD=sen9gOmtZpsLMhxTcNfS
+      - OPERATOR_ECDSA_KEY_PASSWORD=wysZpyFnZzWNGFGEfEl8
+    volumes:
+      - ./:/lambada-coprocessor/
+    working_dir: /lambada-coprocessor
+    command: --config docker-compose/operators/configs/operator3.yaml
+    networks:
+      - lambada-coprocessor-network

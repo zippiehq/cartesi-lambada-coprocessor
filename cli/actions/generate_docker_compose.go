@@ -21,12 +21,12 @@ import (
 	"github.com/urfave/cli"
 
 	sdkutils "github.com/Layr-Labs/eigensdk-go/utils"
-	"github.com/Layr-Labs/incredible-squaring-avs/operator"
-	"github.com/Layr-Labs/incredible-squaring-avs/types"
+	"github.com/zippiehq/cartesi-lambada-coprocessor/operator"
+	"github.com/zippiehq/cartesi-lambada-coprocessor/types"
 )
 
 // run beofer executing:
-// anvil --load-state tests/integration/avs-and-eigenlayer-deployed-anvil-state.json --dump-state docker-compose/anvil-state.json
+// anvil --load-state tests/anvil/avs-and-eigenlayer-deployed-anvil-state.json --dump-state docker-compose/anvil-state.json
 
 func GenerateDockerCompose(ctx *cli.Context) error {
 	operatorCount := ctx.Uint("operators")
@@ -194,7 +194,7 @@ func GenerateDockerCompose(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	composeFile, err := os.Create("./docker-compose-operators.yaml")
+	composeFile, err := os.Create("./docker-compose.yaml")
 	if err != nil {
 		return err
 	}
@@ -305,7 +305,7 @@ func depositIntoStrategy(configPath, blsPwd, ecdsaPwd string) error {
 		return err
 	}
 
-	strategyAddr := common.HexToAddress("0x7a2088a1bFc9d81c55368AE168C2C02570cB814F")
+	strategyAddr := common.HexToAddress("0xa85233C63b9Ee964Add6F2cffe00Fd84eb32338f")
 	err = operator.DepositIntoStrategy(strategyAddr, big.NewInt(10))
 	if err != nil {
 		return err
