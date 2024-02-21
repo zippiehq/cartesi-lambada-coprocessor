@@ -1,7 +1,6 @@
 package core
 
 import (
-	"fmt"
 	"math/big"
 
 	"golang.org/x/crypto/sha3"
@@ -89,9 +88,6 @@ func GetTaskBatchDigest(b *tm.ILambadaCoprocessorTaskManagerTaskBatch) ([32]byte
 	if err != nil {
 		return [32]byte{}, err
 	}
-
-	//!!!
-	fmt.Println("boom")
 
 	return hashObject(t, b)
 }

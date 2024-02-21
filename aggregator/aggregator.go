@@ -30,7 +30,7 @@ import (
 
 const (
 	// task batch parameters
-	batchPeriod = 25 * time.Second
+	batchPeriod = 10 * time.Second
 
 	// number of blocks after which a task is considered expired
 	// this hardcoded here because it's also hardcoded in the contracts, but should
@@ -171,13 +171,6 @@ func (agg *Aggregator) Start(ctx context.Context) error {
 	}
 }
 
-func (agg *Aggregator) getBatchIndex() types.TaskBatchIndex {
-	agg.taskMu.RLock()
-	defer agg.taskMu.RUnlock()
-
-	return agg.batchIndex
-}
-
 func (agg *Aggregator) addTask(programID []byte, input []byte) (sdktypes.TaskIndex, error) {
 	agg.taskMu.Lock()
 	defer agg.taskMu.Unlock()
@@ -247,34 +240,7 @@ func (agg *Aggregator) makeBatch() ([]types.Task, *smt.StandardTree, error) {
 		})
 	}
 
-	return BuildBatchMerkle(tasks)
-	//!!!
-	/*
-		taskCmp := func(t1, t2 types.Task) int {
-			return cmp.Compare(t1.Index, t2.Index)
-		}
-		slices.SortFunc(tasks, taskCmp)
-
-		// Build merkle tree for tasks in the batch.
-		values := make([][]interface{}, len(tasks))
-		for i, t := range tasks {
-			values[i] = []interface{}{
-				smt.SolBytes(hex.EncodeToString(t.ProgramId)),
-				smt.SolBytes(hex.EncodeToString(t.Input)),
-			}
-		}
-
-		leafEncodings := []string{
-			smt.SOL_BYTES,
-			smt.SOL_BYTES,
-		}
-		merkle, err := smt.Of(values, leafEncodings)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		return tasks, merkle, nil
-	*/
+	return BuildTaskBatchMerkle(tasks)
 }
 
 func (agg *Aggregator) confirmBatch(
@@ -417,7 +383,7 @@ func (agg *Aggregator) sendAggregatedResponseToContract(
 	return err
 }
 
-func BuildBatchMerkle(tasks []types.Task) ([]types.Task, *smt.StandardTree, error) {
+func BuildTaskBatchMerkle(tasks []types.Task) ([]types.Task, *smt.StandardTree, error) {
 	taskCmp := func(t1, t2 types.Task) int {
 		return cmp.Compare(t1.Index, t2.Index)
 	}

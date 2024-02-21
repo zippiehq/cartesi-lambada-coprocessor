@@ -7,8 +7,6 @@ import (
 	"net/http"
 
 	sdktypes "github.com/Layr-Labs/eigensdk-go/types"
-
-	"github.com/zippiehq/cartesi-lambada-coprocessor/aggregator/types"
 )
 
 func (agg *Aggregator) startAPIServer() error {
@@ -40,7 +38,6 @@ func (agg *Aggregator) createTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	batchIndex := agg.getBatchIndex()
 	var taskIndex sdktypes.TaskIndex
 	for _, t := range tasks {
 		if taskIndex, err = agg.addTask([]byte(t.ProgramID), []byte(t.Input)); err != nil {
@@ -50,11 +47,9 @@ func (agg *Aggregator) createTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp := struct {
-		BatchIndex types.TaskBatchIndex `json:"batchIndex"`
-		TaskIndex  sdktypes.TaskIndex   `json:"taskIndex"`
+		TaskIndex sdktypes.TaskIndex `json:"taskIndex"`
 	}{
-		BatchIndex: batchIndex,
-		TaskIndex:  taskIndex,
+		TaskIndex: taskIndex,
 	}
 	respData, err := json.Marshal(&resp)
 	if err != nil {
