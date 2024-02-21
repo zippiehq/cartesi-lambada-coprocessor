@@ -1,6 +1,7 @@
 package core
 
 import (
+	"fmt"
 	"math/big"
 
 	"golang.org/x/crypto/sha3"
@@ -8,11 +9,12 @@ import (
 	"github.com/Layr-Labs/eigensdk-go/crypto/bls"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 
-	taskmanager "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/LambadaCoprocessorTaskManager"
+	aggtypes "github.com/zippiehq/cartesi-lambada-coprocessor/aggregator/types"
+	tm "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/LambadaCoprocessorTaskManager"
 )
 
 // GetTaskResponseDigest returns the hash of the TaskResponse
-func GetTaskResponseDigest(r *taskmanager.ILambadaCoprocessorTaskManagerTaskResponse) ([32]byte, error) {
+func GetTaskResponseDigest(r *tm.ILambadaCoprocessorTaskManagerTaskResponse) ([32]byte, error) {
 	// The order here has to match the field ordering of taskmanager.ILambadaCoprocessorTaskManagerTaskResponse
 	t, err := abi.NewType("tuple", "", []abi.ArgumentMarshaling{
 		{
@@ -27,8 +29,41 @@ func GetTaskResponseDigest(r *taskmanager.ILambadaCoprocessorTaskManagerTaskResp
 	return hashObject(t, r)
 }
 
+// GetTaskResponseMetadataDigest returns the hash of the TaskResponseMetadata
+func GetTaskResponseMetadataDigest(batchIdx aggtypes.TaskBatchIndex, programID []byte, taskInput []byte) ([32]byte, error) {
+	t, err := abi.NewType("tuple", "", []abi.ArgumentMarshaling{
+		{
+			Name: "batchIndex",
+			Type: "uint32",
+		},
+		{
+			Name: "programID",
+			Type: "bytes",
+		},
+		{
+			Name: "taskInput",
+			Type: "bytes",
+		},
+	})
+	if err != nil {
+		return [32]byte{}, err
+	}
+
+	meta := struct {
+		BatchIndex uint32
+		ProgramID  []byte
+		TaskInput  []byte
+	}{
+		BatchIndex: batchIdx,
+		ProgramID:  programID,
+		TaskInput:  taskInput,
+	}
+
+	return hashObject(t, &meta)
+}
+
 // GetTaskBatchDigest returns the hash of the TaskBatch
-func GetTaskBatchDigest(b *taskmanager.ILambadaCoprocessorTaskManagerTaskBatch) ([32]byte, error) {
+func GetTaskBatchDigest(b *tm.ILambadaCoprocessorTaskManagerTaskBatch) ([32]byte, error) {
 	t, err := abi.NewType("tuple", "", []abi.ArgumentMarshaling{
 		{
 			Name: "index",
@@ -44,7 +79,7 @@ func GetTaskBatchDigest(b *taskmanager.ILambadaCoprocessorTaskManagerTaskBatch) 
 		},
 		{
 			Name: "quorumNumbers",
-			Type: "bytes32",
+			Type: "bytes",
 		},
 		{
 			Name: "quorumThresholdPercentage",
@@ -54,6 +89,9 @@ func GetTaskBatchDigest(b *taskmanager.ILambadaCoprocessorTaskManagerTaskBatch) 
 	if err != nil {
 		return [32]byte{}, err
 	}
+
+	//!!!
+	fmt.Println("boom")
 
 	return hashObject(t, b)
 }
@@ -84,16 +122,16 @@ func hashObject(t abi.Type, value interface{}) ([32]byte, error) {
 // BN254.sol is a library, so bindings for G1 Points and G2 Points are only generated
 // in every contract that imports that library. Thus the output here will need to be
 // type casted if G1Point is needed to interface with another contract (eg: BLSPublicKeyCompendium.sol)
-func ConvertToBN254G1Point(input *bls.G1Point) taskmanager.BN254G1Point {
-	output := taskmanager.BN254G1Point{
+func ConvertToBN254G1Point(input *bls.G1Point) tm.BN254G1Point {
+	output := tm.BN254G1Point{
 		X: input.X.BigInt(big.NewInt(0)),
 		Y: input.Y.BigInt(big.NewInt(0)),
 	}
 	return output
 }
 
-func ConvertToBN254G2Point(input *bls.G2Point) taskmanager.BN254G2Point {
-	output := taskmanager.BN254G2Point{
+func ConvertToBN254G2Point(input *bls.G2Point) tm.BN254G2Point {
+	output := tm.BN254G2Point{
 		X: [2]*big.Int{input.X.A1.BigInt(big.NewInt(0)), input.X.A0.BigInt(big.NewInt(0))},
 		Y: [2]*big.Int{input.Y.A1.BigInt(big.NewInt(0)), input.Y.A0.BigInt(big.NewInt(0))},
 	}
