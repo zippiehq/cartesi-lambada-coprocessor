@@ -43,11 +43,11 @@ services:
       - lambada-coprocessor-network
 
   machine1:
-    image: zippiehq/cartesi-lambada:1.6
+    image: zippiehq/cartesi-lambada:1.0
     container_name: lambada-coprocessor-machine1
     volumes:
       - ./docker-compose/operators/data/operator1:/data
-      - ./machine:/data/preload
+      - ./machine/data-preload:/data/preload
     networks:
       - lambada-coprocessor-network
     environment:
@@ -68,9 +68,9 @@ services:
     environment:
       - IPFS_ADDRESS=machine1:5001
       - LAMBADA_ADDRESS=machine1:3033
-      - LAMBADA_COMPUTE_CID=bafybeigwjqf46kb7b2t37z4hrav6n73yagjghdxp54nlfwsl7d5e4yhy2q
-      - OPERATOR_BLS_KEY_PASSWORD=jYIawEWJpfSrdmGu3MDM
-      - OPERATOR_ECDSA_KEY_PASSWORD=XgE0SHAzyPOLoUs7tJlT
+      - LAMBADA_COMPUTE_CID=bafybeicyzbzllftccnty6mb66au3zyyb4646cnvdyozrfym3yjlerbs5iu
+      - OPERATOR_BLS_KEY_PASSWORD=2MNS8S9ZTwmvmtSDtqeS
+      - OPERATOR_ECDSA_KEY_PASSWORD=FbyHuSJL31m8F6GQltsT
     volumes:
       - ./:/lambada-coprocessor/
     working_dir: /lambada-coprocessor
@@ -79,11 +79,11 @@ services:
       - lambada-coprocessor-network
 
   machine2:
-    image: zippiehq/cartesi-lambada:1.6
+    image: zippiehq/cartesi-lambada:1.0
     container_name: lambada-coprocessor-machine2
     volumes:
       - ./docker-compose/operators/data/operator2:/data
-      - ./machine:/data/preload
+      - ./machine/data-preload:/data/preload
     networks:
       - lambada-coprocessor-network
     environment:
@@ -104,9 +104,9 @@ services:
     environment:
       - IPFS_ADDRESS=machine2:5001
       - LAMBADA_ADDRESS=machine2:3033
-      - LAMBADA_COMPUTE_CID=bafybeigwjqf46kb7b2t37z4hrav6n73yagjghdxp54nlfwsl7d5e4yhy2q
-      - OPERATOR_BLS_KEY_PASSWORD=Jt2yNMUiUS0CVjjXUL8h
-      - OPERATOR_ECDSA_KEY_PASSWORD=wnXG0Z9mKvOv3JUUZGbj
+      - LAMBADA_COMPUTE_CID=bafybeicyzbzllftccnty6mb66au3zyyb4646cnvdyozrfym3yjlerbs5iu
+      - OPERATOR_BLS_KEY_PASSWORD=13ABrhIAy77DRP1I8M6T
+      - OPERATOR_ECDSA_KEY_PASSWORD=2VTgW9qlwEbbBdqX0YxR
     volumes:
       - ./:/lambada-coprocessor/
     working_dir: /lambada-coprocessor
@@ -115,11 +115,11 @@ services:
       - lambada-coprocessor-network
 
   machine3:
-    image: zippiehq/cartesi-lambada:1.6
+    image: zippiehq/cartesi-lambada:1.0
     container_name: lambada-coprocessor-machine3
     volumes:
       - ./docker-compose/operators/data/operator3:/data
-      - ./machine:/data/preload
+      - ./machine/data-preload:/data/preload
     networks:
       - lambada-coprocessor-network
     environment:
@@ -140,9 +140,9 @@ services:
     environment:
       - IPFS_ADDRESS=machine3:5001
       - LAMBADA_ADDRESS=machine3:3033
-      - LAMBADA_COMPUTE_CID=bafybeigwjqf46kb7b2t37z4hrav6n73yagjghdxp54nlfwsl7d5e4yhy2q
-      - OPERATOR_BLS_KEY_PASSWORD=sen9gOmtZpsLMhxTcNfS
-      - OPERATOR_ECDSA_KEY_PASSWORD=wysZpyFnZzWNGFGEfEl8
+      - LAMBADA_COMPUTE_CID=bafybeicyzbzllftccnty6mb66au3zyyb4646cnvdyozrfym3yjlerbs5iu
+      - OPERATOR_BLS_KEY_PASSWORD=hFxK1mexwuC3ezlk9Hmy
+      - OPERATOR_ECDSA_KEY_PASSWORD=1IiT09BboEqcfCNvbFpn
     volumes:
       - ./:/lambada-coprocessor/
     working_dir: /lambada-coprocessor
