@@ -139,7 +139,7 @@ func GenerateDockerCompose(ctx *cli.Context) error {
 	dataPaths := make([]string, operatorCount)
 	for i := 0; i < int(operatorCount); i++ {
 		dataPaths[i] = fmt.Sprintf("./docker-compose/operators/data/operator%d", i+1)
-		if err := cp.Copy("./machine-data", dataPaths[i]); err != nil {
+		if err := cp.Copy("./machine/data", dataPaths[i]); err != nil {
 			return err
 		}
 	}

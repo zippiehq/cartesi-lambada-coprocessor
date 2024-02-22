@@ -43,11 +43,11 @@ services:
       - lambada-coprocessor-network
 {% for operator in operators %}
   {{ operator.machine }}:
-    image: zippiehq/cartesi-lambada:1.6
+    image: zippiehq/cartesi-lambada:1.0
     container_name: lambada-coprocessor-{{ operator.machine }}
     volumes:
       - {{ operator.data_path }}:/data
-      - ./machine:/data/preload
+      - ./machine/data-preload:/data/preload
     networks:
       - lambada-coprocessor-network
     environment:
@@ -68,7 +68,7 @@ services:
     environment:
       - IPFS_ADDRESS={{ operator.ipfs_address }}
       - LAMBADA_ADDRESS={{ operator.lambada_address }}
-      - LAMBADA_COMPUTE_CID=bafybeigwjqf46kb7b2t37z4hrav6n73yagjghdxp54nlfwsl7d5e4yhy2q
+      - LAMBADA_COMPUTE_CID=bafybeicyzbzllftccnty6mb66au3zyyb4646cnvdyozrfym3yjlerbs5iu
       - OPERATOR_BLS_KEY_PASSWORD={{ operator.bls_key_password }}
       - OPERATOR_ECDSA_KEY_PASSWORD={{ operator.ecdsa_key_password }}
     volumes:
