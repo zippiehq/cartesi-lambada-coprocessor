@@ -76,5 +76,5 @@ tests-contract: ## runs all forge tests
 	cd contracts && forge test
 
 tests-integration: ## runs all integration tests
-	go test ./tests/integration/... -v -count=1
+	go test ./tests/integration/... -v
 

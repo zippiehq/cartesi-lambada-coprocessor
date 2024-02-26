@@ -14,7 +14,7 @@ services:
       - 8545:8545
     entrypoint: anvil
     volumes:
-      - ./docker-compose/anvil-state.json:/root/.anvil/state.json
+      - ./tests/anvil/avs-and-eigenlayer-deployed-anvil-state.json:/root/.anvil/state.json
     command: --host 0.0.0.0 --load-state /root/.anvil/state.json
     networks:
       - lambada-coprocessor-network

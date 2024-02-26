@@ -14,7 +14,7 @@ services:
       - 8545:8545
     entrypoint: anvil
     volumes:
-      - ./docker-compose/anvil-state.json:/root/.anvil/state.json
+      - ./tests/anvil/avs-and-eigenlayer-deployed-anvil-state.json:/root/.anvil/state.json
     command: --host 0.0.0.0 --load-state /root/.anvil/state.json
     networks:
       - lambada-coprocessor-network
@@ -69,8 +69,8 @@ services:
       - IPFS_ADDRESS=machine1:5001
       - LAMBADA_ADDRESS=machine1:3033
       - LAMBADA_COMPUTE_CID=bafybeicyzbzllftccnty6mb66au3zyyb4646cnvdyozrfym3yjlerbs5iu
-      - OPERATOR_BLS_KEY_PASSWORD=2MNS8S9ZTwmvmtSDtqeS
-      - OPERATOR_ECDSA_KEY_PASSWORD=FbyHuSJL31m8F6GQltsT
+      - OPERATOR_BLS_KEY_PASSWORD=VPxUm7534xqWG7RlIjBw
+      - OPERATOR_ECDSA_KEY_PASSWORD=okYHIpFm7hjAx7Yxl3W1
     volumes:
       - ./:/lambada-coprocessor/
     working_dir: /lambada-coprocessor
@@ -105,8 +105,8 @@ services:
       - IPFS_ADDRESS=machine2:5001
       - LAMBADA_ADDRESS=machine2:3033
       - LAMBADA_COMPUTE_CID=bafybeicyzbzllftccnty6mb66au3zyyb4646cnvdyozrfym3yjlerbs5iu
-      - OPERATOR_BLS_KEY_PASSWORD=13ABrhIAy77DRP1I8M6T
-      - OPERATOR_ECDSA_KEY_PASSWORD=2VTgW9qlwEbbBdqX0YxR
+      - OPERATOR_BLS_KEY_PASSWORD=0sXtydiK9ViL5JJllhz5
+      - OPERATOR_ECDSA_KEY_PASSWORD=UjScI62UESDlIa57SP09
     volumes:
       - ./:/lambada-coprocessor/
     working_dir: /lambada-coprocessor
@@ -141,8 +141,8 @@ services:
       - IPFS_ADDRESS=machine3:5001
       - LAMBADA_ADDRESS=machine3:3033
       - LAMBADA_COMPUTE_CID=bafybeicyzbzllftccnty6mb66au3zyyb4646cnvdyozrfym3yjlerbs5iu
-      - OPERATOR_BLS_KEY_PASSWORD=hFxK1mexwuC3ezlk9Hmy
-      - OPERATOR_ECDSA_KEY_PASSWORD=1IiT09BboEqcfCNvbFpn
+      - OPERATOR_BLS_KEY_PASSWORD=7dU7eLiK1axeM840BvLu
+      - OPERATOR_ECDSA_KEY_PASSWORD=jDCEG2UIfGdC543bFSTV
     volumes:
       - ./:/lambada-coprocessor/
     working_dir: /lambada-coprocessor

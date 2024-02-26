@@ -25,9 +25,6 @@ import (
 	"github.com/zippiehq/cartesi-lambada-coprocessor/types"
 )
 
-// run beofer executing:
-// anvil --load-state tests/anvil/avs-and-eigenlayer-deployed-anvil-state.json --dump-state docker-compose/anvil-state.json
-
 func GenerateDockerCompose(ctx *cli.Context) error {
 	operatorCount := ctx.Uint("operators")
 	if operatorCount == 0 {
