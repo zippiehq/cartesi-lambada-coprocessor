@@ -13,5 +13,4 @@ RUN go build -v -o /usr/local/bin/aggregator ./...
 
 FROM debian:latest
 COPY --from=build /usr/local/bin/aggregator /usr/local/bin/aggregator
-ENTRYPOINT ["aggregator"]
-CMD ["--config=/app/avs_config.yaml"]
+ENTRYPOINT [ "aggregator"]
