@@ -95,7 +95,7 @@ type Aggregator struct {
 }
 
 // NewAggregator creates a new Aggregator with the provided config.
-func NewAggregator(c *config.Config) (*Aggregator, error) {
+func NewAggregator(c *config.AggregatorConfig) (*Aggregator, error) {
 
 	avsReader, err := chainio.BuildAvsReaderFromConfig(c)
 	if err != nil {

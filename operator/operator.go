@@ -39,15 +39,15 @@ import (
 	tm "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/LambadaCoprocessorTaskManager"
 	"github.com/zippiehq/cartesi-lambada-coprocessor/core"
 	"github.com/zippiehq/cartesi-lambada-coprocessor/core/chainio"
+	"github.com/zippiehq/cartesi-lambada-coprocessor/core/config"
 	"github.com/zippiehq/cartesi-lambada-coprocessor/metrics"
-	"github.com/zippiehq/cartesi-lambada-coprocessor/types"
 )
 
 const AVS_NAME = "lambada-coprocessor"
 const SEM_VER = "0.0.1"
 
 type Operator struct {
-	config types.NodeConfig
+	config config.OperatorConfig
 
 	operatorAddr common.Address
 	operatorId   bls.OperatorId
@@ -78,7 +78,7 @@ type Operator struct {
 	newBatchChan chan *tm.ContractLambadaCoprocessorTaskManagerTaskBatchRegistered
 }
 
-func NewOperatorFromConfig(c types.NodeConfig) (*Operator, error) {
+func NewOperatorFromConfig(c config.OperatorConfig) (*Operator, error) {
 	var logLevel logging.LogLevel
 	if c.Production {
 		logLevel = sdklogging.Production

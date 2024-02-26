@@ -6,18 +6,19 @@ import (
 	"log"
 	"math/big"
 
-	sdkutils "github.com/Layr-Labs/eigensdk-go/utils"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/urfave/cli"
+
+	sdkutils "github.com/Layr-Labs/eigensdk-go/utils"
+
 	"github.com/zippiehq/cartesi-lambada-coprocessor/core/config"
 	"github.com/zippiehq/cartesi-lambada-coprocessor/operator"
-	"github.com/zippiehq/cartesi-lambada-coprocessor/types"
 )
 
 func DepositIntoStrategy(ctx *cli.Context) error {
 
 	configPath := ctx.GlobalString(config.ConfigFileFlag.Name)
-	nodeConfig := types.NodeConfig{}
+	nodeConfig := config.OperatorConfig{}
 	err := sdkutils.ReadYamlConfig(configPath, &nodeConfig)
 	if err != nil {
 		return err

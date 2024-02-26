@@ -19,8 +19,8 @@ import (
 	sdkutils "github.com/Layr-Labs/eigensdk-go/utils"
 )
 
-// Config contains all of the configuration information for a credible squaring aggregators and challengers.
-type Config struct {
+// AggregatorConfig contains all of the configuration information for a credible squaring aggregators and challengers.
+type AggregatorConfig struct {
 	EcdsaPrivateKey           *ecdsa.PrivateKey
 	BlsPrivateKey             *bls.PrivateKey
 	Logger                    sdklogging.Logger
@@ -63,7 +63,7 @@ type LambadaCoprocessorContractsRaw struct {
 // Operator has a different config and is meant to be used by the operator CLI.
 func NewConfig(
 	configFilePath, deploymentFilePath, ecdsaPrivateKeyString string,
-) (*Config, error) {
+) (*AggregatorConfig, error) {
 	var configRaw ConfigRaw
 	if configFilePath != "" {
 		sdkutils.ReadYamlConfig(configFilePath, &configRaw)
@@ -119,7 +119,7 @@ func NewConfig(
 	}
 	txMgr := txmgr.NewSimpleTxManager(ethRpcClient, logger, signerV2, aggregatorAddr)
 
-	config := &Config{
+	config := &AggregatorConfig{
 		EcdsaPrivateKey:            ecdsaPrivateKey,
 		Logger:                     logger,
 		EthWsRpcUrl:                configRaw.EthWsUrl,
@@ -140,7 +140,7 @@ func NewConfig(
 }
 
 // NewConfigFromCLI parses config file to read from from flags or environment variables
-func NewConfigFromCLI(ctx *cli.Context) (*Config, error) {
+func NewConfigFromCLI(ctx *cli.Context) (*AggregatorConfig, error) {
 	configFilePath := ctx.GlobalString(ConfigFileFlag.Name)
 	deploymentFilePath := ctx.GlobalString(LambadaCoprocessorDeploymentFileFlag.Name)
 	ecdsaPrivateKeyString := ctx.GlobalString(EcdsaPrivateKeyFlag.Name)
@@ -148,7 +148,7 @@ func NewConfigFromCLI(ctx *cli.Context) (*Config, error) {
 	return NewConfig(configFilePath, deploymentFilePath, ecdsaPrivateKeyString)
 }
 
-func (c *Config) validate() {
+func (c *AggregatorConfig) validate() {
 	// TODO: make sure every pointer is non-nil
 	if c.OperatorStateRetrieverAddr == common.HexToAddress("") {
 		panic("Config: BLSOperatorStateRetrieverAddr is required")

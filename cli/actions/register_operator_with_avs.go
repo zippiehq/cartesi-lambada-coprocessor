@@ -5,18 +5,19 @@ import (
 	"log"
 	"os"
 
+	"github.com/urfave/cli"
+
 	sdkecdsa "github.com/Layr-Labs/eigensdk-go/crypto/ecdsa"
 	sdkutils "github.com/Layr-Labs/eigensdk-go/utils"
-	"github.com/Layr-Labs/incredible-squaring-avs/core/config"
-	"github.com/Layr-Labs/incredible-squaring-avs/operator"
-	"github.com/Layr-Labs/incredible-squaring-avs/types"
-	"github.com/urfave/cli"
+
+	"github.com/zippiehq/cartesi-lambada-coprocessor/core/config"
+	"github.com/zippiehq/cartesi-lambada-coprocessor/operator"
 )
 
 func RegisterOperatorWithAvs(ctx *cli.Context) error {
 
 	configPath := ctx.GlobalString(config.ConfigFileFlag.Name)
-	nodeConfig := types.NodeConfig{}
+	nodeConfig := config.OperatorConfig{}
 	err := sdkutils.ReadYamlConfig(configPath, &nodeConfig)
 	if err != nil {
 		return err

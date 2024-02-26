@@ -21,8 +21,9 @@ import (
 	"github.com/urfave/cli"
 
 	sdkutils "github.com/Layr-Labs/eigensdk-go/utils"
+
+	"github.com/zippiehq/cartesi-lambada-coprocessor/core/config"
 	"github.com/zippiehq/cartesi-lambada-coprocessor/operator"
-	"github.com/zippiehq/cartesi-lambada-coprocessor/types"
 )
 
 func GenerateDockerCompose(ctx *cli.Context) error {
@@ -283,7 +284,7 @@ func runCommand(command string) (string, string, error) {
 }
 
 func depositIntoStrategy(configPath, blsPwd, ecdsaPwd string) error {
-	nodeConfig := types.NodeConfig{}
+	nodeConfig := config.OperatorConfig{}
 	err := sdkutils.ReadYamlConfig(configPath, &nodeConfig)
 	if err != nil {
 		return err

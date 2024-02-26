@@ -32,7 +32,7 @@ type AvsSubscriber struct {
 	logger              sdklogging.Logger
 }
 
-func BuildAvsSubscriberFromConfig(config *config.Config) (*AvsSubscriber, error) {
+func BuildAvsSubscriberFromConfig(config *config.AggregatorConfig) (*AvsSubscriber, error) {
 	return BuildAvsSubscriber(
 		config.LambadaCoprocessorRegistryCoordinatorAddr,
 		config.OperatorStateRetrieverAddr,

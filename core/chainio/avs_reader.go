@@ -36,7 +36,7 @@ type AvsReader struct {
 	log                 logging.Logger
 }
 
-func BuildAvsReaderFromConfig(c *config.Config) (*AvsReader, error) {
+func BuildAvsReaderFromConfig(c *config.AggregatorConfig) (*AvsReader, error) {
 	return BuildAvsReader(c.LambadaCoprocessorRegistryCoordinatorAddr, c.OperatorStateRetrieverAddr, c.EthHttpClient, c.Logger)
 }
 

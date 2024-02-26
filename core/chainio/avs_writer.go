@@ -45,7 +45,7 @@ type AvsWriter struct {
 	client              eth.EthClient
 }
 
-func BuildAvsWriterFromConfig(c *config.Config) (*AvsWriter, error) {
+func BuildAvsWriterFromConfig(c *config.AggregatorConfig) (*AvsWriter, error) {
 	return BuildAvsWriter(c.TxMgr, c.LambadaCoprocessorRegistryCoordinatorAddr, c.OperatorStateRetrieverAddr, c.EthHttpClient, c.Logger)
 }
 

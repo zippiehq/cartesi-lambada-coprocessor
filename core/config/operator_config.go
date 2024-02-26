@@ -1,6 +1,6 @@
-package types
+package config
 
-type NodeConfig struct {
+type OperatorConfig struct {
 	// used to set the logger level (true = info, false = debug)
 	Production                    bool   `yaml:"production"`
 	OperatorAddress               string `yaml:"operator_address"`
