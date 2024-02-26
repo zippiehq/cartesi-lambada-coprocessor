@@ -35,8 +35,8 @@ type taskBatch struct {
 
 func TestIntegration(t *testing.T) {
 	config, err := config.NewConfig(
-		"../../config-files/aggregator.yaml",
-		"../../contracts/script/output/31337/credible_squaring_avs_deployment_output.json",
+		"./nodes/aggregator/aggregator.yaml",
+		"../contracts/script/output/31337/lambada_coprocessor_avs_deployment_output.json",
 		"0x2a871d0798f97d79848a013d4936a73bf4cc922c825d33c1cf7073dff6d409c6",
 	)
 	if err != nil {

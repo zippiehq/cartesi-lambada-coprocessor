@@ -439,6 +439,6 @@ contract LambadaCoprocessorDeployer is Script, Utils {
             deployed_addresses_output
         );
 
-        writeOutput(finalJson, "credible_squaring_avs_deployment_output");
+        writeOutput(finalJson, "lambada_coprocessor_avs_deployment_output");
     }
 }

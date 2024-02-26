@@ -34,9 +34,9 @@ services:
     working_dir: /lambada-coprocessor
     command: 
       - --config 
-      - config-files/aggregator-docker-compose.yaml
+      - tests/nodes/aggregator/aggregator-docker-compose.yaml
       - --credible-squaring-deployment 
-      - contracts/script/output/31337/credible_squaring_avs_deployment_output.json
+      - contracts/script/output/31337/lambada_coprocessor_avs_deployment_output.json
       - --ecdsa-private-key 
       - "0x2a871d0798f97d79848a013d4936a73bf4cc922c825d33c1cf7073dff6d409c6"
     networks:
@@ -46,7 +46,7 @@ services:
     image: zippiehq/cartesi-lambada:1.0
     container_name: lambada-coprocessor-machine1
     volumes:
-      - ./docker-compose/operators/data/operator1:/data
+      - ./tests/nodes/operators/data/operator1:/data
       - ./machine/data-preload:/data/preload
     networks:
       - lambada-coprocessor-network
@@ -69,12 +69,12 @@ services:
       - IPFS_ADDRESS=machine1:5001
       - LAMBADA_ADDRESS=machine1:3033
       - LAMBADA_COMPUTE_CID=bafybeicyzbzllftccnty6mb66au3zyyb4646cnvdyozrfym3yjlerbs5iu
-      - OPERATOR_BLS_KEY_PASSWORD=VPxUm7534xqWG7RlIjBw
-      - OPERATOR_ECDSA_KEY_PASSWORD=okYHIpFm7hjAx7Yxl3W1
+      - OPERATOR_BLS_KEY_PASSWORD=sHZPvKXWRkVVMmO2LLDy
+      - OPERATOR_ECDSA_KEY_PASSWORD=vjX7jrbF4sYSmzYLLHlE
     volumes:
       - ./:/lambada-coprocessor/
     working_dir: /lambada-coprocessor
-    command: --config docker-compose/operators/configs/operator1.yaml
+    command: --config tests/nodes/operators/configs/operator1.yaml
     networks:
       - lambada-coprocessor-network
 
@@ -82,7 +82,7 @@ services:
     image: zippiehq/cartesi-lambada:1.0
     container_name: lambada-coprocessor-machine2
     volumes:
-      - ./docker-compose/operators/data/operator2:/data
+      - ./tests/nodes/operators/data/operator2:/data
       - ./machine/data-preload:/data/preload
     networks:
       - lambada-coprocessor-network
@@ -105,12 +105,12 @@ services:
       - IPFS_ADDRESS=machine2:5001
       - LAMBADA_ADDRESS=machine2:3033
       - LAMBADA_COMPUTE_CID=bafybeicyzbzllftccnty6mb66au3zyyb4646cnvdyozrfym3yjlerbs5iu
-      - OPERATOR_BLS_KEY_PASSWORD=0sXtydiK9ViL5JJllhz5
-      - OPERATOR_ECDSA_KEY_PASSWORD=UjScI62UESDlIa57SP09
+      - OPERATOR_BLS_KEY_PASSWORD=bGgxdjXnmA0SdQbzreUi
+      - OPERATOR_ECDSA_KEY_PASSWORD=NTFmvYqu8Y9AegHnp6kW
     volumes:
       - ./:/lambada-coprocessor/
     working_dir: /lambada-coprocessor
-    command: --config docker-compose/operators/configs/operator2.yaml
+    command: --config tests/nodes/operators/configs/operator2.yaml
     networks:
       - lambada-coprocessor-network
 
@@ -118,7 +118,7 @@ services:
     image: zippiehq/cartesi-lambada:1.0
     container_name: lambada-coprocessor-machine3
     volumes:
-      - ./docker-compose/operators/data/operator3:/data
+      - ./tests/nodes/operators/data/operator3:/data
       - ./machine/data-preload:/data/preload
     networks:
       - lambada-coprocessor-network
@@ -141,11 +141,11 @@ services:
       - IPFS_ADDRESS=machine3:5001
       - LAMBADA_ADDRESS=machine3:3033
       - LAMBADA_COMPUTE_CID=bafybeicyzbzllftccnty6mb66au3zyyb4646cnvdyozrfym3yjlerbs5iu
-      - OPERATOR_BLS_KEY_PASSWORD=7dU7eLiK1axeM840BvLu
-      - OPERATOR_ECDSA_KEY_PASSWORD=jDCEG2UIfGdC543bFSTV
+      - OPERATOR_BLS_KEY_PASSWORD=8mWRDnnMyAsr5LQoCVc1
+      - OPERATOR_ECDSA_KEY_PASSWORD=5vSSjxrKpvtvzRhu2MOQ
     volumes:
       - ./:/lambada-coprocessor/
     working_dir: /lambada-coprocessor
-    command: --config docker-compose/operators/configs/operator3.yaml
+    command: --config tests/nodes/operators/configs/operator3.yaml
     networks:
       - lambada-coprocessor-network
