@@ -25,9 +25,6 @@ import (
 	"github.com/zippiehq/cartesi-lambada-coprocessor/types"
 )
 
-// run beofer executing:
-// anvil --load-state tests/anvil/avs-and-eigenlayer-deployed-anvil-state.json --dump-state docker-compose/anvil-state.json
-
 func GenerateDockerCompose(ctx *cli.Context) error {
 	operatorCount := ctx.Uint("operators")
 	if operatorCount == 0 {
@@ -35,27 +32,27 @@ func GenerateDockerCompose(ctx *cli.Context) error {
 	}
 
 	// Clear "operators" directory
-	if _, err := os.Stat("./docker-compose/operators"); err == nil {
-		if err = os.RemoveAll("./docker-compose/operators"); err != nil {
+	if _, err := os.Stat("./tests/nodes/operators"); err == nil {
+		if err = os.RemoveAll("./tests/nodes/operators"); err != nil {
 			return err
 		}
 	}
-	if err := os.Mkdir("./docker-compose/operators", os.ModePerm); err != nil {
+	if err := os.Mkdir("./tests/nodes/operators", os.ModePerm); err != nil {
 		return err
 	}
-	if err := os.Mkdir("./docker-compose/operators/keys", os.ModePerm); err != nil {
+	if err := os.Mkdir("./tests/nodes/operators/keys", os.ModePerm); err != nil {
 		return err
 	}
-	if err := os.Mkdir("./docker-compose/operators/configs", os.ModePerm); err != nil {
+	if err := os.Mkdir("./tests/nodes/operators/configs", os.ModePerm); err != nil {
 		return err
 	}
-	if err := os.Mkdir("./docker-compose/operators/data", os.ModePerm); err != nil {
+	if err := os.Mkdir("./tests/nodes/operators/data", os.ModePerm); err != nil {
 		return err
 	}
 
 	// Generate BLS and ecdsa keys.
 	egnkeyCmd := fmt.Sprintf(
-		"cd ./docker-compose/operators/keys && egnkey generate --key-type both --num-keys %d",
+		"cd ./tests/nodes/operators/keys && egnkey generate --key-type both --num-keys %d",
 		operatorCount,
 	)
 	if _, _, err := runCommand(egnkeyCmd); err != nil {
@@ -72,12 +69,12 @@ func GenerateDockerCompose(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	if err = filepath.Walk("./docker-compose/operators/keys", func(path string, info os.FileInfo, err error) error {
+	if err = filepath.Walk("./tests/nodes/operators/keys", func(path string, info os.FileInfo, err error) error {
 		if blsRegex.MatchString(info.Name()) {
-			blsKeyDir = filepath.Join("./docker-compose/operators/keys", info.Name())
+			blsKeyDir = filepath.Join("./tests/nodes/operators/keys", info.Name())
 		}
 		if ecdsaRegex.MatchString(info.Name()) {
-			ecdsaKeyDir = filepath.Join("./docker-compose/operators/keys", info.Name())
+			ecdsaKeyDir = filepath.Join("./tests/nodes/operators/keys", info.Name())
 		}
 		return nil
 	}); err != nil {
@@ -107,10 +104,10 @@ func GenerateDockerCompose(ctx *cli.Context) error {
 	configPaths := make([]string, operatorCount)
 	for i := 0; i < int(operatorCount); i++ {
 		configPaths[i] = filepath.Join(
-			"./docker-compose/operators/configs",
+			"./tests/nodes/operators/configs",
 			fmt.Sprintf("operator%d.yaml", i+1),
 		)
-		tmpl, err := gonja.FromFile("./docker-compose/operator-docker-compose.j2")
+		tmpl, err := gonja.FromFile("./tests/jinja/operator-docker-compose.j2")
 		if err != nil {
 			return err
 		}
@@ -138,7 +135,7 @@ func GenerateDockerCompose(ctx *cli.Context) error {
 	// Generate directories for docker volume mount.
 	dataPaths := make([]string, operatorCount)
 	for i := 0; i < int(operatorCount); i++ {
-		dataPaths[i] = fmt.Sprintf("./docker-compose/operators/data/operator%d", i+1)
+		dataPaths[i] = fmt.Sprintf("./tests/nodes/operators/data/operator%d", i+1)
 		if err := cp.Copy("./machine/data", dataPaths[i]); err != nil {
 			return err
 		}
@@ -183,7 +180,7 @@ func GenerateDockerCompose(ctx *cli.Context) error {
 			"ecdsa_key_password": ecdsaPwds[i-1],
 		}
 	}
-	cofingTmpl, err := gonja.FromFile("./docker-compose/docker-compose.j2")
+	cofingTmpl, err := gonja.FromFile("./tests/jinja/docker-compose.j2")
 	if err != nil {
 		return err
 	}

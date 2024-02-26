@@ -21,7 +21,9 @@ TMP_GENESIS_FILE=$parent_path/genesis.json.tmp
 jq '.number = "'$(cast block-number)'"' $GENESIS_FILE > $TMP_GENESIS_FILE
 mv $TMP_GENESIS_FILE $GENESIS_FILE
 
-# we also do this here to make sure the operator has funds to register with the eigenlayer contracts
-cast send 0x860B6912C2d0337ef05bbC89b0C2CB6CbAEAB4A5 --value 10ether --private-key 0x2a871d0798f97d79848a013d4936a73bf4cc922c825d33c1cf7073dff6d409c6
+cd "$parent_path"
+cd ../../
+go run ./cli/main.go --config fake-config generate-docker-compose --operators 3
+
 # kill anvil to save its state
 pkill anvil
