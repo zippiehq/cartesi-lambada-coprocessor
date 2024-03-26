@@ -2,14 +2,10 @@
 
 This is proof of concept of verifiable computing system using  [Cartesi virtual machine](https://github.com/zippiehq/cartesi-lambada) and [Eigenlayer restaking platform](https://github.com/Layr-Labs/eigenlayer-contracts).
 
-## Contract development
-
-After changing contract source code in `contracts/src`, run `make deploy-avs`. This will update `tests/anvil/avs-and-eigenlayer-deployed-anvil-state.json` by deploying new version of avs contracts and registering new set of operators from scratch (`tests/nodes/operators` will be updated accordingly).
-
 ## Testing
 
-1. In first termnial run `docker compose up`
-2. In second termnial run `make testing-integration`
+1. In first terminal run `docker compose up`
+2. In second terminal run `make testing-integration`
 3. Wait for tests to complete without any errors
 4. Check docker logs for unexpected errors
 
@@ -24,4 +20,8 @@ To run avs with different number of operators, in separate branch:
 
 ## Troubleshooting
 
-`tests/nodes/operators` contains mounted docker volumes, which are reused across multiple runs of docker compose. Sometimes it causes `permission denied` errors while running `docker compose build`, `make deploy-avs` and `make tests-integration`. To fix this issue - run `chomd -R 777 tests/nodes/operators`.
+`tests/nodes/operators` contains mounted docker volumes, which are reused across multiple runs of docker compose. Sometimes it causes `permission denied` errors while running `docker compose build`, `make deploy-avs` and `make tests-integration`. To fix this issue - run `chmod -R 777 tests/nodes/operators`.
+
+## Contract development
+
+After changing contract source code in `contracts/src`, run `make deploy-avs`. This will update `tests/anvil/avs-and-eigenlayer-deployed-anvil-state.json` by deploying new version of avs contracts and registering new set of operators from scratch (`tests/nodes/operators` will be updated accordingly).
