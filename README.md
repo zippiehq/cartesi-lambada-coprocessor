@@ -5,7 +5,7 @@ This is proof of concept of verifiable computing system using  [Cartesi virtual 
 ## Testing
 
 1. In first terminal run `docker compose up`
-2. In second terminal run `make testing-integration`
+2. In second terminal run `make tests-integration`
 3. Wait for tests to complete without any errors
 4. Check docker logs for unexpected errors
 

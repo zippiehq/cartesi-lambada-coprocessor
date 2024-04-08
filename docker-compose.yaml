@@ -8,7 +8,9 @@ networks:
 services:
 
   anvil:
-    image: ghcr.io/foundry-rs/foundry
+    build:
+      context: .
+      dockerfile: Dockerfile-anvil
     container_name: anvil
     ports:
       - 8545:8545
