@@ -1,9 +1,9 @@
-FROM docker.io/frolvlad/alpine-glibc:alpine-3.16_glibc-2.34
-RUN apk add --no-cache linux-headers git curl bash
+FROM debian
+RUN apt-get update && apt-get install -y git curl bash
 
 RUN curl -L https://foundry.paradigm.xyz | bash
-RUN source /root/.profile && foundryup
+RUN bash -c 'source /root/.profile && foundryup'
 RUN cp -r /root/.foundry/bin/* /usr/local/bin/
-RUN adduser -Du 1000 foundry
+RUN adduser --uid 1000 foundry
 
 ENTRYPOINT ["/bin/sh", "-c"]
