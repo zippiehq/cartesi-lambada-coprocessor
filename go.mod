@@ -6,17 +6,16 @@ toolchain go1.21.0
 
 require (
 	github.com/FantasyJony/openzeppelin-merkle-tree-go v1.1.2
-	github.com/Layr-Labs/eigensdk-go v0.1.1-0.20240207213853-8a666597e0f1
-	github.com/Layr-Labs/incredible-squaring-avs v0.0.0-20240208224157-4f75fe3efdb3
-	github.com/ethereum/go-ethereum v1.13.8
+	github.com/Layr-Labs/eigensdk-go v0.1.7-0.20240425202952-954cd7661775
+	github.com/ethereum/go-ethereum v1.13.14
 	github.com/go-faster/xor v1.0.0
 	github.com/ipfs/boxo v0.17.0
 	github.com/ipfs/go-cid v0.4.1
 	github.com/ipfs/kubo v0.26.0
 	github.com/nikolalohinski/gonja v1.5.3
 	github.com/otiai10/copy v1.14.0
-	github.com/prometheus/client_golang v1.18.0
-	github.com/stretchr/testify v1.8.4
+	github.com/prometheus/client_golang v1.19.0
+	github.com/stretchr/testify v1.9.0
 	github.com/urfave/cli v1.22.14
 	golang.org/x/crypto v0.18.0
 )
@@ -43,8 +42,9 @@ require (
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/go-logr/logr v1.4.1 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
-	github.com/go-ole/go-ole v1.2.6 // indirect
+	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
+	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
 	github.com/google/gopacket v1.1.19 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/goph/emperror v0.17.2 // indirect
@@ -81,8 +81,8 @@ require (
 	github.com/libp2p/go-libp2p-routing-helpers v0.7.3 // indirect
 	github.com/libp2p/go-msgio v0.3.0 // indirect
 	github.com/libp2p/go-netroute v0.2.1 // indirect
+	github.com/lmittmann/tint v1.0.4 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
-	github.com/matttproud/golang_protobuf_extensions/v2 v2.0.0 // indirect
 	github.com/miekg/dns v1.1.57 // indirect
 	github.com/minio/sha256-simd v1.0.1 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
@@ -106,7 +106,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/polydawn/refmt v0.89.0 // indirect
 	github.com/prometheus/client_model v0.5.0 // indirect
-	github.com/prometheus/common v0.45.0 // indirect
+	github.com/prometheus/common v0.48.0 // indirect
 	github.com/prometheus/procfs v0.12.0 // indirect
 	github.com/rs/cors v1.7.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
@@ -125,10 +125,10 @@ require (
 	go.opentelemetry.io/otel/metric v1.21.0 // indirect
 	go.opentelemetry.io/otel/trace v1.21.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	go.uber.org/zap v1.26.0 // indirect
+	go.uber.org/zap v1.27.0 // indirect
 	go4.org v0.0.0-20230225012048-214862532bf5 // indirect
 	golang.org/x/exp v0.0.0-20240103183307-be819d1f06fc // indirect
-	golang.org/x/mod v0.14.0 // indirect
+	golang.org/x/mod v0.16.0 // indirect
 	golang.org/x/net v0.20.0 // indirect
 	golang.org/x/sync v0.6.0 // indirect
 	golang.org/x/sys v0.16.0 // indirect

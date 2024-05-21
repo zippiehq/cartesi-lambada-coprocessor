@@ -11,6 +11,7 @@ import (
 	"github.com/Layr-Labs/eigensdk-go/chainio/clients/eth"
 	"github.com/Layr-Labs/eigensdk-go/chainio/txmgr"
 	logging "github.com/Layr-Labs/eigensdk-go/logging"
+	sdktypes "github.com/Layr-Labs/eigensdk-go/types"
 
 	taskmanager "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/LambadaCoprocessorTaskManager"
 	"github.com/zippiehq/cartesi-lambada-coprocessor/core/config"
@@ -22,8 +23,8 @@ type AvsWriterer interface {
 	RegisterNewTaskBatch(
 		ctx context.Context,
 		batchRoot [32]byte,
-		quorumThresholdPercentage uint32,
-		quorumNumbers []byte,
+		quorumThresholdPercentage sdktypes.QuorumThresholdPercentage,
+		quorumNumbers sdktypes.QuorumNums,
 	) (taskmanager.ILambadaCoprocessorTaskManagerTaskBatch, error)
 
 	RespondTask(
@@ -42,7 +43,7 @@ type AvsWriter struct {
 	AvsContractBindings *AvsManagersBindings
 	log                 logging.Logger
 	TxMgr               txmgr.TxManager
-	client              eth.EthClient
+	client              eth.Client
 }
 
 func BuildAvsWriterFromConfig(c *config.AggregatorConfig) (*AvsWriter, error) {
@@ -53,7 +54,7 @@ func BuildAvsWriter(
 	txMgr txmgr.TxManager,
 	registryCoordinatorAddr,
 	operatorStateRetrieverAddr gethcommon.Address,
-	ethHttpClient eth.EthClient,
+	ethHttpClient eth.Client,
 	log logging.Logger,
 ) (*AvsWriter, error) {
 	avsServiceBindings, err := NewAvsManagersBindings(registryCoordinatorAddr, operatorStateRetrieverAddr, ethHttpClient, log)
@@ -80,8 +81,8 @@ func BuildAvsWriter(
 func (w *AvsWriter) RegisterNewTaskBatch(
 	ctx context.Context,
 	batchRoot [32]byte,
-	quorumThresholdPercentage uint32,
-	quorumNumbers []byte,
+	quorumThresholdPercentage sdktypes.QuorumThresholdPercentage,
+	quorumNumbers sdktypes.QuorumNums,
 ) (taskmanager.ILambadaCoprocessorTaskManagerTaskBatch, error) {
 	txOpts, err := w.TxMgr.GetNoSendTxOpts()
 	if err != nil {
@@ -90,7 +91,7 @@ func (w *AvsWriter) RegisterNewTaskBatch(
 	}
 
 	tx, err := w.AvsContractBindings.TaskManager.RegisterNewTaskBatch(
-		txOpts, batchRoot, quorumThresholdPercentage, quorumNumbers,
+		txOpts, batchRoot, uint32(quorumThresholdPercentage), quorumNumbers.UnderlyingType(),
 	)
 	if err != nil {
 		return taskmanager.ILambadaCoprocessorTaskManagerTaskBatch{},

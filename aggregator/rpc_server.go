@@ -58,7 +58,7 @@ type SignedTaskResponse struct {
 	tm.ILambadaCoprocessorTaskManagerTaskResponse
 	TaskIndex    sdktypes.TaskIndex
 	BlsSignature bls.Signature
-	OperatorId   bls.OperatorId
+	OperatorId   sdktypes.OperatorId
 }
 
 // rpc endpoint which is called by operator
