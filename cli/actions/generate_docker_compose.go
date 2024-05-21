@@ -303,7 +303,7 @@ func depositIntoStrategy(configPath, blsPwd, ecdsaPwd string) error {
 		return err
 	}
 
-	strategyAddr := common.HexToAddress("0xa85233C63b9Ee964Add6F2cffe00Fd84eb32338f")
+	strategyAddr := common.HexToAddress("0x09635F643e140090A9A8Dcd712eD6285858ceBef")
 	err = operator.DepositIntoStrategy(strategyAddr, big.NewInt(10))
 	if err != nil {
 		return err
