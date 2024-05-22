@@ -18,7 +18,7 @@ import (
 	sdkclients "github.com/Layr-Labs/eigensdk-go/chainio/clients"
 	"github.com/Layr-Labs/eigensdk-go/services/avsregistry"
 	blsagg "github.com/Layr-Labs/eigensdk-go/services/bls_aggregation"
-	oppubkeysserv "github.com/Layr-Labs/eigensdk-go/services/operatorpubkeys"
+	oprsinfoserv "github.com/Layr-Labs/eigensdk-go/services/operatorsinfo"
 	sdktypes "github.com/Layr-Labs/eigensdk-go/types"
 
 	"github.com/zippiehq/cartesi-lambada-coprocessor/aggregator/types"
@@ -117,13 +117,13 @@ func NewAggregator(c *config.AggregatorConfig) (*Aggregator, error) {
 		AvsName:                    avsName,
 		PromMetricsIpPortAddress:   ":9090",
 	}
-	clients, err := clients.BuildAll(chainioConfig, c.AggregatorAddress, c.SignerFn, c.Logger)
+	clients, err := clients.BuildAll(chainioConfig, c.EcdsaPrivateKey, c.Logger)
 	if err != nil {
 		c.Logger.Errorf("Cannot create sdk clients", "err", err)
 		return nil, err
 	}
 
-	operatorPubkeysService := oppubkeysserv.NewOperatorPubkeysServiceInMemory(context.Background(), clients.AvsRegistryChainSubscriber, clients.AvsRegistryChainReader, c.Logger)
+	operatorPubkeysService := oprsinfoserv.NewOperatorsInfoServiceInMemory(context.Background(), clients.AvsRegistryChainSubscriber, clients.AvsRegistryChainReader, c.Logger)
 	avsRegistryService := avsregistry.NewAvsRegistryServiceChainCaller(avsReader, operatorPubkeysService, c.Logger)
 	blsAggregationService := blsagg.NewBlsAggregatorService(avsRegistryService, c.Logger)
 
@@ -205,16 +205,20 @@ func (agg *Aggregator) createTaskBatch() error {
 	batch := agg.confirmBatch(onchainBatch, batchTasks, batchMerkle)
 
 	// Start accepting singed responses for every task in batch.
-	quorumThresholdPercentages := make([]uint32, len(batch.QuorumNumbers))
+	quorumThresholdPercentages := make(sdktypes.QuorumThresholdPercentages, len(batch.QuorumNumbers))
 	for i, _ := range batch.QuorumNumbers {
-		quorumThresholdPercentages[i] = batch.QuorumThresholdPercentage
+		quorumThresholdPercentages[i] = sdktypes.QuorumThresholdPercentage(batch.QuorumThresholdPercentage)
 	}
 	// TODO(samlaf): we use seconds for now, but we should ideally pass a blocknumber to the blsAggregationService
 	// and it should monitor the chain and only expire the task aggregation once the chain has reached that block number.
 	taskTimeToExpiry := taskChallengeWindowBlock * blockTimeSeconds
 	for _, t := range batch.Tasks {
+		var quorumNums sdktypes.QuorumNums
+		for _, quorumNum := range batch.QuorumNumbers {
+			quorumNums = append(quorumNums, sdktypes.QuorumNum(quorumNum))
+		}
 		if err := agg.blsAggregationService.InitializeNewTask(
-			t.Index, batch.BlockNumber, batch.QuorumNumbers, quorumThresholdPercentages, taskTimeToExpiry,
+			t.Index, batch.BlockNumber, quorumNums, quorumThresholdPercentages, taskTimeToExpiry,
 		); err != nil {
 			agg.log.Errorf("failed to initialize bls aggregation for task %d from batch %d", t.Index, batch.Index)
 		}
@@ -286,7 +290,7 @@ func (agg *Aggregator) getBatchTasks(batchIdx types.TaskBatchIndex) ([]types.Tas
 
 func (agg *Aggregator) processTaskResponse(
 	taskIndex sdktypes.TaskIndex,
-	operatorID bls.OperatorId,
+	operatorID sdktypes.OperatorId,
 	response tm.ILambadaCoprocessorTaskManagerTaskResponse,
 	sig bls.Signature,
 ) error {

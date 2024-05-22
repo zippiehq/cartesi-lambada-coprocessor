@@ -25,13 +25,14 @@ contract LambadaCoprocessorServiceManager is ServiceManagerBase {
     }
 
     constructor(
-        IDelegationManager _delegationManager,
+        IAVSDirectory _avsDirectory,
         IRegistryCoordinator _registryCoordinator,
         IStakeRegistry _stakeRegistry,
         ILambadaCoprocessorTaskManager _lambadaCoprocessorTaskManager
     )
         ServiceManagerBase(
-            _delegationManager,
+            _avsDirectory,
+            IPaymentCoordinator(address(0)), // inc-sq doesn't need to deal with payments
             _registryCoordinator,
             _stakeRegistry
         )
