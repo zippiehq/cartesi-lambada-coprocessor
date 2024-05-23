@@ -8,7 +8,9 @@ networks:
 services:
 
   anvil:
-    image: ghcr.io/foundry-rs/foundry
+    build:
+      context: .
+      dockerfile: Dockerfile-anvil
     container_name: anvil
     ports:
       - 8545:8545
@@ -69,8 +71,8 @@ services:
       - IPFS_ADDRESS=machine1:5001
       - LAMBADA_ADDRESS=machine1:3033
       - LAMBADA_COMPUTE_CID=bafybeicdhhtwmgpnt7jugvlv3xtp2u4w4mkunpmg6txkkkjhpvnt2buyqa
-      - OPERATOR_BLS_KEY_PASSWORD=yk2DOST1Ifr2SEmNVc9F
-      - OPERATOR_ECDSA_KEY_PASSWORD=H8d17sFpRHZ1EXXfdyeO
+      - OPERATOR_BLS_KEY_PASSWORD=fZEOWNaTwe9pBkxAQASW
+      - OPERATOR_ECDSA_KEY_PASSWORD=TurBzPaKwxXdCplqgiS6
     volumes:
       - ./:/lambada-coprocessor/
     working_dir: /lambada-coprocessor
@@ -105,8 +107,8 @@ services:
       - IPFS_ADDRESS=machine2:5001
       - LAMBADA_ADDRESS=machine2:3033
       - LAMBADA_COMPUTE_CID=bafybeicdhhtwmgpnt7jugvlv3xtp2u4w4mkunpmg6txkkkjhpvnt2buyqa
-      - OPERATOR_BLS_KEY_PASSWORD=qJf4pUCKRRgfWfEHx6EK
-      - OPERATOR_ECDSA_KEY_PASSWORD=cLuEf1Yho9pKKQnGIa7D
+      - OPERATOR_BLS_KEY_PASSWORD=dwRWUDy8rxANwSlfKT9M
+      - OPERATOR_ECDSA_KEY_PASSWORD=WKnbIRmhtQ8xyvrHihad
     volumes:
       - ./:/lambada-coprocessor/
     working_dir: /lambada-coprocessor
@@ -141,8 +143,8 @@ services:
       - IPFS_ADDRESS=machine3:5001
       - LAMBADA_ADDRESS=machine3:3033
       - LAMBADA_COMPUTE_CID=bafybeicdhhtwmgpnt7jugvlv3xtp2u4w4mkunpmg6txkkkjhpvnt2buyqa
-      - OPERATOR_BLS_KEY_PASSWORD=2f74aPUitNNYJA7SGBnK
-      - OPERATOR_ECDSA_KEY_PASSWORD=UcYIuU73ILRbP6vwfJQp
+      - OPERATOR_BLS_KEY_PASSWORD=13HEsDtV1CMeAuFAJABe
+      - OPERATOR_ECDSA_KEY_PASSWORD=zm9XHhVShIfgNIQdSGGL
     volumes:
       - ./:/lambada-coprocessor/
     working_dir: /lambada-coprocessor
