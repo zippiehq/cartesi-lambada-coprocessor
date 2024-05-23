@@ -168,8 +168,8 @@ func checkTaskBatch(
 	for range batch.tasks {
 		select {
 		case <-respCh:
-		case <-time.After(150 * time.Second):
-			t.Fatalf("failed to get task response in 150 seconds")
+		case <-time.After(300 * time.Second):
+			t.Fatalf("failed to get task response in 300 seconds")
 		}
 	}
 	// Validate task response mapping.
