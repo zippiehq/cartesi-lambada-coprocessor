@@ -43,7 +43,7 @@ services:
       - lambada-coprocessor-network
 
   machine1:
-    image: zippiehq/cartesi-lambada:1.0
+    image: ghcr.io/zippiehq/cartesi-lambada:amd64-latest
     container_name: lambada-coprocessor-machine1
     volumes:
       - ./tests/nodes/operators/data/operator1:/data
@@ -68,7 +68,7 @@ services:
     environment:
       - IPFS_ADDRESS=machine1:5001
       - LAMBADA_ADDRESS=machine1:3033
-      - LAMBADA_COMPUTE_CID=bafybeicyzbzllftccnty6mb66au3zyyb4646cnvdyozrfym3yjlerbs5iu
+      - LAMBADA_COMPUTE_CID=bafybeicdhhtwmgpnt7jugvlv3xtp2u4w4mkunpmg6txkkkjhpvnt2buyqa
       - OPERATOR_BLS_KEY_PASSWORD=rznAlRIfDajDSWFfhRNT
       - OPERATOR_ECDSA_KEY_PASSWORD=r9FPyVHGE54S6727edM9
     volumes:
@@ -79,7 +79,7 @@ services:
       - lambada-coprocessor-network
 
   machine2:
-    image: zippiehq/cartesi-lambada:1.0
+    image: ghcr.io/zippiehq/cartesi-lambada:amd64-latest
     container_name: lambada-coprocessor-machine2
     volumes:
       - ./tests/nodes/operators/data/operator2:/data
@@ -104,7 +104,7 @@ services:
     environment:
       - IPFS_ADDRESS=machine2:5001
       - LAMBADA_ADDRESS=machine2:3033
-      - LAMBADA_COMPUTE_CID=bafybeicyzbzllftccnty6mb66au3zyyb4646cnvdyozrfym3yjlerbs5iu
+      - LAMBADA_COMPUTE_CID=bafybeicdhhtwmgpnt7jugvlv3xtp2u4w4mkunpmg6txkkkjhpvnt2buyqa
       - OPERATOR_BLS_KEY_PASSWORD=1Ju2lir5XjToYyk45efd
       - OPERATOR_ECDSA_KEY_PASSWORD=m72iVCUXGJyUqYS7VeHU
     volumes:
@@ -115,7 +115,7 @@ services:
       - lambada-coprocessor-network
 
   machine3:
-    image: zippiehq/cartesi-lambada:1.0
+    image: ghcr.io/zippiehq/cartesi-lambada:amd64-latest
     container_name: lambada-coprocessor-machine3
     volumes:
       - ./tests/nodes/operators/data/operator3:/data
@@ -140,7 +140,7 @@ services:
     environment:
       - IPFS_ADDRESS=machine3:5001
       - LAMBADA_ADDRESS=machine3:3033
-      - LAMBADA_COMPUTE_CID=bafybeicyzbzllftccnty6mb66au3zyyb4646cnvdyozrfym3yjlerbs5iu
+      - LAMBADA_COMPUTE_CID=bafybeicdhhtwmgpnt7jugvlv3xtp2u4w4mkunpmg6txkkkjhpvnt2buyqa
       - OPERATOR_BLS_KEY_PASSWORD=WQz9IVAc3Vthpo0rT3Ed
       - OPERATOR_ECDSA_KEY_PASSWORD=r4gZXgjPuGkdprFH9wKD
     volumes:
