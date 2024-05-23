@@ -33,7 +33,9 @@ func GenerateDockerCompose(ctx *cli.Context) error {
 	}
 
 	// Clear "operators" directory
-	if _, err := os.Stat("./tests/nodes/operators"); err == nil {
+	if _, err := os.Stat("./tests/nodes/operators"); err != nil {
+		return err
+	} else {
 		if err = os.RemoveAll("./tests/nodes/operators"); err != nil {
 			return err
 		}
