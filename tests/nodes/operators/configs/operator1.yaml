@@ -1,6 +1,6 @@
 production: true
 
-operator_address: 0x517ff8debf6ae3ef62a445f07c55692441dd6992
+operator_address: 0xb5c035533305c95f35e49a1693fd6ff22e26162d
 
 avs_registry_coordinator_address: 0xa82fF9aFd8f496c3d6ac40E2a0F282E47488CFc9
 operator_state_retriever_address: 0x95401dc811bb5740090279Ba06cfA8fcF6113778
@@ -8,8 +8,8 @@ operator_state_retriever_address: 0x95401dc811bb5740090279Ba06cfA8fcF6113778
 eth_rpc_url: http://anvil:8545
 eth_ws_url: ws://anvil:8545
 
-ecdsa_private_key_store_path: tests/nodes/operators/keys/ecdsa-b6914a57-1764-11ef-8f4a-a036bcd1ceee/keys/1.ecdsa.key.json
-bls_private_key_store_path: tests/nodes/operators/keys/bls-b78ce5c9-1764-11ef-8f4a-a036bcd1ceee/keys/1.bls.key.json
+ecdsa_private_key_store_path: tests/nodes/operators/keys/ecdsa-d3f46eb6-18d4-11ef-9e08-a036bcd1ceee/keys/1.ecdsa.key.json
+bls_private_key_store_path: tests/nodes/operators/keys/bls-d4e87daf-18d4-11ef-9e08-a036bcd1ceee/keys/1.bls.key.json
 
 aggregator_server_ip_port_address: lambada-coprocessor-aggregator:8090
 
