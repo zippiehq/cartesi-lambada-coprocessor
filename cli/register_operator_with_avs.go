@@ -1,4 +1,4 @@
-package actions
+package main
 
 import (
 	"encoding/json"
@@ -16,7 +16,7 @@ import (
 
 func RegisterOperatorWithAvs(ctx *cli.Context) error {
 
-	configPath := ctx.GlobalString(config.ConfigFileFlag.Name)
+	configPath := ctx.String(configFlag.Name)
 	nodeConfig := config.OperatorConfig{}
 	err := sdkutils.ReadYamlConfig(configPath, &nodeConfig)
 	if err != nil {
@@ -24,7 +24,6 @@ func RegisterOperatorWithAvs(ctx *cli.Context) error {
 	}
 	// need to make sure we don't register the operator on startup
 	// when using the cli commands to register the operator.
-	nodeConfig.RegisterOperatorOnStartup = false
 	configJson, err := json.MarshalIndent(nodeConfig, "", "  ")
 	if err != nil {
 		log.Fatalf(err.Error())
@@ -41,7 +40,7 @@ func RegisterOperatorWithAvs(ctx *cli.Context) error {
 		log.Printf("OPERATOR_ECDSA_KEY_PASSWORD env var not set. using empty string")
 	}
 	operatorEcdsaPrivKey, err := sdkecdsa.ReadKey(
-		nodeConfig.EcdsaPrivateKeyStorePath,
+		nodeConfig.ECDSAPrivateKeyStorePath,
 		ecdsaKeyPassword,
 	)
 	if err != nil {

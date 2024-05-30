@@ -51,15 +51,6 @@ type ConfigRaw struct {
 	RegisterOperatorOnStartup  bool                `yaml:"register_operator_on_startup"`
 }
 
-// These are read from LambadaCoprocessorDeploymentFileFlag
-type LambadaCoprocessorDeploymentRaw struct {
-	Addresses LambadaCoprocessorContractsRaw `json:"addresses"`
-}
-type LambadaCoprocessorContractsRaw struct {
-	RegistryCoordinatorAddr    string `json:"registryCoordinator"`
-	OperatorStateRetrieverAddr string `json:"operatorStateRetriever"`
-}
-
 // Config is shared by challenger and aggregator and so we put in the core.
 // Operator has a different config and is meant to be used by the operator CLI.
 func NewConfig(
@@ -70,11 +61,11 @@ func NewConfig(
 		sdkutils.ReadYamlConfig(configFilePath, &configRaw)
 	}
 
-	var lambadaCoprocessorDeploymentRaw LambadaCoprocessorDeploymentRaw
+	var avsDeployment AVSDeployment
 	if _, err := os.Stat(deploymentFilePath); errors.Is(err, os.ErrNotExist) {
 		panic("Path " + deploymentFilePath + " does not exist")
 	}
-	sdkutils.ReadJsonConfig(deploymentFilePath, &lambadaCoprocessorDeploymentRaw)
+	sdkutils.ReadJsonConfig(deploymentFilePath, &avsDeployment)
 
 	logger, err := sdklogging.NewZapLogger(configRaw.Environment)
 	if err != nil {
@@ -131,8 +122,8 @@ func NewConfig(
 		EthHttpRpcUrl:              configRaw.EthRpcUrl,
 		EthHttpClient:              ethRpcClient,
 		EthWsClient:                ethWsClient,
-		OperatorStateRetrieverAddr: common.HexToAddress(lambadaCoprocessorDeploymentRaw.Addresses.OperatorStateRetrieverAddr),
-		LambadaCoprocessorRegistryCoordinatorAddr: common.HexToAddress(lambadaCoprocessorDeploymentRaw.Addresses.RegistryCoordinatorAddr),
+		OperatorStateRetrieverAddr: common.HexToAddress(avsDeployment.Addresses.OperatorStateRetriever),
+		LambadaCoprocessorRegistryCoordinatorAddr: common.HexToAddress(avsDeployment.Addresses.RegistryCoordinator),
 		AggregatorServerIpPortAddr:                configRaw.AggregatorServerIpPortAddr,
 		RegisterOperatorOnStartup:                 configRaw.RegisterOperatorOnStartup,
 		SignerFn:                                  signerV2,

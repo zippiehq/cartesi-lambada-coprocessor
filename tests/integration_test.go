@@ -36,7 +36,7 @@ type taskBatch struct {
 func TestIntegration(t *testing.T) {
 	config, err := config.NewConfig(
 		"./nodes/aggregator/aggregator.yaml",
-		"../contracts/script/output/31337/lambada_coprocessor_avs_deployment_output.json",
+		"../contracts/script/output/lambada_coprocessor_deployment_output_devnet.json",
 		"0x2a871d0798f97d79848a013d4936a73bf4cc922c825d33c1cf7073dff6d409c6",
 	)
 	if err != nil {
@@ -58,11 +58,11 @@ func TestIntegration(t *testing.T) {
 			index: 0,
 			tasks: []task{
 				{
-					ProgramID: "program1",
+					ProgramID: "bafybeicdhhtwmgpnt7jugvlv3xtp2u4w4mkunpmg6txkkkjhpvnt2buyqa",
 					Input:     "input1",
 				},
 				{
-					ProgramID: "program1",
+					ProgramID: "bafybeicdhhtwmgpnt7jugvlv3xtp2u4w4mkunpmg6txkkkjhpvnt2buyqa",
 					Input:     "input2",
 				},
 			},
@@ -74,8 +74,8 @@ func TestIntegration(t *testing.T) {
 			index: 1,
 			tasks: []task{
 				{
-					ProgramID: "program2",
-					Input:     "input1",
+					ProgramID: "bafybeicdhhtwmgpnt7jugvlv3xtp2u4w4mkunpmg6txkkkjhpvnt2buyqa",
+					Input:     "input3",
 				},
 			},
 			firstTaskIndex: 2,
@@ -86,16 +86,16 @@ func TestIntegration(t *testing.T) {
 			index: 2,
 			tasks: []task{
 				{
-					ProgramID: "program1",
-					Input:     "input3",
-				},
-				{
-					ProgramID: "program2",
+					ProgramID: "bafybeicdhhtwmgpnt7jugvlv3xtp2u4w4mkunpmg6txkkkjhpvnt2buyqa",
 					Input:     "input4",
 				},
 				{
-					ProgramID: "program3",
+					ProgramID: "bafybeicdhhtwmgpnt7jugvlv3xtp2u4w4mkunpmg6txkkkjhpvnt2buyqa",
 					Input:     "input5",
+				},
+				{
+					ProgramID: "bafybeicdhhtwmgpnt7jugvlv3xtp2u4w4mkunpmg6txkkkjhpvnt2buyqa",
+					Input:     "input6",
 				},
 			},
 			firstTaskIndex: 3,

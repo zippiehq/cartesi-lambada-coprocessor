@@ -37,6 +37,7 @@ import (
 	sdktypes "github.com/Layr-Labs/eigensdk-go/types"
 
 	"github.com/zippiehq/cartesi-lambada-coprocessor/aggregator"
+	"github.com/zippiehq/cartesi-lambada-coprocessor/aggregator/types"
 	tm "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/LambadaCoprocessorTaskManager"
 	"github.com/zippiehq/cartesi-lambada-coprocessor/core"
 	"github.com/zippiehq/cartesi-lambada-coprocessor/core/chainio"
@@ -95,7 +96,7 @@ func NewOperatorFromConfig(c config.OperatorConfig) (*Operator, error) {
 	avsAndEigenMetrics := metrics.NewAvsAndEigenMetrics(AVS_NAME, eigenMetrics, reg)
 
 	// Setup IPFS Api
-	ipfsURL := fmt.Sprintf("http://%s", os.Getenv("IPFS_ADDRESS"))
+	ipfsURL := fmt.Sprintf("http://%s", c.IPFSIpPortAddress)
 	ipfsApi, err := ipfs_api.NewURLApiWithClient(ipfsURL, http.DefaultClient)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create IPFS API client - %s", err)
@@ -134,7 +135,7 @@ func NewOperatorFromConfig(c config.OperatorConfig) (*Operator, error) {
 	if !ok {
 		logger.Warnf("OPERATOR_BLS_KEY_PASSWORD env var not set. using empty string")
 	}
-	blsKeyPair, err := bls.ReadPrivateKeyFromFile(c.BlsPrivateKeyStorePath, blsKeyPassword)
+	blsKeyPair, err := bls.ReadPrivateKeyFromFile(c.BLSPrivateKeyStorePath, blsKeyPassword)
 	if err != nil {
 		logger.Errorf("Cannot parse bls private key", "err", err)
 		return nil, err
@@ -154,7 +155,7 @@ func NewOperatorFromConfig(c config.OperatorConfig) (*Operator, error) {
 	}
 
 	signerV2, _, err := signerv2.SignerFromConfig(signerv2.Config{
-		KeystorePath: c.EcdsaPrivateKeyStorePath,
+		KeystorePath: c.ECDSAPrivateKeyStorePath,
 		Password:     ecdsaKeyPassword,
 	}, chainId)
 	if err != nil {
@@ -163,13 +164,13 @@ func NewOperatorFromConfig(c config.OperatorConfig) (*Operator, error) {
 	chainioConfig := clients.BuildAllConfig{
 		EthHttpUrl:                 c.EthRpcUrl,
 		EthWsUrl:                   c.EthWsUrl,
-		RegistryCoordinatorAddr:    c.AVSRegistryCoordinatorAddress,
+		RegistryCoordinatorAddr:    c.RegistryCoordinatorAddress,
 		OperatorStateRetrieverAddr: c.OperatorStateRetrieverAddress,
 		AvsName:                    AVS_NAME,
 		PromMetricsIpPortAddress:   c.EigenMetricsIpPortAddress,
 	}
 	operatorEcdsaPrivateKey, err := sdkecdsa.ReadKey(
-		c.EcdsaPrivateKeyStorePath,
+		c.ECDSAPrivateKeyStorePath,
 		ecdsaKeyPassword,
 	)
 	if err != nil {
@@ -179,14 +180,14 @@ func NewOperatorFromConfig(c config.OperatorConfig) (*Operator, error) {
 	if err != nil {
 		panic(err)
 	}
-	skWallet, err := wallet.NewPrivateKeyWallet(ethRpcClient, signerV2, common.HexToAddress(c.OperatorAddress), logger)
+	skWallet, err := wallet.NewPrivateKeyWallet(ethRpcClient, signerV2, common.HexToAddress(c.Address), logger)
 	if err != nil {
 		return nil, err
 	}
-	txMgr := txmgr.NewSimpleTxManager(skWallet, ethRpcClient, logger, common.HexToAddress(c.OperatorAddress))
+	txMgr := txmgr.NewSimpleTxManager(skWallet, ethRpcClient, logger, common.HexToAddress(c.Address))
 
 	avsWriter, err := chainio.BuildAvsWriter(
-		txMgr, common.HexToAddress(c.AVSRegistryCoordinatorAddress),
+		txMgr, common.HexToAddress(c.RegistryCoordinatorAddress),
 		common.HexToAddress(c.OperatorStateRetrieverAddress), ethRpcClient, logger,
 	)
 	if err != nil {
@@ -195,14 +196,14 @@ func NewOperatorFromConfig(c config.OperatorConfig) (*Operator, error) {
 	}
 
 	avsReader, err := chainio.BuildAvsReader(
-		common.HexToAddress(c.AVSRegistryCoordinatorAddress),
+		common.HexToAddress(c.RegistryCoordinatorAddress),
 		common.HexToAddress(c.OperatorStateRetrieverAddress),
 		ethRpcClient, logger)
 	if err != nil {
 		logger.Error("Cannot create AvsReader", "err", err)
 		return nil, err
 	}
-	avsSubscriber, err := chainio.BuildAvsSubscriber(common.HexToAddress(c.AVSRegistryCoordinatorAddress),
+	avsSubscriber, err := chainio.BuildAvsSubscriber(common.HexToAddress(c.RegistryCoordinatorAddress),
 		common.HexToAddress(c.OperatorStateRetrieverAddress), ethWsClient, logger,
 	)
 	if err != nil {
@@ -217,7 +218,7 @@ func NewOperatorFromConfig(c config.OperatorConfig) (*Operator, error) {
 	}
 	economicMetricsCollector := economic.NewCollector(
 		sdkClients.ElChainReader, sdkClients.AvsRegistryChainReader,
-		AVS_NAME, logger, common.HexToAddress(c.OperatorAddress), quorumNames)
+		AVS_NAME, logger, common.HexToAddress(c.Address), quorumNames)
 	reg.MustRegister(economicMetricsCollector)
 
 	aggregatorRpcClient, err := NewAggregatorRpcClient(c.AggregatorServerIpPortAddress, logger, avsAndEigenMetrics)
@@ -229,7 +230,7 @@ func NewOperatorFromConfig(c config.OperatorConfig) (*Operator, error) {
 	operator := &Operator{
 		config: c,
 
-		operatorAddr: common.HexToAddress(c.OperatorAddress),
+		operatorAddr: common.HexToAddress(c.Address),
 		operatorId:   [32]byte{0}, // this is set below
 		blsKeypair:   blsKeyPair,
 
@@ -250,17 +251,6 @@ func NewOperatorFromConfig(c config.OperatorConfig) (*Operator, error) {
 		newBatchChan: make(chan *tm.ContractLambadaCoprocessorTaskManagerTaskBatchRegistered),
 	}
 
-	if c.RegisterOperatorOnStartup {
-		operatorEcdsaPrivateKey, err := sdkecdsa.ReadKey(
-			c.EcdsaPrivateKeyStorePath,
-			ecdsaKeyPassword,
-		)
-		if err != nil {
-			return nil, err
-		}
-		operator.registerOperatorOnStartup(operatorEcdsaPrivateKey, common.HexToAddress(c.TokenStrategyAddr))
-	}
-
 	// OperatorId is set in contract during registration so we get it after registering operator.
 	operatorId, err := sdkClients.AvsRegistryChainReader.GetOperatorId(&bind.CallOpts{}, operator.operatorAddr)
 	if err != nil {
@@ -270,7 +260,7 @@ func NewOperatorFromConfig(c config.OperatorConfig) (*Operator, error) {
 	operator.operatorId = operatorId
 	logger.Info("Operator info",
 		"operatorId", operatorId,
-		"operatorAddr", c.OperatorAddress,
+		"operatorAddr", c.Address,
 		"operatorG1Pubkey", operator.blsKeypair.GetPubKeyG1(),
 		"operatorG2Pubkey", operator.blsKeypair.GetPubKeyG2(),
 	)
@@ -354,7 +344,7 @@ func (o *Operator) processTaskBatch(newBatch *tm.ContractLambadaCoprocessorTaskM
 	}
 
 	for _, t := range tasks {
-		cid, output, err := o.computeTaskOutput(t.Input)
+		cid, output, err := o.computeTaskOutput(t)
 		if err != nil {
 			cid, output = fakeOutput(len(t.Input))
 			o.log.Errorf("failed to request echo from lambada service -%s, faking result - %s, %s",
@@ -369,13 +359,17 @@ func (o *Operator) processTaskBatch(newBatch *tm.ContractLambadaCoprocessorTaskM
 	return nil
 }
 
-func (o *Operator) computeTaskOutput(input []byte) (string, []byte, error) {
+func (o *Operator) computeTaskOutput(t types.Task) (string, []byte, error) {
 	// Query lambada compute endpoint.
+	taskCID := string(t.ProgramId)
 	requestURL := fmt.Sprintf("http://%s/compute/%s",
-		os.Getenv("LAMBADA_ADDRESS"),
-		os.Getenv("LAMBADA_COMPUTE_CID"),
+		o.config.LambadaIpPortAddress,
+		taskCID,
 	)
-	resp, err := http.Post(requestURL, "application/octet-stream", bytes.NewBuffer(input))
+
+	o.log.Infof("sending request to lambada instance - %s", requestURL)
+
+	resp, err := http.Post(requestURL, "application/octet-stream", bytes.NewBuffer(t.Input))
 	if err != nil {
 		return "", nil, err
 	}
