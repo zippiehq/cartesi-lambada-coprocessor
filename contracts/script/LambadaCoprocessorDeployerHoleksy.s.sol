@@ -62,6 +62,9 @@ contract LambadaCoprocessorDeployerHolesky is Script, Utils {
     }
 
     struct DeploymentConfig {
+        uint32 taskResponseWindowBlock;
+        address taskGenerator;
+        address aggregator;
         address communityMultisig;
         address pauser;
         address churner;
@@ -75,43 +78,28 @@ contract LambadaCoprocessorDeployerHolesky is Script, Utils {
         uint96 minimumStake;
     }
 
-    // DEPLOYMENT CONSTANTS
-    uint32 public constant TASK_RESPONSE_WINDOW_BLOCK = 30;
-    // TODO: right now hardcoding these (this address is anvil's default address 9)
-    address public constant AGGREGATOR_ADDR =
-        0xa0Ee7A142d267C1f36714E4a8F75612F20a79720;
-    address public constant TASK_GENERATOR_ADDR =
-        0xa0Ee7A142d267C1f36714E4a8F75612F20a79720;
-
     function run() external {
         EigenLayerContracts memory eigenLayer;
         DeploymentConfig memory config;
 
         {
-            string memory EIGENLAYER = "EIGENLAYER_ADDRESSES_OUTPUT_PATH";
-            string memory defaultPath = "./script/input/parameters.holesky.json";
-            string memory deployedPath = vm.envOr(EIGENLAYER, defaultPath);
-            string memory deployedEigenLayerAddresses = vm.readFile(deployedPath);
-
-            bytes memory deployedStrategyManagerData = vm.parseJson(deployedEigenLayerAddresses, ".strategyManager");
-            address deployedStrategyManager = abi.decode(deployedStrategyManagerData, (address));
-            bytes memory deployedAvsDirectoryData = vm.parseJson(deployedEigenLayerAddresses, ".avsDirectory");
-            address deployedAvsDirectory = abi.decode(deployedAvsDirectoryData, (address));
-            bytes memory deployedDelegationManagerData = vm.parseJson(deployedEigenLayerAddresses, ".delegationManager");
-            address deployedDelegationManager = abi.decode(deployedDelegationManagerData, (address));
-
-            eigenLayer.avsDirectory = AVSDirectory(deployedAvsDirectory);
-            eigenLayer.strategyManager = StrategyManager(deployedStrategyManager);
-            eigenLayer.delegationManager = DelegationManager(deployedDelegationManager);
-            eigenLayer.wETH = abi.decode(vm.parseJson(deployedEigenLayerAddresses, ".wETH"), (address));
-            eigenLayer.wETH_Multiplier = abi.decode(vm.parseJson(deployedEigenLayerAddresses, ".wETH_Multiplier"), (uint96));
+            string memory configData = vm.readFile("./script/input/parameters.holesky.json");
+            
+            eigenLayer.strategyManager = StrategyManager(stdJson.readAddress(configData, ".strategyManager"));
+            eigenLayer.avsDirectory = AVSDirectory(stdJson.readAddress(configData, ".avsDirectory"));
+            eigenLayer.delegationManager = DelegationManager(stdJson.readAddress(configData, ".delegationManager"));
+            eigenLayer.wETH = stdJson.readAddress(configData, ".wETH");
+            eigenLayer.wETH_Multiplier = uint96(stdJson.readUint(configData, ".wETH_Multiplier"));
 
             {
-                config.communityMultisig = abi.decode(vm.parseJson(deployedEigenLayerAddresses, ".owner"), (address));
-                config.churner = abi.decode(vm.parseJson(deployedEigenLayerAddresses, ".churner"), (address));
-                config.ejector = abi.decode(vm.parseJson(deployedEigenLayerAddresses, ".ejector"), (address));
-                config.confirmer = abi.decode(vm.parseJson(deployedEigenLayerAddresses, ".confirmer"), (address));
-                config.whitelister = abi.decode(vm.parseJson(deployedEigenLayerAddresses, ".whitelister"), (address));
+                config.taskResponseWindowBlock = uint32(stdJson.readUint(configData, ".taskResponseWindowBlock"));
+                config.taskGenerator = stdJson.readAddress(configData, ".taskGenerator");
+                config.aggregator = stdJson.readAddress(configData, ".aggregator");
+                config.communityMultisig = stdJson.readAddress(configData, ".owner");
+                config.churner = stdJson.readAddress(configData, ".churner");
+                config.ejector = stdJson.readAddress(configData, ".ejector");
+                config.confirmer = stdJson.readAddress(configData, ".confirmer");
+                config.whitelister = stdJson.readAddress(configData, ".whitelister");
             }
         }
 
@@ -122,15 +110,16 @@ contract LambadaCoprocessorDeployerHolesky is Script, Utils {
         config.minimumStake = 0;
 
         TokenAndWeight[] memory strategyConfig = new TokenAndWeight[](1);
-        strategyConfig[0].token = eigenLayer.wETH;
-        strategyConfig[1].weight = eigenLayer.wETH_Multiplier;
-        
-        vm.startBroadcast();
+        {
+            strategyConfig[0].token = eigenLayer.wETH;
+            strategyConfig[0].weight = eigenLayer.wETH_Multiplier;
+        }
+
+       vm.startBroadcast();
 
         // deploy proxy admin for ability to upgrade proxy contracts
         ProxyAdmin proxyAdmin = new ProxyAdmin();
-        EmptyContract emptyContract = new EmptyContract();
-
+        
         // deploy pauser registry
         PauserRegistry pauserRegistry;
         {
@@ -139,8 +128,10 @@ contract LambadaCoprocessorDeployerHolesky is Script, Utils {
             pauserRegistry = new PauserRegistry(pausers, config.communityMultisig);
         }
 
-        LambadaCoprocessorContracts memory contracts;
+        EmptyContract emptyContract = new EmptyContract();
 
+        LambadaCoprocessorContracts memory contracts;
+        
         /**
          * First, deploy upgradeable proxy contracts that **will point** to the implementations. Since the implementation contracts are
          * not yet deployed, we give these proxies an empty contract as the initial implementation, to act as if they have no code.
@@ -148,6 +139,8 @@ contract LambadaCoprocessorDeployerHolesky is Script, Utils {
         contracts.indexRegistry = IIndexRegistry(
             address(new TransparentUpgradeableProxy(address(emptyContract), address(proxyAdmin), ""))
         );
+
+        /*
         contracts.stakeRegistry = IStakeRegistry(
             address(new TransparentUpgradeableProxy(address(emptyContract), address(proxyAdmin),""))
         );
@@ -241,7 +234,7 @@ contract LambadaCoprocessorDeployerHolesky is Script, Utils {
                     pauserRegistry,
                     0, // 0 initialPausedStatus means everything unpaused
                     quorumsOperatorSetParams,
-                    config.minimumStake,
+                    minimumStakeForQuourm,
                     strategyParams
                 )
             );
@@ -250,7 +243,7 @@ contract LambadaCoprocessorDeployerHolesky is Script, Utils {
         // Third, upgrade the proxy contracts to use the correct implementation contracts and initialize them.
         contracts.taskManagerImplementation = new LambadaCoprocessorTaskManager(
             contracts.registryCoordinator,
-            TASK_RESPONSE_WINDOW_BLOCK
+            config.taskResponseWindowBlock
         );
         proxyAdmin.upgradeAndCall(
             TransparentUpgradeableProxy(payable(address(contracts.taskManager))),
@@ -259,8 +252,8 @@ contract LambadaCoprocessorDeployerHolesky is Script, Utils {
                 LambadaCoprocessorTaskManager.initialize.selector,
                 pauserRegistry,
                 config.communityMultisig,
-                AGGREGATOR_ADDR,
-                TASK_GENERATOR_ADDR
+                config.aggregator,
+                config.taskGenerator
             )
         );
         
@@ -297,5 +290,6 @@ contract LambadaCoprocessorDeployerHolesky is Script, Utils {
         string memory addresses_output = vm.serializeAddress(addresses, "emptyContract", address(emptyContract));
         string memory finalJson = vm.serializeString(parent_object, addresses, addresses_output);
         vm.writeJson(finalJson, "./script/output/lambada_coprocessor_deployment_output.holesky.json");
+        */
     }
 }
