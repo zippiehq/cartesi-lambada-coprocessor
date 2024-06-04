@@ -30,7 +30,14 @@ import "forge-std/Script.sol";
 import "forge-std/StdJson.sol";
 import "forge-std/console.sol";
 
-// forge script script/LambadaCoprocessorDeployerHolesky.s.sol:LambadaCoprocessorDeployerHolesky --rpc-url $RPC_URL  --private-key $PRIVATE_KEY --broadcast -vvvv
+/*
+forge script script/LambadaCoprocessorDeployerHolesky.s.sol:LambadaCoprocessorDeployerHolesky --rpc-url $RPC_URL  --private-key $PRIVATE_KEY --broadcast -vvvv
+
+For local fork use 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 (anvil dev account).
+For real network - specifiy private key with of real account with non-zero balance.
+*/
+
+// 
 contract LambadaCoprocessorDeployerHolesky is Script, Utils {
     struct EigenLayerContracts {
         IAVSDirectory avsDirectory;
@@ -140,7 +147,6 @@ contract LambadaCoprocessorDeployerHolesky is Script, Utils {
             address(new TransparentUpgradeableProxy(address(emptyContract), address(proxyAdmin), ""))
         );
 
-        /*
         contracts.stakeRegistry = IStakeRegistry(
             address(new TransparentUpgradeableProxy(address(emptyContract), address(proxyAdmin),""))
         );
@@ -290,6 +296,5 @@ contract LambadaCoprocessorDeployerHolesky is Script, Utils {
         string memory addresses_output = vm.serializeAddress(addresses, "emptyContract", address(emptyContract));
         string memory finalJson = vm.serializeString(parent_object, addresses, addresses_output);
         vm.writeJson(finalJson, "./script/output/lambada_coprocessor_deployment_output.holesky.json");
-        */
     }
 }
