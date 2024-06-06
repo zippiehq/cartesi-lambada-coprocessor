@@ -71,6 +71,13 @@ func main() {
 				},
 			},
 		},
+		{
+			Name:    "setup-operator",
+			Aliases: []string{"s"},
+			Usage:   "setup operator either on real chain on local fork",
+			Action:  actions.SetupOperator,
+			Flags:   []cli.Flag{},
+		},
 	}
 
 	err := app.Run(os.Args)
