@@ -76,7 +76,33 @@ func main() {
 			Aliases: []string{"s"},
 			Usage:   "setup operator either on real chain on local fork",
 			Action:  actions.SetupOperator,
-			Flags:   []cli.Flag{},
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:     "bls-password",
+					Usage:    "operator bls password",
+					Required: true,
+				},
+				cli.StringFlag{
+					Name:     "ecdsa-password",
+					Usage:    "operator ecsda password",
+					Required: true,
+				},
+				cli.StringFlag{
+					Name:     "deployment-parameters",
+					Usage:    "path to deployment parameters file",
+					Required: true,
+				},
+				cli.Uint64Flag{
+					Name:     "deposit-amount-weth",
+					Usage:    "amount of weth to depoist into strategy",
+					Required: true,
+				},
+				cli.BoolFlag{
+					Name:     "devnet",
+					Usage:    "use in case of local anvil network",
+					Required: false,
+				},
+			},
 		},
 	}
 

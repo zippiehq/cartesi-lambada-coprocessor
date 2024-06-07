@@ -45,6 +45,7 @@ func SetupOperator(ctx *cli.Context) error {
 	}
 
 	// Init operator without starting it.
+	operatorConfig.RegisterOperatorOnStartup = false
 	os.Setenv("OPERATOR_BLS_KEY_PASSWORD", blsPwd)
 	os.Setenv("OPERATOR_ECDSA_KEY_PASSWORD", ecdsaPwd)
 	operator, err := operator.NewOperatorFromConfig(operatorConfig)
@@ -65,7 +66,7 @@ func SetupOperator(ctx *cli.Context) error {
 		// Obtain wETH
 		sendFundsCmd = fmt.Sprintf(
 			"cast send --private-key %s --value 10ether %s 'deposit()'",
-			ctx.String("private-key"), WETH_HOLESKY_ADDRESS,
+			fmt.Sprintf("0x%x", operatorEcdsaPrivKey.D), WETH_HOLESKY_ADDRESS,
 		)
 		if _, _, err := runCommand(sendFundsCmd); err != nil {
 			return fmt.Errorf("failed to obtain WETH for operator on devnet - %s", err)
