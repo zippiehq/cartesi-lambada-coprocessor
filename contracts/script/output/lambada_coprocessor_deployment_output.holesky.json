@@ -1,5 +1,5 @@
 {
-  "lambada coprocessor deployment output": {
+  "addresses": {
     "apkRegistry": "0xCa1D199b6F53Af7387ac543Af8e8a34455BBe5E0",
     "apkRegistryImpl": "0x1E3b98102e19D3a164d239BdD190913C2F02E756",
     "emptyContract": "0xCd7c00Ac6dc51e8dCc773971Ac9221cC582F3b1b",

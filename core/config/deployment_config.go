@@ -15,3 +15,12 @@ type AVSDeploymentParameters struct {
 	WETH                    string `json:"wETH"`
 	WETHMultiplier          uint64 `json:"wETH_Multiplier"`
 }
+
+type AVSDeployment struct {
+	Addresses AVSDeploymentAddresses `json:"addresses"`
+}
+
+type AVSDeploymentAddresses struct {
+	RegistryCoordinator    string `json:"registryCoordinator"`
+	OperatorStateRetriever string `json:"operatorStateRetriever"`
+}
