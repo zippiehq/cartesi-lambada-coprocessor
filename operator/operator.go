@@ -95,7 +95,7 @@ func NewOperatorFromConfig(c config.OperatorConfig) (*Operator, error) {
 	avsAndEigenMetrics := metrics.NewAvsAndEigenMetrics(AVS_NAME, eigenMetrics, reg)
 
 	// Setup IPFS Api
-	ipfsURL := fmt.Sprintf("http://%s", os.Getenv("IPFS_ADDRESS"))
+	ipfsURL := fmt.Sprintf("http://%s", os.Getenv(c.IPFSIpPortAddress))
 	ipfsApi, err := ipfs_api.NewURLApiWithClient(ipfsURL, http.DefaultClient)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create IPFS API client - %s", err)
@@ -372,8 +372,8 @@ func (o *Operator) processTaskBatch(newBatch *tm.ContractLambadaCoprocessorTaskM
 func (o *Operator) computeTaskOutput(input []byte) (string, []byte, error) {
 	// Query lambada compute endpoint.
 	requestURL := fmt.Sprintf("http://%s/compute/%s",
-		os.Getenv("LAMBADA_ADDRESS"),
-		os.Getenv("LAMBADA_COMPUTE_CID"),
+		o.config.LambadaIpPortAddress,
+		o.config.LambadaComputeCID,
 	)
 	resp, err := http.Post(requestURL, "application/octet-stream", bytes.NewBuffer(input))
 	if err != nil {

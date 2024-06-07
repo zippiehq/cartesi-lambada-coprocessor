@@ -17,4 +17,7 @@ type OperatorConfig struct {
 	EnableMetrics                 bool   `yaml:"enable_metrics"`
 	NodeApiIpPortAddress          string `yaml:"node_api_ip_port_address"`
 	EnableNodeApi                 bool   `yaml:"enable_node_api"`
+	IPFSIpPortAddress             string `yaml:"ipfs_ip_port_address"`
+	LambadaIpPortAddress          string `yaml:"lambada_ip_port_address"`
+	LambadaComputeCID             string `yaml:"lambada_compute_cid"`
 }
