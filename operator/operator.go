@@ -402,18 +402,10 @@ func (o *Operator) computeTaskOutput(input []byte) (string, []byte, error) {
 	if err != nil {
 		return "", nil, err
 	}
-
-	//!!!
-	fmt.Printf("boom1 - %s\n", requestURL)
-
 	outputNode, err := o.ipfsClient.Unixfs().Get(context.TODO(), outputPath)
 	if err != nil {
 		return "", nil, err
 	}
-
-	//!!!
-	fmt.Printf("boom2 - %s\n", requestURL)
-
 	outputFile := ipfs_files.ToFile(outputNode)
 	defer outputFile.Close()
 	output, err := io.ReadAll(outputFile)
