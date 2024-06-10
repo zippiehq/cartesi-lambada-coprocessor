@@ -95,7 +95,7 @@ func NewOperatorFromConfig(c config.OperatorConfig) (*Operator, error) {
 	avsAndEigenMetrics := metrics.NewAvsAndEigenMetrics(AVS_NAME, eigenMetrics, reg)
 
 	// Setup IPFS Api
-	ipfsURL := fmt.Sprintf("http://%s", os.Getenv(c.IPFSIpPortAddress))
+	ipfsURL := fmt.Sprintf("http://%s", c.IPFSIpPortAddress)
 	ipfsApi, err := ipfs_api.NewURLApiWithClient(ipfsURL, http.DefaultClient)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create IPFS API client - %s", err)
@@ -402,10 +402,18 @@ func (o *Operator) computeTaskOutput(input []byte) (string, []byte, error) {
 	if err != nil {
 		return "", nil, err
 	}
+
+	//!!!
+	fmt.Printf("boom1 - %s\n", requestURL)
+
 	outputNode, err := o.ipfsClient.Unixfs().Get(context.TODO(), outputPath)
 	if err != nil {
 		return "", nil, err
 	}
+
+	//!!!
+	fmt.Printf("boom2 - %s\n", requestURL)
+
 	outputFile := ipfs_files.ToFile(outputNode)
 	defer outputFile.Close()
 	output, err := io.ReadAll(outputFile)
