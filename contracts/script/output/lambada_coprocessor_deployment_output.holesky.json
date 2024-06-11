@@ -1,19 +1,19 @@
 {
   "addresses": {
-    "apkRegistry": "0xCa1D199b6F53Af7387ac543Af8e8a34455BBe5E0",
-    "apkRegistryImpl": "0x1E3b98102e19D3a164d239BdD190913C2F02E756",
-    "emptyContract": "0xCd7c00Ac6dc51e8dCc773971Ac9221cC582F3b1b",
-    "indexRegistry": "0x8ac87219a0F5639BC01b470F87BA2b26356CB2B9",
-    "indexRegistryImpl": "0x666D0c3da3dBc946D5128D06115bb4eed4595580",
-    "operatorStateRetriever": "0xB22C255250d74B0ADD1bfB936676D2a299BF48Bd",
-    "pauserRegistry": "0x4593ed9CbE6003e687e5e77368534bb04b162503",
-    "proxyAdmin": "0x975Ab64F4901Af5f0C96636deA0b9de3419D0c2F",
-    "registryCoordinator": "0xdF46e54aAadC1d55198A4a8b4674D7a4c927097A",
-    "registryCoordinatorImpl": "0x286B8DecD5ED79c962b2d8F4346CD97FF0E2C352",
-    "serviceManager": "0xFD2Cf3b56a73c75A7535fFe44EBABe7723c64719",
-    "serviceManagerImpl": "0x9338CA7d556248055f5751d85cDA7aD6eF254433",
-    "stakeRegistry": "0x94fFA1C7330845646CE9128450F8e6c3B5e44F86",
-    "stakeRegistryImpl": "0x1D8D70AD07C8E7E442AD78E4AC0A16f958Eba7F0",
-    "taskManager": "0xf5c4a909455C00B99A90d93b48736F3196DB5621"
+    "apkRegistry": "0x666D0c3da3dBc946D5128D06115bb4eed4595580",
+    "apkRegistryImpl": "0x4000F8820522AC96C4221b299876e3e53bCc8525",
+    "emptyContract": "0xf5c4a909455C00B99A90d93b48736F3196DB5621",
+    "indexRegistry": "0xFD2Cf3b56a73c75A7535fFe44EBABe7723c64719",
+    "indexRegistryImpl": "0x3fdc08D815cc4ED3B7F69Ee246716f2C8bCD6b07",
+    "operatorStateRetriever": "0x1E3b98102e19D3a164d239BdD190913C2F02E756",
+    "pauserRegistry": "0xdF46e54aAadC1d55198A4a8b4674D7a4c927097A",
+    "proxyAdmin": "0xCa1D199b6F53Af7387ac543Af8e8a34455BBe5E0",
+    "registryCoordinator": "0x742489F22807ebB4C36ca6cD95c3e1C044B7B6c8",
+    "registryCoordinatorImpl": "0x9c65f85425c619A6cB6D29fF8d57ef696323d188",
+    "serviceManager": "0xA9e6Bfa2BF53dE88FEb19761D9b2eE2e821bF1Bf",
+    "serviceManagerImpl": "0xA21DDc1f17dF41589BC6A5209292AED2dF61Cc94",
+    "stakeRegistry": "0xB22C255250d74B0ADD1bfB936676D2a299BF48Bd",
+    "stakeRegistryImpl": "0xb868Cc77A95a65F42611724AF05Aa2d3B6Ec05F2",
+    "taskManager": "0x1D8D70AD07C8E7E442AD78E4AC0A16f958Eba7F0"
   }
 }
