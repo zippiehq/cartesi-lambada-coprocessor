@@ -24,8 +24,8 @@ Update [set-deployment-constants.sh](set-deployment-constants.sh) with your own 
    `go run aggregator/cmd/main.go --config $AGGREGATOR_CONFIG --credible-squaring-deployment contracts/script/output/lambada_coprocessor_deployment_output.holesky.json --ecdsa-private-key $AGGREGATOR_PK`
 
 6. Generate bls and ecdsa keys for operator:
-   - `egnkey generate --key-type ecdsa --num-keys 1`
-   - `egnkey generate --key-type bls --num-keys 1`
+   `egnkey generate --key-type ecdsa --num-keys 1`
+   `egnkey generate --key-type bls --num-keys 1`
    
    Create [operator configruation file](../tests/nodes/operators/configs/operator1.yaml)
 
@@ -40,4 +40,3 @@ Update [set-deployment-constants.sh](set-deployment-constants.sh) with your own 
    `docker run -v ./nodes/operator-1/data:/data -v ./machine/data-preload:/data/preload -p 5001:5001 -p 30033:3033 -e COMPUTE_ONLY='1' ghcr.io/zippiehq/cartesi-lambada:amd64-latest`
    Run operator
    `OPERATOR_BLS_KEY_PASSWORD=$OPERATOR_1_BLS_PWD OPERATOR_ECDSA_KEY_PASSWORD=#OPERATOR_1_ECDSA_PWD go run operator/cmd/main.go --config=tests/nodes/operator-1/operator-1.yaml`
-`
