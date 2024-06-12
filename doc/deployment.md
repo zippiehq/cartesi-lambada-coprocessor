@@ -37,6 +37,6 @@ Update [set-deployment-constants.sh](set-deployment-constants.sh) with your own 
    `go run cli/main.go --config $OPERATOR_1_CONFIG setup-operator --bls-password $OPERATOR_1_BLS_PWD --ecdsa-password $OPERATOR_1_ECDSA_PWD --deployment-parameters contracts/script/input/parameters.holesky.json -deposit-amount-weth 5`
 
 8. Run operator machine
-   `docker run -v ./nodes/operator-1/data:/data -v ./machine/data-preload:/data/preload -p 5001:5001 -p 30033:3033 -e COMPUTE_ONLY='1' ghcr.io/zippiehq/cartesi-lambada:amd64-latest`
+   `docker run -v $OPERATOR_1_MACHINE_DATA:/data -v ./machine/data-preload:/data/preload -p 5001:5001 -p 3033:3033 -e COMPUTE_ONLY='1' ghcr.io/zippiehq/cartesi-lambada:amd64-latest`
    Run operator
-   `OPERATOR_BLS_KEY_PASSWORD=$OPERATOR_1_BLS_PWD OPERATOR_ECDSA_KEY_PASSWORD=$OPERATOR_1_ECDSA_PWD go run operator/cmd/main.go --config=tests/nodes/operator-1/operator-1.yaml`
+   `OPERATOR_BLS_KEY_PASSWORD=$OPERATOR_1_BLS_PWD OPERATOR_ECDSA_KEY_PASSWORD=$OPERATOR_1_ECDSA_PWD go run operator/cmd/main.go --config $OPERATOR_1_CONFIG`
