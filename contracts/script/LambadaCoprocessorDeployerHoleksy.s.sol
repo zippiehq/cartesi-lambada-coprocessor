@@ -279,7 +279,7 @@ contract LambadaCoprocessorDeployerHolesky is Script, Utils {
         string memory parent_object = "parent object";
         string memory addresses = "addresses";
         vm.serializeAddress(addresses, "taskManager", address(contracts.taskManager));
-        vm.serializeAddress(addresses, "serviceManagerImpl", address(contracts.taskManagerImplementation));
+        vm.serializeAddress(addresses, "taskManagerImpl", address(contracts.taskManagerImplementation));
         vm.serializeAddress(addresses, "serviceManager", address(contracts.serviceManager));
         vm.serializeAddress(addresses, "serviceManagerImpl", address(contracts.serviceManagerImplementation));
         vm.serializeAddress(addresses, "registryCoordinator", address(contracts.registryCoordinator));
