@@ -37,6 +37,7 @@ import (
 	sdktypes "github.com/Layr-Labs/eigensdk-go/types"
 
 	"github.com/zippiehq/cartesi-lambada-coprocessor/aggregator"
+	"github.com/zippiehq/cartesi-lambada-coprocessor/aggregator/types"
 	tm "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/LambadaCoprocessorTaskManager"
 	"github.com/zippiehq/cartesi-lambada-coprocessor/core"
 	"github.com/zippiehq/cartesi-lambada-coprocessor/core/chainio"
@@ -354,7 +355,7 @@ func (o *Operator) processTaskBatch(newBatch *tm.ContractLambadaCoprocessorTaskM
 	}
 
 	for _, t := range tasks {
-		cid, output, err := o.computeTaskOutput(t.Input)
+		cid, output, err := o.computeTaskOutput(t)
 		if err != nil {
 			cid, output = fakeOutput(len(t.Input))
 			o.log.Errorf("failed to request echo from lambada service -%s, faking result - %s, %s",
@@ -369,13 +370,17 @@ func (o *Operator) processTaskBatch(newBatch *tm.ContractLambadaCoprocessorTaskM
 	return nil
 }
 
-func (o *Operator) computeTaskOutput(input []byte) (string, []byte, error) {
+func (o *Operator) computeTaskOutput(t types.Task) (string, []byte, error) {
 	// Query lambada compute endpoint.
+	taskCID := string(t.ProgramId)
 	requestURL := fmt.Sprintf("http://%s/compute/%s",
 		o.config.LambadaIpPortAddress,
-		o.config.LambadaComputeCID,
+		taskCID,
 	)
-	resp, err := http.Post(requestURL, "application/octet-stream", bytes.NewBuffer(input))
+
+	o.log.Infof("sending request to lambada instance - %s", requestURL)
+
+	resp, err := http.Post(requestURL, "application/octet-stream", bytes.NewBuffer(t.Input))
 	if err != nil {
 		return "", nil, err
 	}
