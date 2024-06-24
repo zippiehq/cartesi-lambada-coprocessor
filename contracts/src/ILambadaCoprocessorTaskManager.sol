@@ -46,6 +46,14 @@ interface ILambadaCoprocessorTaskManager is IBLSSignatureChecker {
         bytes calldata quorumNumbers
     ) external;
 
+    function checkTask(
+	    TaskBatch calldata batch,
+        Task calldata task,
+        bytes32[] calldata taskProof,
+        TaskResponse calldata taskResponse,
+        NonSignerStakesAndSignature memory nonSignerStakesAndSignature
+    ) view external returns (bytes32, bool);
+
     function respondTask(
         TaskBatch calldata batch,
         Task calldata task,

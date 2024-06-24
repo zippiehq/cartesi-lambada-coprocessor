@@ -91,14 +91,14 @@ contract LambadaCoprocessorTaskManager is
 
         emit TaskBatchRegistered(newBatch);
     }
-
-    function respondTask(
-        TaskBatch calldata batch,
+	
+    function checkTask(
+	    TaskBatch calldata batch,
         Task calldata task,
         bytes32[] calldata taskProof,
         TaskResponse calldata taskResponse,
         NonSignerStakesAndSignature memory nonSignerStakesAndSignature
-    ) external onlyAggregator {
+    ) view public returns (bytes32, bool) { 
         bytes32 responseMetaHash = verifyBatchTask(batch, task, taskProof);
 
         // Check the BLS signature.
@@ -123,7 +123,20 @@ contract LambadaCoprocessorTaskManager is
                 "Signatories do not own at least threshold percentage of a quorum"
             );
         }
-        
+        return (responseMetaHash, true);
+    }
+
+    function respondTask(
+        TaskBatch calldata batch,
+        Task calldata task,
+        bytes32[] calldata taskProof,
+        TaskResponse calldata taskResponse,
+        NonSignerStakesAndSignature memory nonSignerStakesAndSignature
+    ) external onlyAggregator {
+        (bytes32 responseMetaHash, bool valid) = checkTask(batch, task, taskProof, taskResponse, nonSignerStakesAndSignature);
+
+        require(valid, "Task check failed");
+
         // Update task responses.
         allTaskResponses[responseMetaHash] = true;
 
@@ -134,7 +147,7 @@ contract LambadaCoprocessorTaskManager is
         TaskBatch calldata batch,
         Task calldata task,
         bytes32[] calldata taskProof
-    ) internal returns (bytes32) {
+    ) internal view returns (bytes32) {
          // Check that batch has been registered.
         bytes32 batchHash = keccak256(abi.encode(batch));
         require(
