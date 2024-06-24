@@ -1,0 +1,15 @@
+{
+  "strategyManager": "0xdfB5f6CE42aAA7830E94ECFCcAd411beF4d4D5b6",
+  "avsDirectory": "0x055733000064333CaDDbC92763c58BF0192fFeBf",
+  "delegationManager": "0xA44151489861Fe9e3055d95adC98FbD462B948e7",
+  "wETH": "0x80528D6e9A2BAbFc766965E0E26d5aB08D9CFaF9",
+  "wETH_Multiplier": 1000000000000000000,
+  "taskResponseWindowBlock": 30,
+  "taskGenerator": "0x2e28693df5863e35eb3bb6135dd32d43f5debb21",
+  "aggregator": "0x2e28693df5863e35eb3bb6135dd32d43f5debb21",
+  "owner": "33c9202f93494a8d2713086af6d65ddafb03d9d6",
+  "churner": "33c9202f93494a8d2713086af6d65ddafb03d9d6",
+  "ejector": "33c9202f93494a8d2713086af6d65ddafb03d9d6",
+  "confirmer": "33c9202f93494a8d2713086af6d65ddafb03d9d6",
+  "whitelister": "33c9202f93494a8d2713086af6d65ddafb03d9d6"
+}
