@@ -135,7 +135,7 @@ func NewOperatorFromConfig(c config.OperatorConfig) (*Operator, error) {
 	if !ok {
 		logger.Warnf("OPERATOR_BLS_KEY_PASSWORD env var not set. using empty string")
 	}
-	blsKeyPair, err := bls.ReadPrivateKeyFromFile(c.BlsPrivateKeyStorePath, blsKeyPassword)
+	blsKeyPair, err := bls.ReadPrivateKeyFromFile(c.BLSPrivateKeyStorePath, blsKeyPassword)
 	if err != nil {
 		logger.Errorf("Cannot parse bls private key", "err", err)
 		return nil, err
@@ -155,7 +155,7 @@ func NewOperatorFromConfig(c config.OperatorConfig) (*Operator, error) {
 	}
 
 	signerV2, _, err := signerv2.SignerFromConfig(signerv2.Config{
-		KeystorePath: c.EcdsaPrivateKeyStorePath,
+		KeystorePath: c.ECDSAPrivateKeyStorePath,
 		Password:     ecdsaKeyPassword,
 	}, chainId)
 	if err != nil {
@@ -164,13 +164,13 @@ func NewOperatorFromConfig(c config.OperatorConfig) (*Operator, error) {
 	chainioConfig := clients.BuildAllConfig{
 		EthHttpUrl:                 c.EthRpcUrl,
 		EthWsUrl:                   c.EthWsUrl,
-		RegistryCoordinatorAddr:    c.AVSRegistryCoordinatorAddress,
+		RegistryCoordinatorAddr:    c.RegistryCoordinatorAddress,
 		OperatorStateRetrieverAddr: c.OperatorStateRetrieverAddress,
 		AvsName:                    AVS_NAME,
 		PromMetricsIpPortAddress:   c.EigenMetricsIpPortAddress,
 	}
 	operatorEcdsaPrivateKey, err := sdkecdsa.ReadKey(
-		c.EcdsaPrivateKeyStorePath,
+		c.ECDSAPrivateKeyStorePath,
 		ecdsaKeyPassword,
 	)
 	if err != nil {
@@ -180,14 +180,14 @@ func NewOperatorFromConfig(c config.OperatorConfig) (*Operator, error) {
 	if err != nil {
 		panic(err)
 	}
-	skWallet, err := wallet.NewPrivateKeyWallet(ethRpcClient, signerV2, common.HexToAddress(c.OperatorAddress), logger)
+	skWallet, err := wallet.NewPrivateKeyWallet(ethRpcClient, signerV2, common.HexToAddress(c.Address), logger)
 	if err != nil {
 		return nil, err
 	}
-	txMgr := txmgr.NewSimpleTxManager(skWallet, ethRpcClient, logger, common.HexToAddress(c.OperatorAddress))
+	txMgr := txmgr.NewSimpleTxManager(skWallet, ethRpcClient, logger, common.HexToAddress(c.Address))
 
 	avsWriter, err := chainio.BuildAvsWriter(
-		txMgr, common.HexToAddress(c.AVSRegistryCoordinatorAddress),
+		txMgr, common.HexToAddress(c.RegistryCoordinatorAddress),
 		common.HexToAddress(c.OperatorStateRetrieverAddress), ethRpcClient, logger,
 	)
 	if err != nil {
@@ -196,14 +196,14 @@ func NewOperatorFromConfig(c config.OperatorConfig) (*Operator, error) {
 	}
 
 	avsReader, err := chainio.BuildAvsReader(
-		common.HexToAddress(c.AVSRegistryCoordinatorAddress),
+		common.HexToAddress(c.RegistryCoordinatorAddress),
 		common.HexToAddress(c.OperatorStateRetrieverAddress),
 		ethRpcClient, logger)
 	if err != nil {
 		logger.Error("Cannot create AvsReader", "err", err)
 		return nil, err
 	}
-	avsSubscriber, err := chainio.BuildAvsSubscriber(common.HexToAddress(c.AVSRegistryCoordinatorAddress),
+	avsSubscriber, err := chainio.BuildAvsSubscriber(common.HexToAddress(c.RegistryCoordinatorAddress),
 		common.HexToAddress(c.OperatorStateRetrieverAddress), ethWsClient, logger,
 	)
 	if err != nil {
@@ -218,7 +218,7 @@ func NewOperatorFromConfig(c config.OperatorConfig) (*Operator, error) {
 	}
 	economicMetricsCollector := economic.NewCollector(
 		sdkClients.ElChainReader, sdkClients.AvsRegistryChainReader,
-		AVS_NAME, logger, common.HexToAddress(c.OperatorAddress), quorumNames)
+		AVS_NAME, logger, common.HexToAddress(c.Address), quorumNames)
 	reg.MustRegister(economicMetricsCollector)
 
 	aggregatorRpcClient, err := NewAggregatorRpcClient(c.AggregatorServerIpPortAddress, logger, avsAndEigenMetrics)
@@ -230,7 +230,7 @@ func NewOperatorFromConfig(c config.OperatorConfig) (*Operator, error) {
 	operator := &Operator{
 		config: c,
 
-		operatorAddr: common.HexToAddress(c.OperatorAddress),
+		operatorAddr: common.HexToAddress(c.Address),
 		operatorId:   [32]byte{0}, // this is set below
 		blsKeypair:   blsKeyPair,
 
@@ -251,17 +251,6 @@ func NewOperatorFromConfig(c config.OperatorConfig) (*Operator, error) {
 		newBatchChan: make(chan *tm.ContractLambadaCoprocessorTaskManagerTaskBatchRegistered),
 	}
 
-	if c.RegisterOperatorOnStartup {
-		operatorEcdsaPrivateKey, err := sdkecdsa.ReadKey(
-			c.EcdsaPrivateKeyStorePath,
-			ecdsaKeyPassword,
-		)
-		if err != nil {
-			return nil, err
-		}
-		operator.registerOperatorOnStartup(operatorEcdsaPrivateKey, common.HexToAddress(c.TokenStrategyAddr))
-	}
-
 	// OperatorId is set in contract during registration so we get it after registering operator.
 	operatorId, err := sdkClients.AvsRegistryChainReader.GetOperatorId(&bind.CallOpts{}, operator.operatorAddr)
 	if err != nil {
@@ -271,7 +260,7 @@ func NewOperatorFromConfig(c config.OperatorConfig) (*Operator, error) {
 	operator.operatorId = operatorId
 	logger.Info("Operator info",
 		"operatorId", operatorId,
-		"operatorAddr", c.OperatorAddress,
+		"operatorAddr", c.Address,
 		"operatorG1Pubkey", operator.blsKeypair.GetPubKeyG1(),
 		"operatorG2Pubkey", operator.blsKeypair.GetPubKeyG2(),
 	)

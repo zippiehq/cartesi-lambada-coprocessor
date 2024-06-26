@@ -22,33 +22,6 @@ import (
 	regcoord "github.com/Layr-Labs/eigensdk-go/contracts/bindings/RegistryCoordinator"
 )
 
-func (o *Operator) registerOperatorOnStartup(
-	operatorEcdsaPrivateKey *ecdsa.PrivateKey,
-	mockTokenStrategyAddr common.Address,
-) {
-	err := o.RegisterOperatorWithEigenlayer()
-	if err != nil {
-		// This error might only be that the operator was already registered with eigenlayer, so we don't want to fatal
-		o.log.Error("Error registering operator with eigenlayer", "err", err)
-	} else {
-		o.log.Infof("Registered operator with eigenlayer")
-	}
-
-	// TODO(samlaf): shouldn't hardcode number here
-	amount := big.NewInt(1000)
-	err = o.DepositIntoStrategy(mockTokenStrategyAddr, amount)
-	if err != nil {
-		o.log.Fatal("Error depositing into strategy", "err", err)
-	}
-	o.log.Infof("Deposited %s into strategy %s", amount, mockTokenStrategyAddr)
-
-	err = o.RegisterOperatorWithAvs(operatorEcdsaPrivateKey)
-	if err != nil {
-		o.log.Fatal("Error registering operator with avs", "err", err)
-	}
-	o.log.Infof("Registered operator with avs")
-}
-
 func (o *Operator) RegisterOperatorWithEigenlayer() error {
 	op := eigenSdkTypes.Operator{
 		Address:                 o.operatorAddr.String(),

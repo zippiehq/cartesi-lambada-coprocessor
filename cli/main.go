@@ -64,6 +64,11 @@ func main() {
 			Usage:   "generate docker compose with specified number of operator nodes",
 			Action:  actions.GenerateDockerCompose,
 			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:     "network",
+					Usage:    "devent or holesky",
+					Required: true,
+				},
 				cli.UintFlag{
 					Name:     "operators",
 					Usage:    "number of operators nodes",
@@ -74,7 +79,7 @@ func main() {
 		{
 			Name:    "setup-operator",
 			Aliases: []string{"s"},
-			Usage:   "setup operator either on real chain on local fork",
+			Usage:   "full registration and strategy deposit",
 			Action:  actions.SetupOperator,
 			Flags: []cli.Flag{
 				cli.StringFlag{
@@ -88,19 +93,14 @@ func main() {
 					Required: true,
 				},
 				cli.StringFlag{
-					Name:     "deployment-parameters",
-					Usage:    "path to deployment parameters file",
+					Name:     "strategy-address",
+					Usage:    "address of strategy to deposit into",
 					Required: true,
 				},
 				cli.Uint64Flag{
-					Name:     "deposit-amount-weth",
-					Usage:    "amount of weth to depoist into strategy",
+					Name:     "strategy-deposit-amount",
+					Usage:    "token amount to deposit into specified strategy",
 					Required: true,
-				},
-				cli.BoolFlag{
-					Name:     "devnet",
-					Usage:    "use in case of local anvil network",
-					Required: false,
 				},
 			},
 		},

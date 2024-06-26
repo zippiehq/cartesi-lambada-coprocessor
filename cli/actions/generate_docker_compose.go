@@ -1,35 +1,51 @@
 package actions
 
 import (
-	"bufio"
-	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
-	"math/big"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"regexp"
-	"strconv"
-	"strings"
 
-	"github.com/ethereum/go-ethereum/common"
+	sdkutils "github.com/Layr-Labs/eigensdk-go/utils"
+	"github.com/zippiehq/cartesi-lambada-coprocessor/core/config"
+
 	"github.com/nikolalohinski/gonja"
 	cp "github.com/otiai10/copy"
 	"github.com/urfave/cli"
-
-	sdkutils "github.com/Layr-Labs/eigensdk-go/utils"
-
-	"github.com/zippiehq/cartesi-lambada-coprocessor/core/config"
-	"github.com/zippiehq/cartesi-lambada-coprocessor/operator"
 )
 
+const DEVNET = "devent"
+const HOLESKY = "holesky"
+
+const ANVIL_DEV_ACCOUNT_PRIVATE_KEY = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
+
 func GenerateDockerCompose(ctx *cli.Context) error {
+	network := ctx.String("network")
+	if network != DEVNET && network != HOLESKY {
+		return errors.New("invalid network type")
+	}
+
 	operatorCount := ctx.Uint("operators")
 	if operatorCount == 0 {
 		return errors.New("number of operators must be greater then 0")
+	}
+
+	// Read deployment parameters and output
+	var deploymentParamPath, deploymentOuputPath string
+	if network == DEVNET {
+		deploymentParamPath = "./contracts/script/input/deployment_parameters_devnet.json"
+		deploymentOuputPath = "./contracts/script/input/lambada_coprocessor_deployment_output_devent.json"
+	} else {
+		deploymentParamPath = "./contracts/script/input/deployment_parameters_holesky.json"
+		deploymentOuputPath = "./contracts/script/input/lambada_coprocessor_deployment_output_holesky.json"
+	}
+	var deploymentParams config.AVSDeploymentParameters
+	if err := sdkutils.ReadJsonConfig(deploymentParamPath, &deploymentParams); err != nil {
+		return fmt.Errorf("failed to read deployment parameters - %s", err)
+	}
+	var deploymentOutput config.AVSDeployment
+	if err := sdkutils.ReadJsonConfig(deploymentOuputPath, &deploymentOutput); err != nil {
+		return fmt.Errorf("failed to read deployment output - %s", err)
 	}
 
 	// Clear "operators" directory
@@ -40,92 +56,52 @@ func GenerateDockerCompose(ctx *cli.Context) error {
 			return err
 		}
 	}
-	if err := os.Mkdir("./tests/nodes/operators", os.ModePerm); err != nil {
-		return err
-	}
-	if err := os.Mkdir("./tests/nodes/operators/keys", os.ModePerm); err != nil {
-		return err
-	}
-	if err := os.Mkdir("./tests/nodes/operators/configs", os.ModePerm); err != nil {
-		return err
-	}
-	if err := os.Mkdir("./tests/nodes/operators/data", os.ModePerm); err != nil {
-		return err
-	}
 
-	// Generate BLS and ecdsa keys.
-	egnkeyCmd := fmt.Sprintf(
-		"cd ./tests/nodes/operators/keys && egnkey generate --key-type both --num-keys %d",
-		operatorCount,
-	)
-	if _, _, err := runCommand(egnkeyCmd); err != nil {
-		return err
-	}
-
-	// Read BLS and ECDSA keys.
-	var blsKeyDir, ecdsaKeyDir string
-	blsRegex, err := regexp.Compile("bls-")
-	if err != nil {
-		return err
-	}
-	ecdsaRegex, err := regexp.Compile("ecdsa-")
-	if err != nil {
-		return err
-	}
-	if err = filepath.Walk("./tests/nodes/operators/keys", func(path string, info os.FileInfo, err error) error {
-		if blsRegex.MatchString(info.Name()) {
-			blsKeyDir = filepath.Join("./tests/nodes/operators/keys", info.Name())
-		}
-		if ecdsaRegex.MatchString(info.Name()) {
-			ecdsaKeyDir = filepath.Join("./tests/nodes/operators/keys", info.Name())
-		}
-		return nil
-	}); err != nil {
-		return err
-	}
-	blsPwds, _, _, blsKeyPaths, err := readKeyDir(blsKeyDir)
-	if err != nil {
-		return err
-	}
-	ecdsaPwds, _, ecdsaKeys, ecdsaKeyPaths, err := readKeyDir(ecdsaKeyDir)
-	if err != nil {
-		return err
-	}
-	ecdsaAddrs := make([]string, len(ecdsaKeys))
-	for i, keyData := range ecdsaKeys {
-		key := struct {
-			Address string `json:"address"`
-		}{}
-
-		if err := json.Unmarshal(keyData, &key); err != nil {
+	// Create directory for each operator
+	operatorDirs := make([]string, int(operatorCount))
+	for i := range operatorDirs {
+		operatorDirs[i] = fmt.Sprintf("./tests/nodes/operators/%d", i)
+		if err := os.Mkdir(operatorDirs[i], os.ModePerm); err != nil {
 			return err
 		}
-		ecdsaAddrs[i] = fmt.Sprintf("0x%s", key.Address)
 	}
 
-	// Generate configuration files for each operator.
-	configPaths := make([]string, operatorCount)
+	// Generate BLS and ECDSA keys
+	blsKeys := make([]OperatorBLSKey, int(operatorCount))
+	ecdsaKeys := make([]OperatorECDSAKey, int(operatorCount))
 	for i := 0; i < int(operatorCount); i++ {
-		configPaths[i] = filepath.Join(
-			"./tests/nodes/operators/configs",
-			fmt.Sprintf("operator%d.yaml", i+1),
-		)
+		var err error
+		if blsKeys[i], err = GenerateBLSKey(operatorDirs[i]); err != nil {
+			return err
+		}
+		if ecdsaKeys[i], err = GenerateECDSAKey(operatorDirs[i]); err != nil {
+			return err
+		}
+	}
+
+	// Generate configuration files for each operator
+	configs := make([]string, operatorCount)
+	for i := range configs {
+		configs[i] = filepath.Join(operatorDirs[i], "config.yaml")
 		tmpl, err := gonja.FromFile("./tests/jinja/operator-docker-compose.j2")
 		if err != nil {
 			return err
 		}
-		if err != nil {
-			return err
-		}
+		machine := fmt.Sprintf("machine%d", i)
 		config, err := tmpl.Execute(gonja.Context{
-			"address":        ecdsaAddrs[i],
-			"ecdsa_key_path": ecdsaKeyPaths[i],
-			"bls_key_path":   blsKeyPaths[i],
+
+			"address":                          ecdsaKeys[i].Address,
+			"registry_coordinator_address":     deploymentOutput.Addresses.RegistryCoordinator,
+			"operator_state_retriever_address": deploymentOutput.Addresses.OperatorStateRetriever,
+			"ecdsa_private_key_store_path":     ecdsaKeys[i].FilePath,
+			"bls_private_key_store_path":       blsKeys[i].FilePath,
+			"ipfs_ip_port_address":             fmt.Sprintf("%s:5001", machine),
+			"lambada_ip_port_address":          fmt.Sprintf("%s:3033", machine),
 		})
 		if err != nil {
 			return err
 		}
-		configFile, err := os.Create(configPaths[i])
+		configFile, err := os.Create(configs[i])
 		if err != nil {
 			return err
 		}
@@ -135,52 +111,57 @@ func GenerateDockerCompose(ctx *cli.Context) error {
 		}
 	}
 
-	// Generate directories for docker volume mount.
-	dataPaths := make([]string, operatorCount)
-	for i := 0; i < int(operatorCount); i++ {
-		dataPaths[i] = fmt.Sprintf("./tests/nodes/operators/data/operator%d", i+1)
-		if err := cp.Copy("./machine/data", dataPaths[i]); err != nil {
+	// Generate startup scripts
+	runScripts := make([]string, operatorCount)
+	for i := range runScripts {
+		runScripts[i] = filepath.Join(operatorDirs[i], "run.sh")
+		tmpl, err := gonja.FromFile("./tests/jinja/run-operator.j2")
+		if err != nil {
+			return err
+		}
+		script, err := tmpl.Execute(gonja.Context{
+			"deployment_parameters":   deploymentParams,
+			"network":                 network,
+			"funder_private_key":      ANVIL_DEV_ACCOUNT_PRIVATE_KEY,
+			"operator_private_key":    ecdsaKeys[i].PrivateKey,
+			"operator_address":        ecdsaKeys[i].Address,
+			"operator_bls_password":   blsKeys[i].Password,
+			"operator_ecdsa_password": ecdsaKeys[i].Password,
+			"operator_config":         configs[i],
+			"strategy_address": ?,
+			"strategy_deposit_amount": ?,
+		})
+		if err != nil {
+			return err
+		}
+		scriptFile, err := os.Create(runScripts[i])
+		if err != nil {
+			return err
+		}
+		defer scriptFile.Close()
+		if _, err = scriptFile.WriteString(script); err != nil {
 			return err
 		}
 	}
 
-	// Update Anvil snapshot.
-
-	// TODO: start anvil and terminate it gracefully?
-
-	// Send eth to operator accounts.
-	devAccount := "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
-	for i := 0; i < int(operatorCount); i++ {
-		sendFundsCmd := fmt.Sprintf(
-			"cast send %s --value 10ether --private-key %s",
-			ecdsaAddrs[i], devAccount,
-		)
-		if _, _, err := runCommand(sendFundsCmd); err != nil {
+	// Generate directories for machine data
+	machineData := make([]string, operatorCount)
+	for i := range machineData {
+		machineData[i] = filepath.Join(operatorDirs[i], "data")
+		if err := cp.Copy("./machine/data", machineData[i]); err != nil {
 			return err
 		}
 	}
 
-	// Operator must deposit into stragtegy, otherwise registration will fail.
-	for i, path := range configPaths {
-		if err := depositIntoStrategy(path, blsPwds[i], ecdsaPwds[i]); err != nil {
-			return err
-		}
-	}
-
-	// Docker compose.
+	// Docker compose file
 	operators := make([]map[string]interface{}, operatorCount)
 	for i := 1; i <= int(operatorCount); i++ {
 		machine := fmt.Sprintf("machine%d", i)
-
 		operators[i-1] = map[string]interface{}{
-			"name":               fmt.Sprintf("operator%d", i),
-			"machine":            machine,
-			"ipfs_address":       fmt.Sprintf("%s:5001", machine),
-			"lambada_address":    fmt.Sprintf("%s:3033", machine),
-			"config_path":        configPaths[i-1],
-			"data_path":          dataPaths[i-1],
-			"bls_key_password":   blsPwds[i-1],
-			"ecdsa_key_password": ecdsaPwds[i-1],
+			"name":         fmt.Sprintf("operator%d", i),
+			"machine":      machine,
+			"machine_data": machineData[i-1],
+			"run_script":   runScripts[i-1],
 		}
 	}
 	cofingTmpl, err := gonja.FromFile("./tests/jinja/docker-compose.j2")
@@ -200,114 +181,6 @@ func GenerateDockerCompose(ctx *cli.Context) error {
 	}
 	defer composeFile.Close()
 	if _, err = composeFile.WriteString(compose); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func readKeyDir(dirPath string) ([]string, []string, [][]byte, []string, error) {
-	pwds, err := readFileLines(filepath.Join(dirPath, "password.txt"))
-	if err != nil {
-		return nil, nil, nil, nil, err
-	}
-
-	privKeys, err := readFileLines(filepath.Join(dirPath, "private_key_hex.txt"))
-	if err != nil {
-		return nil, nil, nil, nil, err
-	}
-
-	keys := make([][]byte, len(pwds))
-	keyPaths := make([]string, len(keys))
-	if err = filepath.Walk(
-		filepath.Join(dirPath, "keys"),
-		func(path string, info os.FileInfo, err error) error {
-			if info.IsDir() {
-				return nil
-			}
-
-			file, err := os.Open(path)
-			if err != nil {
-				return err
-			}
-			defer file.Close()
-
-			key, err := io.ReadAll(file)
-			if err != nil {
-				return err
-			}
-
-			keyIdxStr := strings.Split(info.Name(), ".")[0]
-			keyIdx, err := strconv.ParseInt(keyIdxStr, 0, 32)
-			if err != nil {
-				return err
-			}
-			keys[keyIdx-1] = key
-			keyPaths[keyIdx-1] = path
-
-			return nil
-		}); err != nil {
-		return nil, nil, nil, nil, err
-	}
-
-	return pwds, privKeys, keys, keyPaths, nil
-}
-
-func readFileLines(filePath string) ([]string, error) {
-	file, err := os.Open(filePath)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-
-	lines := make([]string, 0)
-	reader := bufio.NewReader(file)
-	for {
-		line, err := reader.ReadBytes('\n')
-		if err != nil {
-			if err == io.EOF {
-				return lines, nil
-			} else {
-				return nil, err
-			}
-		}
-		lines = append(lines, string(line[:len(line)-1]))
-	}
-}
-
-func runCommand(command string) (string, string, error) {
-	var stdout bytes.Buffer
-	var stderr bytes.Buffer
-	cmd := exec.Command("bash", "-c", command)
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-	err := cmd.Run()
-	return stdout.String(), stderr.String(), err
-}
-
-func depositIntoStrategy(configPath, blsPwd, ecdsaPwd string) error {
-	nodeConfig := config.OperatorConfig{}
-	err := sdkutils.ReadYamlConfig(configPath, &nodeConfig)
-	if err != nil {
-		return err
-	}
-	nodeConfig.EthRpcUrl = "http://127.0.0.1:8545"
-	nodeConfig.EthWsUrl = "ws://127.0.0.1:8545"
-	// need to make sure we don't register the operator on startup
-	// when using the cli commands to register the operator.
-	nodeConfig.RegisterOperatorOnStartup = false
-
-	os.Setenv("OPERATOR_BLS_KEY_PASSWORD", blsPwd)
-	os.Setenv("OPERATOR_ECDSA_KEY_PASSWORD", ecdsaPwd)
-
-	operator, err := operator.NewOperatorFromConfig(nodeConfig)
-	if err != nil {
-		return err
-	}
-
-	strategyAddr := common.HexToAddress("0x09635F643e140090A9A8Dcd712eD6285858ceBef")
-	err = operator.DepositIntoStrategy(strategyAddr, big.NewInt(10))
-	if err != nil {
 		return err
 	}
 

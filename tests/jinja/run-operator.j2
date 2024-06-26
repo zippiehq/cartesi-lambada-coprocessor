@@ -1,0 +1,17 @@
+#!/bin/bash
+
+cast send --private-key {{ funder_private_key }} --value 20ether {{ operator_address }}
+
+{% if network == 'holesky' %}
+cast send --private-key {{ operator_private_key }} --value 10ether 0x94373a4919B3240D86eA41593D5eBa789FEF3848 'deposit()'
+{% endif %}
+
+cli --config {{ operator_config }} setup-operator \
+    --bls-password {{ operator_bls_password }} \
+    --ecdsa-password {{ operator_ecdsa_password }} \
+    --strategy-address {{ strategy_address }} \
+    --strategy-deposit-amount {{ strategy_deposit_amount }}
+
+OPERATOR_BLS_KEY_PASSWORD={{ operator_bls_password }}
+OPERATOR_ECDSA_KEY_PASSWORD=$OPERATOR_1_ECDSA_PW={{ operator_ecdsa_password }}
+operator --config {{ operator_config }}
