@@ -10,6 +10,9 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"reflect"
+	"encoding/binary"
+	"math/big"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -78,6 +81,11 @@ type Operator struct {
 
 	// receive new tasks in this chan (typically from listening to onchain event)
 	newBatchChan chan *tm.ContractLambadaCoprocessorTaskManagerTaskBatchRegistered
+}
+
+type BincodedCompute struct {
+    Metadata map[string][]byte
+    Payload  []byte
 }
 
 func NewOperatorFromConfig(c config.OperatorConfig) (*Operator, error) {
@@ -344,7 +352,7 @@ func (o *Operator) processTaskBatch(newBatch *tm.ContractLambadaCoprocessorTaskM
 	}
 
 	for _, t := range tasks {
-		cid, output, err := o.computeTaskOutput(t)
+		cid, output, err := o.computeTaskOutput(t, newBatch.Batch.BlockNumber)
 		if err != nil {
 			cid, output = fakeOutput(len(t.Input))
 			o.log.Errorf("failed to request echo from lambada service -%s, faking result - %s, %s",
@@ -359,13 +367,32 @@ func (o *Operator) processTaskBatch(newBatch *tm.ContractLambadaCoprocessorTaskM
 	return nil
 }
 
-func (o *Operator) computeTaskOutput(t types.Task) (string, []byte, error) {
+func (o *Operator) computeTaskOutput(t types.Task, blockNumber uint32) (string, []byte, error) {
 	// Query lambada compute endpoint.
 	taskCID := string(t.ProgramId)
 	requestURL := fmt.Sprintf("http://%s/compute/%s",
 		o.config.LambadaIpPortAddress,
 		taskCID,
 	)
+
+	blockNumberBytes := make([]byte, 8)
+	binary.BigEndian.PutUint64(blockNumberBytes, uint64(blockNumber))
+
+	curBlock, err := o.ethClient.BlockByNumber(context.Background(), big.NewInt(int64(blockNumber)))
+	if err != nil {
+		o.log.Errorf("Unable to get current block")
+		return "", nil, err
+	}
+
+	bincodedCompute := BincodedCompute{
+		Metadata: map[string][]byte{"sequencer": []byte("coprocessor"), "coprocessor-batch-block-number": blockNumberBytes, "coprocessor-batch-block-hash": curBlock.Hash().Bytes()},
+		Payload: t.Input,
+	}
+
+	input, err := bincode.SerializeData(reflect.ValueOf(bincodedCompute))
+	if err != nil {
+		return "", nil, err
+	}
 
 	o.log.Infof("sending request to lambada instance - %s", requestURL)
 
