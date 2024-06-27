@@ -47,7 +47,7 @@ contract LambadaCoprocessorDeployerDevnet is LambadaCoprocessorDeployer {
             auxContracts[1].name = "erc20MockStrategy";
             auxContracts[1].addr = erc20MockStrategy;
         }
-        string memory outputPath = "./script/output/lambada_coprocessor_deployment_output_holesky.json";
+        string memory outputPath = "./script/output/lambada_coprocessor_deployment_output_devnet.json";
         writeDeploymentOutput(contracts, auxContracts, outputPath);
     }
 
