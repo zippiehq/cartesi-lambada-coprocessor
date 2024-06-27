@@ -14,22 +14,21 @@ contract LambadaCoprocessorDeployerHolesky is LambadaCoprocessorDeployer {
         (EigenLayerContracts memory eigenLayer, DeploymentConfig memory config)
              = readDeploymentParameters(paramFile);
 
+        
+
+        vm.startBroadcast();
+
         StrategyConfig[] memory strategyConfig = new StrategyConfig[](1);
         {
             strategyConfig[0].strategy = eigenLayer.wETH;
             strategyConfig[0].weight = eigenLayer.wETH_Multiplier;
         }
-
-        vm.startBroadcast();
-
-        string calldata outputPath = "./script/output/lambada_coprocessor_deployment_output_holesky.json";
-        deployAVS(
-            eigenLayer,
-            config,
-            strategyConfig,
-            outputPath
-        );
-
+        LambadaCoprocessorContracts memory contracts = deployAVS(eigenLayer, config, strategyConfig);
+        
         vm.stopBroadcast();
+
+        AuxContract[] memory auxContracts = new AuxContract[](0);
+        string memory outputPath = "./script/output/lambada_coprocessor_deployment_output_holesky.json";
+        writeDeploymentOutput(contracts, auxContracts, outputPath);
     }
 }

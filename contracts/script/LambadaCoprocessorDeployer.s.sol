@@ -42,27 +42,6 @@ contract LambadaCoprocessorDeployer is Script, Utils {
         uint96 wETH_Multiplier;
     }
 
-    struct LambadaCoprocessorContracts {
-        LambadaCoprocessorTaskManager taskManager;
-        LambadaCoprocessorTaskManager taskManagerImplementation;
-        LambadaCoprocessorServiceManager serviceManager;
-        LambadaCoprocessorServiceManager serviceManagerImplementation;
-        IRegistryCoordinator registryCoordinator;
-        IRegistryCoordinator registryCoordinatorImplementation;
-        IIndexRegistry indexRegistry;
-        IIndexRegistry indexRegistryImplementation;
-        IStakeRegistry stakeRegistry;
-        IStakeRegistry stakeRegistryImplementation;
-        BLSApkRegistry apkRegistry;
-        BLSApkRegistry apkRegistryImplementation;
-        OperatorStateRetriever operatorStateRetriever;
-    }
-
-    struct StrategyConfig {
-        address strategy;
-        uint96 weight;
-    }
-
     struct DeploymentConfig {
         uint32 taskResponseWindowBlock;
         address taskGenerator;
@@ -80,9 +59,37 @@ contract LambadaCoprocessorDeployer is Script, Utils {
         uint96 minimumStake;
     }
 
+    struct StrategyConfig {
+        address strategy;
+        uint96 weight;
+    }
+
+    struct AuxContract {
+        string name;
+        address addr;
+    }
+
+    struct LambadaCoprocessorContracts {
+        LambadaCoprocessorTaskManager taskManager;
+        LambadaCoprocessorTaskManager taskManagerImplementation;
+        LambadaCoprocessorServiceManager serviceManager;
+        LambadaCoprocessorServiceManager serviceManagerImplementation;
+        IRegistryCoordinator registryCoordinator;
+        IRegistryCoordinator registryCoordinatorImplementation;
+        IIndexRegistry indexRegistry;
+        IIndexRegistry indexRegistryImplementation;
+        IStakeRegistry stakeRegistry;
+        IStakeRegistry stakeRegistryImplementation;
+        BLSApkRegistry apkRegistry;
+        BLSApkRegistry apkRegistryImplementation;
+        OperatorStateRetriever operatorStateRetriever;
+        PauserRegistry pauserRegistry;
+        ProxyAdmin proxyAdmin;
+    }
+
     function readDeploymentParameters(
         string memory filePath
-    ) internal returns (EigenLayerContracts memory, DeploymentConfig memory) {
+    ) internal view returns (EigenLayerContracts memory, DeploymentConfig memory) {
         EigenLayerContracts memory eigenLayer;
         DeploymentConfig memory config;
 
@@ -122,53 +129,51 @@ contract LambadaCoprocessorDeployer is Script, Utils {
     function deployAVS(
         EigenLayerContracts memory eigenLayer,
         DeploymentConfig memory config,
-        StrategyConfig[] memory strategyConfig,
-        string calldata outputPath
-    ) internal {
+        StrategyConfig[] memory strategyConfig
+    ) internal returns (LambadaCoprocessorContracts memory) {
+        LambadaCoprocessorContracts memory contracts;
+        
         // deploy proxy admin for ability to upgrade proxy contracts
-        ProxyAdmin proxyAdmin = new ProxyAdmin();
+        contracts.proxyAdmin = new ProxyAdmin();
         
         // deploy pauser registry
-        PauserRegistry pauserRegistry;
         {
             address[] memory pausers = new address[](1);
             pausers[0] = config.communityMultisig;
-            pauserRegistry = new PauserRegistry(pausers, config.communityMultisig);
+            contracts.pauserRegistry = new PauserRegistry(pausers, config.communityMultisig);
         }
 
         EmptyContract emptyContract = new EmptyContract();
-
-        LambadaCoprocessorContracts memory contracts;
         
         /**
          * First, deploy upgradeable proxy contracts that **will point** to the implementations. Since the implementation contracts are
          * not yet deployed, we give these proxies an empty contract as the initial implementation, to act as if they have no code.
          */
         contracts.indexRegistry = IIndexRegistry(
-            address(new TransparentUpgradeableProxy(address(emptyContract), address(proxyAdmin), ""))
+            address(new TransparentUpgradeableProxy(address(emptyContract), address(contracts.proxyAdmin), ""))
         );
 
         contracts.stakeRegistry = IStakeRegistry(
-            address(new TransparentUpgradeableProxy(address(emptyContract), address(proxyAdmin),""))
+            address(new TransparentUpgradeableProxy(address(emptyContract), address(contracts.proxyAdmin),""))
         );
         contracts.apkRegistry = BLSApkRegistry(
-            address(new TransparentUpgradeableProxy(address(emptyContract), address(proxyAdmin), ""))
+            address(new TransparentUpgradeableProxy(address(emptyContract), address(contracts.proxyAdmin), ""))
         );
         contracts.registryCoordinator = RegistryCoordinator(
-            address(new TransparentUpgradeableProxy(address(emptyContract), address(proxyAdmin), ""))
+            address(new TransparentUpgradeableProxy(address(emptyContract), address(contracts.proxyAdmin), ""))
         );
         contracts.taskManager = LambadaCoprocessorTaskManager(
-            address(new TransparentUpgradeableProxy(address(emptyContract), address(proxyAdmin), ""))
+            address(new TransparentUpgradeableProxy(address(emptyContract), address(contracts.proxyAdmin), ""))
         );
         contracts.serviceManager = LambadaCoprocessorServiceManager(
-            address(new TransparentUpgradeableProxy(address(emptyContract), address(proxyAdmin), ""))
+            address(new TransparentUpgradeableProxy(address(emptyContract), address(contracts.proxyAdmin), ""))
         );       
 
         contracts.operatorStateRetriever = new OperatorStateRetriever();
 
         // Second, deploy the *implementation* contracts, using the *proxy contracts* as inputs
         contracts.indexRegistryImplementation = new IndexRegistry(contracts.registryCoordinator);
-        proxyAdmin.upgrade(
+        contracts.proxyAdmin.upgrade(
             TransparentUpgradeableProxy(payable(address(contracts.indexRegistry))),
             address(contracts.indexRegistryImplementation)
         );
@@ -176,13 +181,13 @@ contract LambadaCoprocessorDeployer is Script, Utils {
         contracts.stakeRegistryImplementation = new StakeRegistry(
             contracts.registryCoordinator, eigenLayer.delegationManager
         );
-        proxyAdmin.upgrade(
+        contracts.proxyAdmin.upgrade(
             TransparentUpgradeableProxy(payable(address(contracts.stakeRegistry))),
             address(contracts.stakeRegistryImplementation)
         );
 
         contracts.apkRegistryImplementation = new BLSApkRegistry(contracts.registryCoordinator);
-        proxyAdmin.upgrade(
+        contracts.proxyAdmin.upgrade(
             TransparentUpgradeableProxy(payable(address(contracts.apkRegistry))),
             address(contracts.apkRegistryImplementation)
         );
@@ -230,7 +235,7 @@ contract LambadaCoprocessorDeployer is Script, Utils {
             }
 
             // initialize registry coordinator
-            proxyAdmin.upgradeAndCall(
+            contracts.proxyAdmin.upgradeAndCall(
                 TransparentUpgradeableProxy(payable(address(contracts.registryCoordinator))),
                 address(contracts.registryCoordinatorImplementation),
                 abi.encodeWithSelector(
@@ -238,7 +243,7 @@ contract LambadaCoprocessorDeployer is Script, Utils {
                     config.communityMultisig,
                     config.churner,
                     config.ejector,
-                    pauserRegistry,
+                    contracts.pauserRegistry,
                     0, // 0 initialPausedStatus means everything unpaused
                     quorumsOperatorSetParams,
                     minimumStakeForQuourm,
@@ -252,12 +257,12 @@ contract LambadaCoprocessorDeployer is Script, Utils {
             contracts.registryCoordinator,
             config.taskResponseWindowBlock
         );
-        proxyAdmin.upgradeAndCall(
+        contracts.proxyAdmin.upgradeAndCall(
             TransparentUpgradeableProxy(payable(address(contracts.taskManager))),
             address(contracts.taskManagerImplementation),
             abi.encodeWithSelector(
                 LambadaCoprocessorTaskManager.initialize.selector,
-                pauserRegistry,
+                contracts.pauserRegistry,
                 config.communityMultisig,
                 config.aggregator,
                 config.taskGenerator
@@ -270,13 +275,24 @@ contract LambadaCoprocessorDeployer is Script, Utils {
             contracts.stakeRegistry,
             contracts.taskManager
         );
-        proxyAdmin.upgrade(
+        contracts.proxyAdmin.upgrade(
             TransparentUpgradeableProxy(payable(address(contracts.serviceManager))),
             address(contracts.serviceManagerImplementation)
         );
 
+        return contracts;
+    }
+
+    function writeDeploymentOutput(
+        LambadaCoprocessorContracts memory contracts,
+        AuxContract[] memory auxContracts,
+        string memory outputPath
+    ) internal {
         string memory parent_object = "parent object";
         string memory addresses = "addresses";
+        for (uint i = 0; i < auxContracts.length; i++) {
+            vm.serializeAddress(addresses, auxContracts[i].name, address(auxContracts[i].addr));
+        }
         vm.serializeAddress(addresses, "taskManager", address(contracts.taskManager));
         vm.serializeAddress(addresses, "taskManagerImpl", address(contracts.taskManagerImplementation));
         vm.serializeAddress(addresses, "serviceManager", address(contracts.serviceManager));
@@ -290,9 +306,8 @@ contract LambadaCoprocessorDeployer is Script, Utils {
         vm.serializeAddress(addresses, "apkRegistry", address(contracts.apkRegistry));
         vm.serializeAddress(addresses, "apkRegistryImpl", address(contracts.apkRegistryImplementation));
         vm.serializeAddress(addresses, "operatorStateRetriever", address(contracts.operatorStateRetriever));
-        vm.serializeAddress(addresses, "pauserRegistry", address(pauserRegistry));
-        vm.serializeAddress(addresses, "proxyAdmin", address(proxyAdmin));
-        string memory addresses_output = vm.serializeAddress(addresses, "emptyContract", address(emptyContract));
+        vm.serializeAddress(addresses, "pauserRegistry", address(contracts.pauserRegistry));
+        string memory addresses_output = vm.serializeAddress(addresses, "proxyAdmin", address(contracts.proxyAdmin));
         string memory finalJson = vm.serializeString(parent_object, addresses, addresses_output);
         vm.writeJson(finalJson, outputPath);
     }

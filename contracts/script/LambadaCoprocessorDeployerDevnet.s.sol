@@ -36,16 +36,19 @@ contract LambadaCoprocessorDeployerDevnet is LambadaCoprocessorDeployer {
             strategyConfig[0].strategy = erc20MockStrategy;
             strategyConfig[0].weight = eigenLayer.wETH_Multiplier;
         }
-        
-        string calldata outputPath = "./script/output/lambada_coprocessor_deployment_output_holesky.json";
-        deployAVS(
-            eigenLayer,
-            config,
-            strategyConfig,
-            outputPath
-        );
+        LambadaCoprocessorContracts memory contracts = deployAVS(eigenLayer, config, strategyConfig);
 
         vm.stopBroadcast();
+
+        AuxContract[] memory auxContracts = new AuxContract[](2);
+        {
+            auxContracts[0].name = "erc20Mock";
+            auxContracts[0].addr = erc20Mock;
+            auxContracts[1].name = "erc20MockStrategy";
+            auxContracts[1].addr = erc20MockStrategy;
+        }
+        string memory outputPath = "./script/output/lambada_coprocessor_deployment_output_holesky.json";
+        writeDeploymentOutput(contracts, auxContracts, outputPath);
     }
 
     function deployERC20MockStrategy(
