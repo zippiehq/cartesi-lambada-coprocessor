@@ -13,7 +13,6 @@ import (
 	"reflect"
 	"encoding/binary"
 	"math/big"
-
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/go-faster/xor"
@@ -46,6 +45,8 @@ import (
 	"github.com/zippiehq/cartesi-lambada-coprocessor/core/chainio"
 	"github.com/zippiehq/cartesi-lambada-coprocessor/core/config"
 	"github.com/zippiehq/cartesi-lambada-coprocessor/metrics"
+	"github.com/zippiehq/cartesi-lambada-coprocessor/bincode"
+
 )
 
 const AVS_NAME = "lambada-coprocessor"
@@ -370,7 +371,7 @@ func (o *Operator) processTaskBatch(newBatch *tm.ContractLambadaCoprocessorTaskM
 func (o *Operator) computeTaskOutput(t types.Task, blockNumber uint32) (string, []byte, error) {
 	// Query lambada compute endpoint.
 	taskCID := string(t.ProgramId)
-	requestURL := fmt.Sprintf("http://%s/compute/%s",
+	requestURL := fmt.Sprintf("http://%s/compute/%s?bincoded=true",
 		o.config.LambadaIpPortAddress,
 		taskCID,
 	)
@@ -396,7 +397,7 @@ func (o *Operator) computeTaskOutput(t types.Task, blockNumber uint32) (string, 
 
 	o.log.Infof("sending request to lambada instance - %s", requestURL)
 
-	resp, err := http.Post(requestURL, "application/octet-stream", bytes.NewBuffer(t.Input))
+	resp, err := http.Post(requestURL, "application/octet-stream", bytes.NewBuffer(input))
 	if err != nil {
 		return "", nil, err
 	}
@@ -421,11 +422,11 @@ func (o *Operator) computeTaskOutput(t types.Task, blockNumber uint32) (string, 
 	// Query echo output from IPFS.
 	outputPath, err := ipfs_path.NewPath(fmt.Sprintf("/ipfs/%s/output", cid.String()))
 	if err != nil {
-		return "", nil, err
+		return cid.String(), []byte{}, nil
 	}
 	outputNode, err := o.ipfsClient.Unixfs().Get(context.TODO(), outputPath)
 	if err != nil {
-		return "", nil, err
+		return cid.String(), []byte{}, nil
 	}
 	outputFile := ipfs_files.ToFile(outputNode)
 	defer outputFile.Close()
