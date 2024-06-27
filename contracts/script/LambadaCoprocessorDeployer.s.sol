@@ -100,8 +100,8 @@ contract LambadaCoprocessorDeployer is Script, Utils {
             eigenLayer.avsDirectory = AVSDirectory(stdJson.readAddress(configData, ".avsDirectory"));
             eigenLayer.delegationManager = DelegationManager(stdJson.readAddress(configData, ".delegationManager"));
             eigenLayer.proxyAdmin = ProxyAdmin(stdJson.readAddress(configData, ".proxyAdmin"));
-            eigenLayer.pauserRegistry = PauserRegistry(stdJson.readAddress(configData, "pauserRegistry"));
-            eigenLayer.baseStrategy = StrategyBaseTVLLimits(stdJson.readAddress(configData, "baseStrategyImplementation"));
+            eigenLayer.pauserRegistry = PauserRegistry(stdJson.readAddress(configData, ".pauserRegistry"));
+            eigenLayer.baseStrategy = StrategyBaseTVLLimits(stdJson.readAddress(configData, ".baseStrategyImplementation"));
             eigenLayer.wETH = stdJson.readAddress(configData, ".wETH");
             eigenLayer.wETH_Multiplier = uint96(stdJson.readUint(configData, ".wETH_Multiplier"));
 
