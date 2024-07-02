@@ -48,7 +48,7 @@ services:
     image: ghcr.io/zippiehq/cartesi-lambada:amd64-latest
     container_name: lambada-coprocessor-{{ operator.machine }}
     volumes:
-      - {{ operator.machine_data }}:/data
+      - ./{{ operator.machine_data }}:/data
       - ./machine/data-preload:/data/preload
     networks:
       - lambada-coprocessor-network

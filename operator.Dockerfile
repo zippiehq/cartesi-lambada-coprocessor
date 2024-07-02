@@ -12,15 +12,16 @@ WORKDIR /usr/src/app/operator/cmd
 RUN go build -v -o /usr/local/bin/operator ./...
 
 WORKDIR /usr/src/app/cli
-RUN go build -v -o /usr/local/bin/cli ./..
+RUN go build -v -o /usr/local/bin/cli ./...
 
 FROM debian:latest
 
 COPY --from=build /usr/local/bin/operator /usr/local/bin/operator
-COPY --from=build /usr/locla/bin/cli /usr/local/bin/cli
+COPY --from=build /usr/local/bin/cli /usr/local/bin/cli
 
+RUN apt-get update && apt-get install -y git curl bash
 RUN curl -L https://foundry.paradigm.xyz | bash
 RUN bash -c 'source /root/.profile && foundryup'
 RUN cp -r /root/.foundry/bin/* /usr/local/bin/
 
-ENTRYPOINT [ "operator"]
+ENTRYPOINT ["/bin/sh", "-c"]

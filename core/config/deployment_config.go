@@ -26,4 +26,5 @@ type AVSDeployment struct {
 type AVSDeploymentAddresses struct {
 	RegistryCoordinator    string `json:"registryCoordinator"`
 	OperatorStateRetriever string `json:"operatorStateRetriever"`
+	ERC20MockStrategy      string `json:"erc20MockStrategy"`
 }
