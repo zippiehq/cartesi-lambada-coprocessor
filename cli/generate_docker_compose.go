@@ -1,4 +1,4 @@
-package actions
+package main
 
 import (
 	"errors"
@@ -14,7 +14,7 @@ import (
 	"github.com/urfave/cli"
 )
 
-const DEVNET = "devent"
+const DEVNET = "devnet"
 const HOLESKY = "holesky"
 
 const ANVIL_DEV_ACCOUNT_PRIVATE_KEY = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
@@ -34,10 +34,10 @@ func GenerateDockerCompose(ctx *cli.Context) error {
 	var deploymentParamPath, deploymentOuputPath string
 	if network == DEVNET {
 		deploymentParamPath = "./contracts/script/input/deployment_parameters_devnet.json"
-		deploymentOuputPath = "./contracts/script/input/lambada_coprocessor_deployment_output_devent.json"
+		deploymentOuputPath = "./contracts/script/output/lambada_coprocessor_deployment_output_devnet.json"
 	} else {
 		deploymentParamPath = "./contracts/script/input/deployment_parameters_holesky.json"
-		deploymentOuputPath = "./contracts/script/input/lambada_coprocessor_deployment_output_holesky.json"
+		deploymentOuputPath = "./contracts/script/output/lambada_coprocessor_deployment_output_holesky.json"
 	}
 	var deploymentParams config.AVSDeploymentParameters
 	if err := sdkutils.ReadJsonConfig(deploymentParamPath, &deploymentParams); err != nil {
@@ -60,8 +60,8 @@ func GenerateDockerCompose(ctx *cli.Context) error {
 	// Create directory for each operator
 	operatorDirs := make([]string, int(operatorCount))
 	for i := range operatorDirs {
-		operatorDirs[i] = fmt.Sprintf("./tests/nodes/operators/%d", i)
-		if err := os.Mkdir(operatorDirs[i], os.ModePerm); err != nil {
+		operatorDirs[i] = fmt.Sprintf("./tests/nodes/operators/%d", i+1)
+		if err := os.MkdirAll(operatorDirs[i], os.ModePerm); err != nil {
 			return err
 		}
 	}
@@ -87,9 +87,8 @@ func GenerateDockerCompose(ctx *cli.Context) error {
 		if err != nil {
 			return err
 		}
-		machine := fmt.Sprintf("machine%d", i)
+		machine := fmt.Sprintf("machine%d", i+1)
 		config, err := tmpl.Execute(gonja.Context{
-
 			"address":                          ecdsaKeys[i].Address,
 			"registry_coordinator_address":     deploymentOutput.Addresses.RegistryCoordinator,
 			"operator_state_retriever_address": deploymentOutput.Addresses.OperatorStateRetriever,
@@ -112,6 +111,12 @@ func GenerateDockerCompose(ctx *cli.Context) error {
 	}
 
 	// Generate startup scripts
+	var strategy_address string
+	if network == DEVNET {
+		strategy_address = deploymentOutput.Addresses.ERC20MockStrategy
+	} else {
+		strategy_address = deploymentParams.WETH
+	}
 	runScripts := make([]string, operatorCount)
 	for i := range runScripts {
 		runScripts[i] = filepath.Join(operatorDirs[i], "run.sh")
@@ -120,16 +125,17 @@ func GenerateDockerCompose(ctx *cli.Context) error {
 			return err
 		}
 		script, err := tmpl.Execute(gonja.Context{
-			"deployment_parameters":   deploymentParams,
-			"network":                 network,
-			"funder_private_key":      ANVIL_DEV_ACCOUNT_PRIVATE_KEY,
-			"operator_private_key":    ecdsaKeys[i].PrivateKey,
-			"operator_address":        ecdsaKeys[i].Address,
-			"operator_bls_password":   blsKeys[i].Password,
-			"operator_ecdsa_password": ecdsaKeys[i].Password,
-			"operator_config":         configs[i],
-			"strategy_address": ?,
-			"strategy_deposit_amount": ?,
+			"operator_delay":             i,
+			"deployment_parameters_path": deploymentParamPath,
+			"network":                    network,
+			"funder_private_key":         ANVIL_DEV_ACCOUNT_PRIVATE_KEY,
+			"operator_private_key":       ecdsaKeys[i].PrivateKey,
+			"operator_address":           ecdsaKeys[i].Address,
+			"operator_bls_password":      blsKeys[i].Password,
+			"operator_ecdsa_password":    ecdsaKeys[i].Password,
+			"operator_config":            configs[i],
+			"strategy_address":           strategy_address,
+			"strategy_deposit_amount":    10,
 		})
 		if err != nil {
 			return err

@@ -1,4 +1,4 @@
-package actions
+package main
 
 import (
 	"fmt"
@@ -22,7 +22,7 @@ type strategyDepoist struct {
 
 func SetupOperator(ctx *cli.Context) error {
 	// Read configuration.
-	configPath := ctx.GlobalString(config.ConfigFileFlag.Name)
+	configPath := ctx.String(configFlag.Name)
 	operatorConfig := config.OperatorConfig{}
 	if err := sdkutils.ReadYamlConfig(configPath, &operatorConfig); err != nil {
 		return fmt.Errorf("failed to read operator config - %s", err)
@@ -51,14 +51,14 @@ func SetupOperator(ctx *cli.Context) error {
 
 	// Register operator with Eigenlayer.
 	if err := operator.RegisterOperatorWithEigenlayer(); err != nil {
-		return fmt.Errorf("failed to regsiter operator with Eigenlayer")
+		return fmt.Errorf("failed to regsiter operator with Eigenlayer - %s", err)
 	}
 
 	// Deposit into strategies.
 	deposits := []strategyDepoist{
 		{
-			address: ctx.String("strategy-address"),
-			amount:  ctx.Uint64("strategy-deposit-amount"),
+			address: ctx.String(strategyAddressFlag.Name),
+			amount:  ctx.Uint64(strategyDepositAmountFlag.Name),
 		},
 	}
 	for _, deposit := range deposits {

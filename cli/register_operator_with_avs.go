@@ -1,4 +1,4 @@
-package actions
+package main
 
 import (
 	"encoding/json"
@@ -16,7 +16,7 @@ import (
 
 func RegisterOperatorWithAvs(ctx *cli.Context) error {
 
-	configPath := ctx.GlobalString(config.ConfigFileFlag.Name)
+	configPath := ctx.String(configFlag.Name)
 	nodeConfig := config.OperatorConfig{}
 	err := sdkutils.ReadYamlConfig(configPath, &nodeConfig)
 	if err != nil {

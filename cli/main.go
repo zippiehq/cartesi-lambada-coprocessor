@@ -5,64 +5,67 @@ import (
 	"os"
 
 	"github.com/urfave/cli"
-	"github.com/zippiehq/cartesi-lambada-coprocessor/cli/actions"
-	"github.com/zippiehq/cartesi-lambada-coprocessor/core/config"
+)
+
+var (
+	configFlag = cli.StringFlag{
+		Name:     "config",
+		Required: true,
+		Usage:    "configuration file path",
+	}
+	strategyAddressFlag = cli.StringFlag{
+		Name:     "strategy-address",
+		Usage:    "address of strategy contract to deposit into",
+		Required: true,
+	}
+	strategyDepositAmountFlag = cli.UintFlag{
+		Name:     "strategy-deposit-amount",
+		Usage:    "amount of tokens to deposit into strategy",
+		Required: true,
+	}
 )
 
 func main() {
 	app := cli.NewApp()
 
-	app.Flags = []cli.Flag{config.ConfigFileFlag}
 	app.Commands = []cli.Command{
 		{
 			Name:    "register-operator-with-eigenlayer",
 			Aliases: []string{"rel"},
 			Usage:   "registers operator with eigenlayer (this should be called via eigenlayer cli, not plugin, but keeping here for convenience for now)",
-			Action:  actions.RegisterOperatorWithEigenlayer,
+			Action:  RegisterOperatorWithEigenlayer,
+			Flags:   []cli.Flag{configFlag},
 		},
 		{
 			Name:    "deposit-into-strategy",
 			Aliases: []string{"d"},
 			Usage:   "deposit tokens into a strategy",
-			Action:  actions.DepositIntoStrategy,
+			Action:  DepositIntoStrategy,
 			Flags: []cli.Flag{
-				cli.StringFlag{
-					Name:     "strategy-addr",
-					Usage:    "Address of Strategy contract to deposit into",
-					Required: true,
-				},
-				cli.StringFlag{
-					Name:     "amount",
-					Usage:    "amount of tokens to deposit into strategy",
-					Required: true,
-				},
+				configFlag,
+				strategyAddressFlag,
+				strategyDepositAmountFlag,
 			},
 		},
 		{
 			Name:    "register-operator-with-avs",
 			Aliases: []string{"r"},
 			Usage:   "registers bls keys with pubkey-compendium, opts into slashing by avs service-manager, and registers operators with avs registry",
-			Action:  actions.RegisterOperatorWithAvs,
-		},
-		{
-			Name:    "deregister-operator-with-avs",
-			Aliases: []string{"d"},
-			Action: func(ctx *cli.Context) error {
-				log.Fatal("Command not implemented.")
-				return nil
-			},
+			Action:  RegisterOperatorWithAvs,
+			Flags:   []cli.Flag{configFlag},
 		},
 		{
 			Name:    "print-operator-status",
 			Aliases: []string{"s"},
 			Usage:   "prints operator status as viewed from incredible squaring contracts",
-			Action:  actions.PrintOperatorStatus,
+			Action:  PrintOperatorStatus,
+			Flags:   []cli.Flag{configFlag},
 		},
 		{
 			Name:    "generate-docker-compose",
 			Aliases: []string{"g"},
 			Usage:   "generate docker compose with specified number of operator nodes",
-			Action:  actions.GenerateDockerCompose,
+			Action:  GenerateDockerCompose,
 			Flags: []cli.Flag{
 				cli.StringFlag{
 					Name:     "network",
@@ -80,8 +83,14 @@ func main() {
 			Name:    "setup-operator",
 			Aliases: []string{"s"},
 			Usage:   "full registration and strategy deposit",
-			Action:  actions.SetupOperator,
+			Action:  SetupOperator,
 			Flags: []cli.Flag{
+				configFlag,
+				cli.StringFlag{
+					Name:     "deployment-parameters",
+					Usage:    "deployment parameters file path",
+					Required: true,
+				},
 				cli.StringFlag{
 					Name:     "bls-password",
 					Usage:    "operator bls password",
@@ -92,16 +101,8 @@ func main() {
 					Usage:    "operator ecsda password",
 					Required: true,
 				},
-				cli.StringFlag{
-					Name:     "strategy-address",
-					Usage:    "address of strategy to deposit into",
-					Required: true,
-				},
-				cli.Uint64Flag{
-					Name:     "strategy-deposit-amount",
-					Usage:    "token amount to deposit into specified strategy",
-					Required: true,
-				},
+				strategyAddressFlag,
+				strategyDepositAmountFlag,
 			},
 		},
 	}

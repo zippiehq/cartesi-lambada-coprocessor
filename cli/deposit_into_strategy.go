@@ -1,9 +1,11 @@
-package actions
+package main
 
 import (
 	"encoding/json"
 	"log"
+	"math/big"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/urfave/cli"
 
 	sdkutils "github.com/Layr-Labs/eigensdk-go/utils"
@@ -12,9 +14,9 @@ import (
 	"github.com/zippiehq/cartesi-lambada-coprocessor/operator"
 )
 
-func RegisterOperatorWithEigenlayer(ctx *cli.Context) error {
+func DepositIntoStrategy(ctx *cli.Context) error {
 
-	configPath := ctx.GlobalString(config.ConfigFileFlag.Name)
+	configPath := ctx.String(configFlag.Name)
 	nodeConfig := config.OperatorConfig{}
 	err := sdkutils.ReadYamlConfig(configPath, &nodeConfig)
 	if err != nil {
@@ -33,7 +35,10 @@ func RegisterOperatorWithEigenlayer(ctx *cli.Context) error {
 		return err
 	}
 
-	err = operator.RegisterOperatorWithEigenlayer()
+	strategyAddr := common.HexToAddress(strategyAddressFlag.Name)
+	amount := ctx.Uint64(strategyDepositAmountFlag.Name)
+
+	err = operator.DepositIntoStrategy(strategyAddr, big.NewInt(int64(amount)))
 	if err != nil {
 		return err
 	}
