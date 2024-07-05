@@ -7,7 +7,12 @@ Create deployment configuration file by specifiying addresses of core Eigenlayer
 Run deployment script
 ```
 cd contracts/
-forge script script/LambadaCoprocessorDeployerHoleksy.s.sol:LambadaCoprocessorDeployerHolesky --rpc-url http://127.0.0.1:8545 --broadcast -v --private-key 0x2a871d0798f97d79848a013d4936a73bf4cc922c825d33c1cf7073dff6d409c6
+
+forge script \
+    script/LambadaCoprocessorDeployerHoleksy.s.sol:LambadaCoprocessorDeployerHolesky \
+    --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 \
+    --broadcast -v
+
 cd ../
 ```
 
@@ -20,5 +25,8 @@ cast send --private-key $FUNDER_PK --value 20ether 0xa0Ee7A142d267C1f36714E4a8F7
 
 Run aggregator
  ```
- go run aggregator/cmd/main.go --config $AGGREGATOR_CONFIG --credible-squaring-deployment contracts/script/output/lambada_coprocessor_deployment_output.holesky.json --ecdsa-private-key 0x2a871d0798f97d79848a013d4936a73bf4cc922c825d33c1cf7073dff6d409c6
+ go run aggregator/cmd/main.go \
+    --config $AGGREGATOR_CONFIG
+    --credible-squaring-deployment contracts/script/output/lambada_coprocessor_deployment_output.holesky.json \
+    --ecdsa-private-key 0x2a871d0798f97d79848a013d4936a73bf4cc922c825d33c1cf7073dff6d409c6
  ```
