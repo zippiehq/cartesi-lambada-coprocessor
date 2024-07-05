@@ -1,4 +1,4 @@
-package actions
+package main
 
 import (
 	"encoding/json"
@@ -12,9 +12,9 @@ import (
 	"github.com/zippiehq/cartesi-lambada-coprocessor/operator"
 )
 
-func PrintOperatorStatus(ctx *cli.Context) error {
+func RegisterOperatorWithEigenlayer(ctx *cli.Context) error {
 
-	configPath := ctx.GlobalString(config.ConfigFileFlag.Name)
+	configPath := ctx.String(configFlag.Name)
 	nodeConfig := config.OperatorConfig{}
 	err := sdkutils.ReadYamlConfig(configPath, &nodeConfig)
 	if err != nil {
@@ -22,7 +22,6 @@ func PrintOperatorStatus(ctx *cli.Context) error {
 	}
 	// need to make sure we don't register the operator on startup
 	// when using the cli commands to register the operator.
-	nodeConfig.RegisterOperatorOnStartup = false
 	configJson, err := json.MarshalIndent(nodeConfig, "", "  ")
 	if err != nil {
 		log.Fatalf(err.Error())
@@ -34,7 +33,7 @@ func PrintOperatorStatus(ctx *cli.Context) error {
 		return err
 	}
 
-	err = operator.PrintOperatorStatus()
+	err = operator.RegisterOperatorWithEigenlayer()
 	if err != nil {
 		return err
 	}

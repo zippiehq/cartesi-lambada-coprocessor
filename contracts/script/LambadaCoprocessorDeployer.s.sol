@@ -5,22 +5,22 @@ import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 
 import "@eigenlayer/contracts/permissions/PauserRegistry.sol";
 import {IDelegationManager} from "@eigenlayer/contracts/interfaces/IDelegationManager.sol";
-import {IAVSDirectory} from "@eigenlayer/contracts/interfaces/IAVSDirectory.sol";
+import "@eigenlayer/contracts/core/DelegationManager.sol";
+import {IAVSDirectory, AVSDirectory} from "@eigenlayer/contracts/core/AVSDirectory.sol";
 import {IStrategyManager, IStrategy} from "@eigenlayer/contracts/interfaces/IStrategyManager.sol";
+import "@eigenlayer/contracts/core/StrategyManager.sol";
 import {ISlasher} from "@eigenlayer/contracts/interfaces/ISlasher.sol";
 import {StrategyBaseTVLLimits} from "@eigenlayer/contracts/strategies/StrategyBaseTVLLimits.sol";
 import "@eigenlayer/test/mocks/EmptyContract.sol";
 
-import "@eigenlayer-middleware/src/RegistryCoordinator.sol" as regcoord;
-import {IBLSApkRegistry, IIndexRegistry, IStakeRegistry} from "@eigenlayer-middleware/src/RegistryCoordinator.sol";
+import {IBLSApkRegistry, IIndexRegistry, IStakeRegistry, IRegistryCoordinator, RegistryCoordinator} from "@eigenlayer-middleware/src/RegistryCoordinator.sol";
 import {BLSApkRegistry} from "@eigenlayer-middleware/src/BLSApkRegistry.sol";
 import {IndexRegistry} from "@eigenlayer-middleware/src/IndexRegistry.sol";
 import {StakeRegistry} from "@eigenlayer-middleware/src/StakeRegistry.sol";
 import "@eigenlayer-middleware/src/OperatorStateRetriever.sol";
 
 import {LambadaCoprocessorServiceManager, IServiceManager} from "../src/LambadaCoprocessorServiceManager.sol";
-import {LambadaCoprocessorTaskManager} from "../src/LambadaCoprocessorTaskManager.sol";
-import {ILambadaCoprocessorTaskManager} from "../src/ILambadaCoprocessorTaskManager.sol";
+import {LambadaCoprocessorTaskManager, ILambadaCoprocessorTaskManager} from "../src/LambadaCoprocessorTaskManager.sol";
 import "../src/ERC20Mock.sol";
 
 import {Utils} from "./utils/Utils.sol";
@@ -30,425 +30,285 @@ import "forge-std/Script.sol";
 import "forge-std/StdJson.sol";
 import "forge-std/console.sol";
 
-// # To deploy and verify our contract
-// forge script script/LambadaCoprocessorDeployer.s.sol:LambadaCoprocessorDeployer --rpc-url $RPC_URL  --private-key $PRIVATE_KEY --broadcast -vvvv
 contract LambadaCoprocessorDeployer is Script, Utils {
-    // DEPLOYMENT CONSTANTS
-    uint256 public constant QUORUM_THRESHOLD_PERCENTAGE = 100;
-    uint32 public constant TASK_RESPONSE_WINDOW_BLOCK = 30;
-    uint32 public constant TASK_DURATION_BLOCKS = 0;
-    // TODO: right now hardcoding these (this address is anvil's default address 9)
-    address public constant AGGREGATOR_ADDR =
-        0xa0Ee7A142d267C1f36714E4a8F75612F20a79720;
-    address public constant TASK_GENERATOR_ADDR =
-        0xa0Ee7A142d267C1f36714E4a8F75612F20a79720;
-
-    // ERC20 and Strategy: we need to deploy this erc20, create a strategy for it, and whitelist this strategy in the strategymanager
-
-    ERC20Mock public erc20Mock;
-    StrategyBaseTVLLimits public erc20MockStrategy;
-
-    // Credible Squaring contracts
-    ProxyAdmin public lambadaCoprocessorProxyAdmin;
-    PauserRegistry public lambadaCoprocessorPauserReg;
-
-    regcoord.RegistryCoordinator public registryCoordinator;
-    regcoord.IRegistryCoordinator public registryCoordinatorImplementation;
-
-    IBLSApkRegistry public blsApkRegistry;
-    IBLSApkRegistry public blsApkRegistryImplementation;
-
-    IIndexRegistry public indexRegistry;
-    IIndexRegistry public indexRegistryImplementation;
-
-    IStakeRegistry public stakeRegistry;
-    IStakeRegistry public stakeRegistryImplementation;
-
-    OperatorStateRetriever public operatorStateRetriever;
-
-    LambadaCoprocessorServiceManager public lambadaCoprocessorServiceManager;
-    IServiceManager public lambadaCoprocessorServiceManagerImplementation;
-
-    LambadaCoprocessorTaskManager public lambadaCoprocessorTaskManager;
-    ILambadaCoprocessorTaskManager
-        public lambadaCoprocessorTaskManagerImplementation;
-
-    function run() external {
-        // Eigenlayer contracts
-        string memory eigenlayerDeployedContracts = readOutput(
-            "eigenlayer_deployment_output"
-        );
-        IStrategyManager strategyManager = IStrategyManager(
-            stdJson.readAddress(
-                eigenlayerDeployedContracts,
-                ".addresses.strategyManager"
-            )
-        );
-        IDelegationManager delegationManager = IDelegationManager(
-            stdJson.readAddress(
-                eigenlayerDeployedContracts,
-                ".addresses.delegation"
-            )
-        );
-        IAVSDirectory avsDirectory = IAVSDirectory(
-            stdJson.readAddress(
-                eigenlayerDeployedContracts,
-                ".addresses.avsDirectory"
-            )
-        );
-        ProxyAdmin eigenLayerProxyAdmin = ProxyAdmin(
-            stdJson.readAddress(
-                eigenlayerDeployedContracts,
-                ".addresses.eigenLayerProxyAdmin"
-            )
-        );
-        PauserRegistry eigenLayerPauserReg = PauserRegistry(
-            stdJson.readAddress(
-                eigenlayerDeployedContracts,
-                ".addresses.eigenLayerPauserReg"
-            )
-        );
-        StrategyBaseTVLLimits baseStrategyImplementation = StrategyBaseTVLLimits(
-                stdJson.readAddress(
-                    eigenlayerDeployedContracts,
-                    ".addresses.baseStrategyImplementation"
-                )
-            );
-
-        address credibleSquaringCommunityMultisig = msg.sender;
-        address credibleSquaringPauser = msg.sender;
-
-        vm.startBroadcast();
-        _deployErc20AndStrategyAndWhitelistStrategy(
-            eigenLayerProxyAdmin,
-            eigenLayerPauserReg,
-            baseStrategyImplementation,
-            strategyManager
-        );
-        _deployLambadaCoprocessorContracts(
-            delegationManager,
-            avsDirectory,
-            erc20MockStrategy,
-            credibleSquaringCommunityMultisig,
-            credibleSquaringPauser
-        );
-        vm.stopBroadcast();
+    struct EigenLayerContracts {
+        IAVSDirectory avsDirectory;
+        DelegationManager delegationManager;
+        StrategyManager strategyManager;
+        ProxyAdmin proxyAdmin;
+        PauserRegistry pauserRegistry;
+        StrategyBaseTVLLimits baseStrategy;
+        address wETH;
+        uint96 wETH_Multiplier;
     }
 
-    function _deployErc20AndStrategyAndWhitelistStrategy(
-        ProxyAdmin eigenLayerProxyAdmin,
-        PauserRegistry eigenLayerPauserReg,
-        StrategyBaseTVLLimits baseStrategyImplementation,
-        IStrategyManager strategyManager
-    ) internal {
-        erc20Mock = new ERC20Mock();
-        // TODO(samlaf): any reason why we are using the strategybase with tvl limits instead of just using strategybase?
-        // the maxPerDeposit and maxDeposits below are just arbitrary values.
-        erc20MockStrategy = StrategyBaseTVLLimits(
-            address(
-                new TransparentUpgradeableProxy(
-                    address(baseStrategyImplementation),
-                    address(eigenLayerProxyAdmin),
-                    abi.encodeWithSelector(
-                        StrategyBaseTVLLimits.initialize.selector,
-                        1 ether, // maxPerDeposit
-                        100 ether, // maxDeposits
-                        IERC20(erc20Mock),
-                        eigenLayerPauserReg
-                    )
-                )
-            )
-        );
-        IStrategy[] memory strats = new IStrategy[](1);
-        strats[0] = erc20MockStrategy;
-        bool[] memory thirdPartyTransfersForbiddenValues = new bool[](1);
-        thirdPartyTransfersForbiddenValues[0] = false;
-        strategyManager.addStrategiesToDepositWhitelist(
-            strats,
-            thirdPartyTransfersForbiddenValues
-        );
+    struct DeploymentConfig {
+        uint32 taskResponseWindowBlock;
+        address taskGenerator;
+        address aggregator;
+        address communityMultisig;
+        address pauser;
+        address churner;
+        address ejector;
+        address whitelister;
+        address confirmer;
+        uint256 numQuorum;
+        uint32 maxOperatorCount;
+        uint16 kickBIPsOfOperatorStake; // an operator needs to have kickBIPsOfOperatorStake / 10000 times the stake of the operator with the least stake to kick them out
+        uint16 kickBIPsOfTotalStake; // an operator needs to have less than kickBIPsOfTotalStake / 10000 of the total stake to be kicked out
+        uint96 minimumStake;
     }
 
-    function _deployLambadaCoprocessorContracts(
-        IDelegationManager delegationManager,
-        IAVSDirectory avsDirectory,
-        IStrategy strat,
-        address lambadaCoprocessorCommunityMultisig,
-        address credibleSquaringPauser
-    ) internal {
-        // Adding this as a temporary fix to make the rest of the script work with a single strategy
-        // since it was originally written to work with an array of strategies
-        IStrategy[1] memory deployedStrategyArray = [strat];
-        uint numStrategies = deployedStrategyArray.length;
+    struct StrategyConfig {
+        address strategy;
+        uint96 weight;
+    }
 
+    struct AuxContract {
+        string name;
+        address addr;
+    }
+
+    struct LambadaCoprocessorContracts {
+        LambadaCoprocessorTaskManager taskManager;
+        LambadaCoprocessorTaskManager taskManagerImplementation;
+        LambadaCoprocessorServiceManager serviceManager;
+        LambadaCoprocessorServiceManager serviceManagerImplementation;
+        IRegistryCoordinator registryCoordinator;
+        IRegistryCoordinator registryCoordinatorImplementation;
+        IIndexRegistry indexRegistry;
+        IIndexRegistry indexRegistryImplementation;
+        IStakeRegistry stakeRegistry;
+        IStakeRegistry stakeRegistryImplementation;
+        BLSApkRegistry apkRegistry;
+        BLSApkRegistry apkRegistryImplementation;
+        OperatorStateRetriever operatorStateRetriever;
+        PauserRegistry pauserRegistry;
+        ProxyAdmin proxyAdmin;
+    }
+
+    function readDeploymentParameters(
+        string memory filePath
+    ) internal view returns (EigenLayerContracts memory, DeploymentConfig memory) {
+        EigenLayerContracts memory eigenLayer;
+        DeploymentConfig memory config;
+
+        {
+            string memory configData = vm.readFile(filePath);
+            
+            eigenLayer.strategyManager = StrategyManager(stdJson.readAddress(configData, ".strategyManager"));
+            eigenLayer.avsDirectory = AVSDirectory(stdJson.readAddress(configData, ".avsDirectory"));
+            eigenLayer.delegationManager = DelegationManager(stdJson.readAddress(configData, ".delegationManager"));
+            eigenLayer.proxyAdmin = ProxyAdmin(stdJson.readAddress(configData, ".proxyAdmin"));
+            eigenLayer.pauserRegistry = PauserRegistry(stdJson.readAddress(configData, ".pauserRegistry"));
+            eigenLayer.baseStrategy = StrategyBaseTVLLimits(stdJson.readAddress(configData, ".baseStrategyImplementation"));
+            eigenLayer.wETH = stdJson.readAddress(configData, ".wETH");
+            eigenLayer.wETH_Multiplier = uint96(stdJson.readUint(configData, ".wETH_Multiplier"));
+
+            {
+                config.taskResponseWindowBlock = uint32(stdJson.readUint(configData, ".taskResponseWindowBlock"));
+                config.taskGenerator = stdJson.readAddress(configData, ".taskGenerator");
+                config.aggregator = stdJson.readAddress(configData, ".aggregator");
+                config.communityMultisig = stdJson.readAddress(configData, ".owner");
+                config.churner = stdJson.readAddress(configData, ".churner");
+                config.ejector = stdJson.readAddress(configData, ".ejector");
+                config.confirmer = stdJson.readAddress(configData, ".confirmer");
+                config.whitelister = stdJson.readAddress(configData, ".whitelister");
+            }
+        }
+
+        config.numQuorum = 1;
+        config.maxOperatorCount = 50;
+        config.kickBIPsOfOperatorStake = 11000;
+        config.kickBIPsOfTotalStake = 1001;
+        config.minimumStake = 0;
+        
+        return (eigenLayer, config);
+    }
+
+    function deployAVS(
+        EigenLayerContracts memory eigenLayer,
+        DeploymentConfig memory config,
+        StrategyConfig[] memory strategyConfig
+    ) internal returns (LambadaCoprocessorContracts memory) {
+        LambadaCoprocessorContracts memory contracts;
+        
         // deploy proxy admin for ability to upgrade proxy contracts
-        lambadaCoprocessorProxyAdmin = new ProxyAdmin();
-
+        contracts.proxyAdmin = new ProxyAdmin();
+        
         // deploy pauser registry
         {
-            address[] memory pausers = new address[](2);
-            pausers[0] = credibleSquaringPauser;
-            pausers[1] = lambadaCoprocessorCommunityMultisig;
-            lambadaCoprocessorPauserReg = new PauserRegistry(
-                pausers,
-                lambadaCoprocessorCommunityMultisig
-            );
+            address[] memory pausers = new address[](1);
+            pausers[0] = config.communityMultisig;
+            contracts.pauserRegistry = new PauserRegistry(pausers, config.communityMultisig);
         }
 
         EmptyContract emptyContract = new EmptyContract();
-
-        // hard-coded inputs
-
+        
         /**
          * First, deploy upgradeable proxy contracts that **will point** to the implementations. Since the implementation contracts are
          * not yet deployed, we give these proxies an empty contract as the initial implementation, to act as if they have no code.
          */
-        lambadaCoprocessorServiceManager = LambadaCoprocessorServiceManager(
-            address(
-                new TransparentUpgradeableProxy(
-                    address(emptyContract),
-                    address(lambadaCoprocessorProxyAdmin),
-                    ""
-                )
-            )
-        );
-        lambadaCoprocessorTaskManager = LambadaCoprocessorTaskManager(
-            address(
-                new TransparentUpgradeableProxy(
-                    address(emptyContract),
-                    address(lambadaCoprocessorProxyAdmin),
-                    ""
-                )
-            )
-        );
-        registryCoordinator = regcoord.RegistryCoordinator(
-            address(
-                new TransparentUpgradeableProxy(
-                    address(emptyContract),
-                    address(lambadaCoprocessorProxyAdmin),
-                    ""
-                )
-            )
-        );
-        blsApkRegistry = IBLSApkRegistry(
-            address(
-                new TransparentUpgradeableProxy(
-                    address(emptyContract),
-                    address(lambadaCoprocessorProxyAdmin),
-                    ""
-                )
-            )
-        );
-        indexRegistry = IIndexRegistry(
-            address(
-                new TransparentUpgradeableProxy(
-                    address(emptyContract),
-                    address(lambadaCoprocessorProxyAdmin),
-                    ""
-                )
-            )
-        );
-        stakeRegistry = IStakeRegistry(
-            address(
-                new TransparentUpgradeableProxy(
-                    address(emptyContract),
-                    address(lambadaCoprocessorProxyAdmin),
-                    ""
-                )
-            )
+        contracts.indexRegistry = IIndexRegistry(
+            address(new TransparentUpgradeableProxy(address(emptyContract), address(contracts.proxyAdmin), ""))
         );
 
-        operatorStateRetriever = new OperatorStateRetriever();
+        contracts.stakeRegistry = IStakeRegistry(
+            address(new TransparentUpgradeableProxy(address(emptyContract), address(contracts.proxyAdmin),""))
+        );
+        contracts.apkRegistry = BLSApkRegistry(
+            address(new TransparentUpgradeableProxy(address(emptyContract), address(contracts.proxyAdmin), ""))
+        );
+        contracts.registryCoordinator = RegistryCoordinator(
+            address(new TransparentUpgradeableProxy(address(emptyContract), address(contracts.proxyAdmin), ""))
+        );
+        contracts.taskManager = LambadaCoprocessorTaskManager(
+            address(new TransparentUpgradeableProxy(address(emptyContract), address(contracts.proxyAdmin), ""))
+        );
+        contracts.serviceManager = LambadaCoprocessorServiceManager(
+            address(new TransparentUpgradeableProxy(address(emptyContract), address(contracts.proxyAdmin), ""))
+        );       
+
+        contracts.operatorStateRetriever = new OperatorStateRetriever();
 
         // Second, deploy the *implementation* contracts, using the *proxy contracts* as inputs
-        {
-            stakeRegistryImplementation = new StakeRegistry(
-                registryCoordinator,
-                delegationManager
-            );
+        contracts.indexRegistryImplementation = new IndexRegistry(contracts.registryCoordinator);
+        contracts.proxyAdmin.upgrade(
+            TransparentUpgradeableProxy(payable(address(contracts.indexRegistry))),
+            address(contracts.indexRegistryImplementation)
+        );
 
-            lambadaCoprocessorProxyAdmin.upgrade(
-                TransparentUpgradeableProxy(payable(address(stakeRegistry))),
-                address(stakeRegistryImplementation)
-            );
+        contracts.stakeRegistryImplementation = new StakeRegistry(
+            contracts.registryCoordinator, eigenLayer.delegationManager
+        );
+        contracts.proxyAdmin.upgrade(
+            TransparentUpgradeableProxy(payable(address(contracts.stakeRegistry))),
+            address(contracts.stakeRegistryImplementation)
+        );
 
-            blsApkRegistryImplementation = new BLSApkRegistry(
-                registryCoordinator
-            );
+        contracts.apkRegistryImplementation = new BLSApkRegistry(contracts.registryCoordinator);
+        contracts.proxyAdmin.upgrade(
+            TransparentUpgradeableProxy(payable(address(contracts.apkRegistry))),
+            address(contracts.apkRegistryImplementation)
+        );
 
-            lambadaCoprocessorProxyAdmin.upgrade(
-                TransparentUpgradeableProxy(payable(address(blsApkRegistry))),
-                address(blsApkRegistryImplementation)
-            );
-
-            indexRegistryImplementation = new IndexRegistry(
-                registryCoordinator
-            );
-
-            lambadaCoprocessorProxyAdmin.upgrade(
-                TransparentUpgradeableProxy(payable(address(indexRegistry))),
-                address(indexRegistryImplementation)
-            );
-        }
-
-        registryCoordinatorImplementation = new regcoord.RegistryCoordinator(
-            lambadaCoprocessorServiceManager,
-            regcoord.IStakeRegistry(address(stakeRegistry)),
-            regcoord.IBLSApkRegistry(address(blsApkRegistry)),
-            regcoord.IIndexRegistry(address(indexRegistry))
+        contracts.registryCoordinatorImplementation = new RegistryCoordinator(
+            contracts.serviceManager,
+            IStakeRegistry(address(contracts.stakeRegistry)),
+            IBLSApkRegistry(address(contracts.apkRegistry)),
+            IndexRegistry(address(contracts.indexRegistry))
         );
 
         {
-            uint numQuorums = 1;
             // for each quorum to setup, we need to define
             // QuorumOperatorSetParam, minimumStakeForQuorum, and strategyParams
-            regcoord.IRegistryCoordinator.OperatorSetParam[]
-                memory quorumsOperatorSetParams = new regcoord.IRegistryCoordinator.OperatorSetParam[](
-                    numQuorums
-                );
-            for (uint i = 0; i < numQuorums; i++) {
+            IRegistryCoordinator.OperatorSetParam[] memory quorumsOperatorSetParams
+                = new IRegistryCoordinator.OperatorSetParam[](config.numQuorum);
+            for (uint i = 0; i < config.numQuorum; i++) {
                 // hard code these for now
-                quorumsOperatorSetParams[i] = regcoord
-                    .IRegistryCoordinator
-                    .OperatorSetParam({
-                        maxOperatorCount: 10000,
-                        kickBIPsOfOperatorStake: 15000,
-                        kickBIPsOfTotalStake: 100
-                    });
+                quorumsOperatorSetParams[i] = IRegistryCoordinator.OperatorSetParam({
+                    maxOperatorCount: config.maxOperatorCount,
+                    kickBIPsOfOperatorStake: config.kickBIPsOfOperatorStake,
+                    kickBIPsOfTotalStake: config.kickBIPsOfTotalStake
+                });
             }
+
             // set to 0 for every quorum
-            uint96[] memory quorumsMinimumStake = new uint96[](numQuorums);
-            IStakeRegistry.StrategyParams[][]
-                memory quorumsStrategyParams = new IStakeRegistry.StrategyParams[][](
-                    numQuorums
-                );
-            for (uint i = 0; i < numQuorums; i++) {
-                quorumsStrategyParams[i] = new IStakeRegistry.StrategyParams[](
-                    numStrategies
-                );
-                for (uint j = 0; j < numStrategies; j++) {
-                    quorumsStrategyParams[i][j] = IStakeRegistry
+            uint96[] memory minimumStakeForQuourm = new uint96[](config.numQuorum);
+            for (uint256 i = 0; i < config.numQuorum; i++) {
+                minimumStakeForQuourm[i] = config.minimumStake;
+            }
+
+            IStakeRegistry.StrategyParams[][] memory strategyParams =
+                new IStakeRegistry.StrategyParams[][](config.numQuorum);
+            for (uint i = 0; i < config.numQuorum; i++) {
+                IStakeRegistry.StrategyParams[] memory params =
+                    new IStakeRegistry.StrategyParams[](strategyConfig.length);
+                for (uint j = 0; j < strategyConfig.length; j++) {
+                    params[j] = IStakeRegistry
                         .StrategyParams({
-                            strategy: deployedStrategyArray[j],
-                            // setting this to 1 ether since the divisor is also 1 ether
-                            // therefore this allows an operator to register with even just 1 token
-                            // see https://github.com/Layr-Labs/eigenlayer-middleware/blob/m2-mainnet/src/StakeRegistry.sol#L484
-                            //    weight += uint96(sharesAmount * strategyAndMultiplier.multiplier / WEIGHTING_DIVISOR);
-                            multiplier: 1 ether
+                            strategy: IStrategy(strategyConfig[j].strategy),
+                            multiplier: strategyConfig[j].weight
                         });
                 }
+                strategyParams[i] = params;
             }
-            lambadaCoprocessorProxyAdmin.upgradeAndCall(
-                TransparentUpgradeableProxy(
-                    payable(address(registryCoordinator))
-                ),
-                address(registryCoordinatorImplementation),
+
+            // initialize registry coordinator
+            contracts.proxyAdmin.upgradeAndCall(
+                TransparentUpgradeableProxy(payable(address(contracts.registryCoordinator))),
+                address(contracts.registryCoordinatorImplementation),
                 abi.encodeWithSelector(
-                    regcoord.RegistryCoordinator.initialize.selector,
-                    // we set churnApprover and ejector to communityMultisig because we don't need them
-                    lambadaCoprocessorCommunityMultisig,
-                    lambadaCoprocessorCommunityMultisig,
-                    lambadaCoprocessorCommunityMultisig,
-                    lambadaCoprocessorPauserReg,
+                    RegistryCoordinator.initialize.selector,
+                    config.communityMultisig,
+                    config.churner,
+                    config.ejector,
+                    contracts.pauserRegistry,
                     0, // 0 initialPausedStatus means everything unpaused
                     quorumsOperatorSetParams,
-                    quorumsMinimumStake,
-                    quorumsStrategyParams
+                    minimumStakeForQuourm,
+                    strategyParams
                 )
             );
         }
 
-        lambadaCoprocessorServiceManagerImplementation = new LambadaCoprocessorServiceManager(
-            avsDirectory,
-            registryCoordinator,
-            stakeRegistry,
-            lambadaCoprocessorTaskManager
-        );
         // Third, upgrade the proxy contracts to use the correct implementation contracts and initialize them.
-        lambadaCoprocessorProxyAdmin.upgrade(
-            TransparentUpgradeableProxy(
-                payable(address(lambadaCoprocessorServiceManager))
-            ),
-            address(lambadaCoprocessorServiceManagerImplementation)
+        contracts.taskManagerImplementation = new LambadaCoprocessorTaskManager(
+            contracts.registryCoordinator,
+            config.taskResponseWindowBlock
         );
-
-        lambadaCoprocessorTaskManagerImplementation = new LambadaCoprocessorTaskManager(
-            registryCoordinator,
-            TASK_RESPONSE_WINDOW_BLOCK
-        );
-
-        // Third, upgrade the proxy contracts to use the correct implementation contracts and initialize them.
-        lambadaCoprocessorProxyAdmin.upgradeAndCall(
-            TransparentUpgradeableProxy(
-                payable(address(lambadaCoprocessorTaskManager))
-            ),
-            address(lambadaCoprocessorTaskManagerImplementation),
+        contracts.proxyAdmin.upgradeAndCall(
+            TransparentUpgradeableProxy(payable(address(contracts.taskManager))),
+            address(contracts.taskManagerImplementation),
             abi.encodeWithSelector(
-                lambadaCoprocessorTaskManager.initialize.selector,
-                lambadaCoprocessorPauserReg,
-                lambadaCoprocessorCommunityMultisig,
-                AGGREGATOR_ADDR,
-                TASK_GENERATOR_ADDR
+                LambadaCoprocessorTaskManager.initialize.selector,
+                contracts.pauserRegistry,
+                config.communityMultisig,
+                config.aggregator,
+                config.taskGenerator
             )
         );
+        
+        contracts.serviceManagerImplementation = new LambadaCoprocessorServiceManager(
+            eigenLayer.avsDirectory,
+            contracts.registryCoordinator,
+            contracts.stakeRegistry,
+            contracts.taskManager
+        );
+        contracts.proxyAdmin.upgrade(
+            TransparentUpgradeableProxy(payable(address(contracts.serviceManager))),
+            address(contracts.serviceManagerImplementation)
+        );
 
-        // WRITE JSON DATA
+        return contracts;
+    }
+
+    function writeDeploymentOutput(
+        LambadaCoprocessorContracts memory contracts,
+        AuxContract[] memory auxContracts,
+        string memory outputPath
+    ) internal {
         string memory parent_object = "parent object";
-
-        string memory deployed_addresses = "addresses";
-        vm.serializeAddress(
-            deployed_addresses,
-            "erc20Mock",
-            address(erc20Mock)
-        );
-        vm.serializeAddress(
-            deployed_addresses,
-            "erc20MockStrategy",
-            address(erc20MockStrategy)
-        );
-        vm.serializeAddress(
-            deployed_addresses,
-            "credibleSquaringServiceManager",
-            address(lambadaCoprocessorServiceManager)
-        );
-        vm.serializeAddress(
-            deployed_addresses,
-            "credibleSquaringServiceManagerImplementation",
-            address(lambadaCoprocessorServiceManagerImplementation)
-        );
-        vm.serializeAddress(
-            deployed_addresses,
-            "credibleSquaringTaskManager",
-            address(lambadaCoprocessorTaskManager)
-        );
-        vm.serializeAddress(
-            deployed_addresses,
-            "credibleSquaringTaskManagerImplementation",
-            address(lambadaCoprocessorTaskManagerImplementation)
-        );
-        vm.serializeAddress(
-            deployed_addresses,
-            "registryCoordinator",
-            address(registryCoordinator)
-        );
-        vm.serializeAddress(
-            deployed_addresses,
-            "registryCoordinatorImplementation",
-            address(registryCoordinatorImplementation)
-        );
-        string memory deployed_addresses_output = vm.serializeAddress(
-            deployed_addresses,
-            "operatorStateRetriever",
-            address(operatorStateRetriever)
-        );
-
-        // serialize all the data
-        string memory finalJson = vm.serializeString(
-            parent_object,
-            deployed_addresses,
-            deployed_addresses_output
-        );
-
-        writeOutput(finalJson, "lambada_coprocessor_avs_deployment_output");
+        string memory addresses = "addresses";
+        for (uint i = 0; i < auxContracts.length; i++) {
+            vm.serializeAddress(addresses, auxContracts[i].name, address(auxContracts[i].addr));
+        }
+        vm.serializeAddress(addresses, "taskManager", address(contracts.taskManager));
+        vm.serializeAddress(addresses, "taskManagerImpl", address(contracts.taskManagerImplementation));
+        vm.serializeAddress(addresses, "serviceManager", address(contracts.serviceManager));
+        vm.serializeAddress(addresses, "serviceManagerImpl", address(contracts.serviceManagerImplementation));
+        vm.serializeAddress(addresses, "registryCoordinator", address(contracts.registryCoordinator));
+        vm.serializeAddress(addresses, "registryCoordinatorImpl", address(contracts.registryCoordinatorImplementation));
+        vm.serializeAddress(addresses, "indexRegistry", address(contracts.indexRegistry));
+        vm.serializeAddress(addresses, "indexRegistryImpl", address(contracts.indexRegistryImplementation));
+        vm.serializeAddress(addresses, "stakeRegistry", address(contracts.stakeRegistry));
+        vm.serializeAddress(addresses, "stakeRegistryImpl", address(contracts.stakeRegistryImplementation));
+        vm.serializeAddress(addresses, "apkRegistry", address(contracts.apkRegistry));
+        vm.serializeAddress(addresses, "apkRegistryImpl", address(contracts.apkRegistryImplementation));
+        vm.serializeAddress(addresses, "operatorStateRetriever", address(contracts.operatorStateRetriever));
+        vm.serializeAddress(addresses, "pauserRegistry", address(contracts.pauserRegistry));
+        string memory addresses_output = vm.serializeAddress(addresses, "proxyAdmin", address(contracts.proxyAdmin));
+        string memory finalJson = vm.serializeString(parent_object, addresses, addresses_output);
+        vm.writeJson(finalJson, outputPath);
     }
 }

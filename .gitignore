@@ -26,3 +26,5 @@ logs.txt
 
 # just for example
 id_rsa
+
+contracts/script/output/lambada_coprocessor_deployment_output_holesky.json
