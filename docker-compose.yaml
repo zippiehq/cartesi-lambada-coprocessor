@@ -34,18 +34,18 @@ services:
     volumes:
       - ./:/lambada-coprocessor/
     working_dir: /lambada-coprocessor
-    command: 
-      - --config 
+    command:
+      - --config
       - tests/nodes/aggregator/aggregator-docker-compose.yaml
-      - --credible-squaring-deployment 
+      - --credible-squaring-deployment
       - contracts/script/output/lambada_coprocessor_deployment_output_devnet.json
-      - --ecdsa-private-key 
+      - --ecdsa-private-key
       - "0x2a871d0798f97d79848a013d4936a73bf4cc922c825d33c1cf7073dff6d409c6"
     networks:
       - lambada-coprocessor-network
 
   machine1:
-    image: ghcr.io/zippiehq/cartesi-lambada:amd64-latest
+    image: ghcr.io/zippiehq/cartesi-lambada:latest
     container_name: lambada-coprocessor-machine1
     volumes:
       - ./tests/nodes/operators/1/data:/data
@@ -75,7 +75,7 @@ services:
       - lambada-coprocessor-network
 
   machine2:
-    image: ghcr.io/zippiehq/cartesi-lambada:amd64-latest
+    image: ghcr.io/zippiehq/cartesi-lambada:latest
     container_name: lambada-coprocessor-machine2
     volumes:
       - ./tests/nodes/operators/2/data:/data
@@ -105,7 +105,7 @@ services:
       - lambada-coprocessor-network
 
   machine3:
-    image: ghcr.io/zippiehq/cartesi-lambada:amd64-latest
+    image: ghcr.io/zippiehq/cartesi-lambada:latest
     container_name: lambada-coprocessor-machine3
     volumes:
       - ./tests/nodes/operators/3/data:/data
