@@ -1,7 +1,5 @@
 #!/bin/bash
 
-sleep {{ operator_delay }}
-
 cast send \
     --rpc-url http://anvil:8545 \
     --private-key {{ funder_private_key }} \
@@ -13,10 +11,10 @@ cast send \
     --private-key {{ operator_private_key }} \
     {{ erc20_mock_address }} "mint(address,uint256)" {{ operator_address }} {{ strategy_deposit_amount }}    
 {% else %}
-cast send \ 
+cast send \
     --rpc-url http://anvil:8545 \
     --private-key {{ operator_private_key }} \
-    --value{{ strategy_deposit_amount }}ether \
+    --value {{ strategy_deposit_amount }}ether \
     0x94373a4919B3240D86eA41593D5eBa789FEF3848 'deposit()'
 {% endif %}
 

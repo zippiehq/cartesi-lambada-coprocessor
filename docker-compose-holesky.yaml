@@ -17,30 +17,16 @@ services:
     volumes:
       - ./tests/anvil/avs-and-eigenlayer-deployed-anvil-state.json:/root/.anvil/state.json
       - ./:/cartesi-lambada-coprocessor/
-{% if network == 'devnet' %}
-    command: --host 0.0.0.0 --load-state /root/.anvil/state.json
-{% elif network == 'holesky' %}
+
     command: /cartesi-lambada-coprocessor/tests/anvil/deploy-avs-fork-holesky.sh
-{% elif network == 'mainnet' %}
-    command: /cartesi-lambada-coprocessor/tests/anvil/deploy-avs-mainnet.sh
-{% endif %}
+
     healthcheck:
-{% if network == 'devnet' %}
-      test: bash -c "cat < /dev/null > /dev/tcp/0.0.0.0/8545"
-      interval: 1s
-      retries: 20
-      start_period: 5s
-{% elif network == 'holesky' %}
+
       test: bash -c "[ -f /cartesi-lambada-coprocessor/contracts/script/output/lambada_coprocessor_deployment_output_holesky.json ]"
       interval: 3s
       retries: 20
       start_period: 15s
-{% elif network == 'mainnet' %}
-      test: bash -c "[ -f /cartesi-lambada-coprocessor/contracts/script/output/lambada_coprocessor_deployment_output_holesky.json ]"
-      interval: 3s
-      retries: 20
-      start_period: 15s
-{% endif %}
+
     networks:
       - lambada-coprocessor-network
     
@@ -61,13 +47,9 @@ services:
       - --config 
       - tests/nodes/aggregator/aggregator-docker-compose.yaml
       - --credible-squaring-deployment 
-{% if network == 'devnet' %}
-      - contracts/script/output/lambada_coprocessor_deployment_output_devnet.json
-{% elif network == 'holesky' %}
+
       - contracts/script/output/lambada_coprocessor_deployment_output_holesky.json
-{% elif network == 'mainnet' %}
-      - contracts/script/output/lambada_coprocessor_deployment_output_mainnet.json
-{% endif %}
+
       - --ecdsa-private-key 
       - "0x2a871d0798f97d79848a013d4936a73bf4cc922c825d33c1cf7073dff6d409c6"
     networks:
@@ -78,32 +60,87 @@ services:
       retries: 30
       start_period: 15s
 
-{% for operator in operators %}
-  {{ operator.machine }}:
+
+  machine1:
     image: ghcr.io/zippiehq/cartesi-lambada:amd64-latest
-    container_name: lambada-coprocessor-{{ operator.machine }}
+    container_name: lambada-coprocessor-machine1
     volumes:
-      - ./{{ operator.machine_data }}:/data
+      - ./tests/nodes/operators/1/data:/data
       - ./machine/data-preload:/data/preload
     networks:
       - lambada-coprocessor-network
     environment:
       - COMPUTE_ONLY=1
 
-  {{ operator.name }}:
+  operator1:
     build:
       context: .
       dockerfile: operator.Dockerfile
-    container_name: lambada-coprocessor-{{ operator.name }}
+    container_name: lambada-coprocessor-operator1
     depends_on:
       aggregator:
         condition: service_healthy
-      {{ operator.machine }}:
+      machine1:
         condition: service_started
     volumes:
       - ./:/lambada-coprocessor/
     working_dir: /lambada-coprocessor
-    command: {{ operator.run_script }}
+    command: tests/nodes/operators/1/run.sh
     networks:
       - lambada-coprocessor-network
-{% endfor %}
+
+  machine2:
+    image: ghcr.io/zippiehq/cartesi-lambada:amd64-latest
+    container_name: lambada-coprocessor-machine2
+    volumes:
+      - ./tests/nodes/operators/2/data:/data
+      - ./machine/data-preload:/data/preload
+    networks:
+      - lambada-coprocessor-network
+    environment:
+      - COMPUTE_ONLY=1
+
+  operator2:
+    build:
+      context: .
+      dockerfile: operator.Dockerfile
+    container_name: lambada-coprocessor-operator2
+    depends_on:
+      aggregator:
+        condition: service_healthy
+      machine2:
+        condition: service_started
+    volumes:
+      - ./:/lambada-coprocessor/
+    working_dir: /lambada-coprocessor
+    command: tests/nodes/operators/2/run.sh
+    networks:
+      - lambada-coprocessor-network
+
+  machine3:
+    image: ghcr.io/zippiehq/cartesi-lambada:amd64-latest
+    container_name: lambada-coprocessor-machine3
+    volumes:
+      - ./tests/nodes/operators/3/data:/data
+      - ./machine/data-preload:/data/preload
+    networks:
+      - lambada-coprocessor-network
+    environment:
+      - COMPUTE_ONLY=1
+
+  operator3:
+    build:
+      context: .
+      dockerfile: operator.Dockerfile
+    container_name: lambada-coprocessor-operator3
+    depends_on:
+      aggregator:
+        condition: service_healthy
+      machine3:
+        condition: service_started
+    volumes:
+      - ./:/lambada-coprocessor/
+    working_dir: /lambada-coprocessor
+    command: tests/nodes/operators/3/run.sh
+    networks:
+      - lambada-coprocessor-network

@@ -1,9 +1,9 @@
 production: true
 
-address: 0xc48d425C747a468Ca3810BDa267DC4749E6036E3
+address: 0xB0Acf8523E1908CF6aa3B23dDa2E2f83f3928727
 
-registry_coordinator_address: 0x1613beB3B2C4f22Ee086B2b38C1476A3cE7f78E8
-operator_state_retriever_address: 0x95401dc811bb5740090279Ba06cfA8fcF6113778
+registry_coordinator_address: 0xDDa0648FA8c9cD593416EC37089C2a2E6060B45c
+operator_state_retriever_address: 0x3a622DB2db50f463dF562Dc5F341545A64C580fc
 
 ecdsa_private_key_store_path: tests/nodes/operators/1/ecdsa.key.json
 bls_private_key_store_path: tests/nodes/operators/1/bls.key.json

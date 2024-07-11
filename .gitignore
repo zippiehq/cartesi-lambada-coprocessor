@@ -28,3 +28,4 @@ logs.txt
 id_rsa
 
 contracts/script/output/lambada_coprocessor_deployment_output_holesky.json
+contracts/script/output/lambada_coprocessor_deployment_output_mainnet.json
