@@ -41,7 +41,7 @@ docker run \
     -p 5001:5001 \
     -p 3033:3033 \
     -e COMPUTE_ONLY='1' \
-    ghcr.io/zippiehq/cartesi-lambada:amd64-latest
+    ghcr.io/zippiehq/cartesi-lambada:latest
 ```
 
 Update configuration with correct network addresses of aggregator, ETH rpc, IPFS, etc.

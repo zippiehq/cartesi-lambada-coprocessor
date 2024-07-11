@@ -1,9 +1,6 @@
 production: true
 
-address: 0xc48d425C747a468Ca3810BDa267DC4749E6036E3
-
-registry_coordinator_address: 0x1613beB3B2C4f22Ee086B2b38C1476A3cE7f78E8
-operator_state_retriever_address: 0x95401dc811bb5740090279Ba06cfA8fcF6113778
+avs_deployment_path: ./contracts/script/output/lambada_coprocessor_deployment_output_devnet.json
 
 ecdsa_private_key_store_path: tests/nodes/operators/1/ecdsa.key.json
 bls_private_key_store_path: tests/nodes/operators/1/bls.key.json

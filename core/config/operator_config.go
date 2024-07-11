@@ -4,9 +4,7 @@ type OperatorConfig struct {
 	// used to set the logger level (true = info, false = debug)
 	Production bool `yaml:"production"`
 
-	Address                       string `yaml:"address"`
-	OperatorStateRetrieverAddress string `yaml:"operator_state_retriever_address"`
-	RegistryCoordinatorAddress    string `yaml:"registry_coordinator_address"`
+	AVSDeploymentPath string `yaml:"avs_deployment_path"`
 
 	BLSPrivateKeyStorePath   string `yaml:"bls_private_key_store_path"`
 	ECDSAPrivateKeyStorePath string `yaml:"ecdsa_private_key_store_path"`

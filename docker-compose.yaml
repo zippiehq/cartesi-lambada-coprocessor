@@ -1,5 +1,11 @@
 version: "3"
 
+secrets:
+  anvil_fork_url_holesky:
+    file: anvil_fork_url_holesky.txt
+  anvil_fork_url_mainnet:
+    file: anvil_fork_url_mainnet.txt
+
 networks:
   lambada-coprocessor-network:
     name: lambada-coprocessor-network
@@ -14,13 +20,28 @@ services:
     container_name: anvil
     ports:
       - 8545:8545
-    entrypoint: anvil
     volumes:
       - ./tests/anvil/avs-and-eigenlayer-deployed-anvil-state.json:/root/.anvil/state.json
-    command: --host 0.0.0.0 --load-state /root/.anvil/state.json
+      - ./:/cartesi-lambada-coprocessor/
+
+    command: /cartesi-lambada-coprocessor/tests/anvil/run-anvil-devnet.sh
+
+    healthcheck:
+
+      test: bash -c "[ -f /cartesi-lambada-coprocessor/tests/anvil/devnet-operators-ready.flag ]"
+      interval: 3s
+      retries: 20
+      start_period: 15s
+
     networks:
       - lambada-coprocessor-network
+    secrets:
+      - anvil_fork_url_holesky
+      - anvil_fork_url_mainnet
+    environment:
 
+  
+    
   aggregator:
     build:
       context: .
@@ -30,19 +51,27 @@ services:
       - 8080:8080
     depends_on:
       anvil:
-        condition: service_started
+        condition: service_healthy
     volumes:
       - ./:/lambada-coprocessor/
     working_dir: /lambada-coprocessor
     command:
       - --config
       - tests/nodes/aggregator/aggregator-docker-compose.yaml
-      - --credible-squaring-deployment
+      - --credible-squaring-deployment 
+
       - contracts/script/output/lambada_coprocessor_deployment_output_devnet.json
-      - --ecdsa-private-key
+
+      - --ecdsa-private-key 
       - "0x2a871d0798f97d79848a013d4936a73bf4cc922c825d33c1cf7073dff6d409c6"
     networks:
       - lambada-coprocessor-network
+    healthcheck:
+      test: bash -c "[ cat < /dev/null > /dev/tcp/0.0.0.0/8080 ]"
+      interval: 10s
+      retries: 200
+      start_period: 15s
+
 
   machine1:
     image: ghcr.io/zippiehq/cartesi-lambada:latest
@@ -61,16 +90,14 @@ services:
       dockerfile: operator.Dockerfile
     container_name: lambada-coprocessor-operator1
     depends_on:
-      anvil:
-        condition: service_started
       aggregator:
-        condition: service_started
+        condition: service_healthy
       machine1:
         condition: service_started
     volumes:
       - ./:/lambada-coprocessor/
     working_dir: /lambada-coprocessor
-    command: tests/nodes/operators/1/run.sh
+    command: tests/nodes/operators/1/run-devnet.sh
     networks:
       - lambada-coprocessor-network
 
@@ -91,16 +118,14 @@ services:
       dockerfile: operator.Dockerfile
     container_name: lambada-coprocessor-operator2
     depends_on:
-      anvil:
-        condition: service_started
       aggregator:
-        condition: service_started
-      machine1:
+        condition: service_healthy
+      machine2:
         condition: service_started
     volumes:
       - ./:/lambada-coprocessor/
     working_dir: /lambada-coprocessor
-    command: tests/nodes/operators/2/run.sh
+    command: tests/nodes/operators/2/run-devnet.sh
     networks:
       - lambada-coprocessor-network
 
@@ -121,15 +146,13 @@ services:
       dockerfile: operator.Dockerfile
     container_name: lambada-coprocessor-operator3
     depends_on:
-      anvil:
-        condition: service_started
       aggregator:
-        condition: service_started
-      machine1:
+        condition: service_healthy
+      machine3:
         condition: service_started
     volumes:
       - ./:/lambada-coprocessor/
     working_dir: /lambada-coprocessor
-    command: tests/nodes/operators/3/run.sh
+    command: tests/nodes/operators/3/run-devnet.sh
     networks:
       - lambada-coprocessor-network

@@ -15,6 +15,7 @@ import (
 	"math/big"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/go-faster/xor"
 	ipfs_files "github.com/ipfs/boxo/files"
 	ipfs_path "github.com/ipfs/boxo/path"
@@ -28,6 +29,7 @@ import (
 	"github.com/Layr-Labs/eigensdk-go/chainio/clients/wallet"
 	"github.com/Layr-Labs/eigensdk-go/chainio/txmgr"
 	"github.com/Layr-Labs/eigensdk-go/crypto/bls"
+	"github.com/Layr-Labs/eigensdk-go/crypto/ecdsa"
 	sdkecdsa "github.com/Layr-Labs/eigensdk-go/crypto/ecdsa"
 	"github.com/Layr-Labs/eigensdk-go/logging"
 	sdklogging "github.com/Layr-Labs/eigensdk-go/logging"
@@ -38,6 +40,7 @@ import (
 	"github.com/Layr-Labs/eigensdk-go/signerv2"
 	sdktypes "github.com/Layr-Labs/eigensdk-go/types"
 
+	sdkutils "github.com/Layr-Labs/eigensdk-go/utils"
 	"github.com/zippiehq/cartesi-lambada-coprocessor/aggregator"
 	"github.com/zippiehq/cartesi-lambada-coprocessor/aggregator/types"
 	tm "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/LambadaCoprocessorTaskManager"
@@ -140,6 +143,11 @@ func NewOperatorFromConfig(c config.OperatorConfig) (*Operator, error) {
 		}
 	}
 
+	var deployment config.AVSDeployment
+	if err := sdkutils.ReadJsonConfig(c.AVSDeploymentPath, &deployment); err != nil {
+		return nil, fmt.Errorf("failed to read deployment parameters - %s", err)
+	}
+
 	blsKeyPassword, ok := os.LookupEnv("OPERATOR_BLS_KEY_PASSWORD")
 	if !ok {
 		logger.Warnf("OPERATOR_BLS_KEY_PASSWORD env var not set. using empty string")
@@ -149,6 +157,18 @@ func NewOperatorFromConfig(c config.OperatorConfig) (*Operator, error) {
 		logger.Errorf("Cannot parse bls private key", "err", err)
 		return nil, err
 	}
+
+	ecdsaKeyPassword, ok := os.LookupEnv("OPERATOR_ECDSA_KEY_PASSWORD")
+	if !ok {
+		logger.Warnf("OPERATOR_ECDSA_KEY_PASSWORD env var not set. using empty string")
+	}
+	ecdsaKey, err := ecdsa.ReadKey(c.ECDSAPrivateKeyStorePath, ecdsaKeyPassword)
+	if err != nil {
+		logger.Errorf("Cannot parse ecdsa private key", "err", err)
+		return nil, err
+	}
+	operatorAddr := crypto.PubkeyToAddress(ecdsaKey.PublicKey)
+
 	// TODO(samlaf): should we add the chainId to the config instead?
 	// this way we can prevent creating a signer that signs on mainnet by mistake
 	// if the config says chainId=5, then we can only create a goerli signer
@@ -156,11 +176,6 @@ func NewOperatorFromConfig(c config.OperatorConfig) (*Operator, error) {
 	if err != nil {
 		logger.Error("Cannot get chainId", "err", err)
 		return nil, err
-	}
-
-	ecdsaKeyPassword, ok := os.LookupEnv("OPERATOR_ECDSA_KEY_PASSWORD")
-	if !ok {
-		logger.Warnf("OPERATOR_ECDSA_KEY_PASSWORD env var not set. using empty string")
 	}
 
 	signerV2, _, err := signerv2.SignerFromConfig(signerv2.Config{
@@ -173,8 +188,8 @@ func NewOperatorFromConfig(c config.OperatorConfig) (*Operator, error) {
 	chainioConfig := clients.BuildAllConfig{
 		EthHttpUrl:                 c.EthRpcUrl,
 		EthWsUrl:                   c.EthWsUrl,
-		RegistryCoordinatorAddr:    c.RegistryCoordinatorAddress,
-		OperatorStateRetrieverAddr: c.OperatorStateRetrieverAddress,
+		RegistryCoordinatorAddr:    deployment.Addresses.RegistryCoordinator,
+		OperatorStateRetrieverAddr: deployment.Addresses.OperatorStateRetriever,
 		AvsName:                    AVS_NAME,
 		PromMetricsIpPortAddress:   c.EigenMetricsIpPortAddress,
 	}
@@ -189,15 +204,15 @@ func NewOperatorFromConfig(c config.OperatorConfig) (*Operator, error) {
 	if err != nil {
 		panic(err)
 	}
-	skWallet, err := wallet.NewPrivateKeyWallet(ethRpcClient, signerV2, common.HexToAddress(c.Address), logger)
+	skWallet, err := wallet.NewPrivateKeyWallet(ethRpcClient, signerV2, operatorAddr, logger)
 	if err != nil {
 		return nil, err
 	}
-	txMgr := txmgr.NewSimpleTxManager(skWallet, ethRpcClient, logger, common.HexToAddress(c.Address))
+	txMgr := txmgr.NewSimpleTxManager(skWallet, ethRpcClient, logger, operatorAddr)
 
 	avsWriter, err := chainio.BuildAvsWriter(
-		txMgr, common.HexToAddress(c.RegistryCoordinatorAddress),
-		common.HexToAddress(c.OperatorStateRetrieverAddress), ethRpcClient, logger,
+		txMgr, common.HexToAddress(deployment.Addresses.RegistryCoordinator),
+		common.HexToAddress(deployment.Addresses.OperatorStateRetriever), ethRpcClient, logger,
 	)
 	if err != nil {
 		logger.Error("Cannot create AvsWriter", "err", err)
@@ -205,15 +220,15 @@ func NewOperatorFromConfig(c config.OperatorConfig) (*Operator, error) {
 	}
 
 	avsReader, err := chainio.BuildAvsReader(
-		common.HexToAddress(c.RegistryCoordinatorAddress),
-		common.HexToAddress(c.OperatorStateRetrieverAddress),
+		common.HexToAddress(deployment.Addresses.RegistryCoordinator),
+		common.HexToAddress(deployment.Addresses.OperatorStateRetriever),
 		ethRpcClient, logger)
 	if err != nil {
 		logger.Error("Cannot create AvsReader", "err", err)
 		return nil, err
 	}
-	avsSubscriber, err := chainio.BuildAvsSubscriber(common.HexToAddress(c.RegistryCoordinatorAddress),
-		common.HexToAddress(c.OperatorStateRetrieverAddress), ethWsClient, logger,
+	avsSubscriber, err := chainio.BuildAvsSubscriber(common.HexToAddress(deployment.Addresses.RegistryCoordinator),
+		common.HexToAddress(deployment.Addresses.OperatorStateRetriever), ethWsClient, logger,
 	)
 	if err != nil {
 		logger.Error("Cannot create AvsSubscriber", "err", err)
@@ -227,7 +242,7 @@ func NewOperatorFromConfig(c config.OperatorConfig) (*Operator, error) {
 	}
 	economicMetricsCollector := economic.NewCollector(
 		sdkClients.ElChainReader, sdkClients.AvsRegistryChainReader,
-		AVS_NAME, logger, common.HexToAddress(c.Address), quorumNames)
+		AVS_NAME, logger, operatorAddr, quorumNames)
 	reg.MustRegister(economicMetricsCollector)
 
 	aggregatorRpcClient, err := NewAggregatorRpcClient(c.AggregatorServerIpPortAddress, logger, avsAndEigenMetrics)
@@ -239,7 +254,7 @@ func NewOperatorFromConfig(c config.OperatorConfig) (*Operator, error) {
 	operator := &Operator{
 		config: c,
 
-		operatorAddr: common.HexToAddress(c.Address),
+		operatorAddr: operatorAddr,
 		operatorId:   [32]byte{0}, // this is set below
 		blsKeypair:   blsKeyPair,
 
@@ -269,7 +284,7 @@ func NewOperatorFromConfig(c config.OperatorConfig) (*Operator, error) {
 	operator.operatorId = operatorId
 	logger.Info("Operator info",
 		"operatorId", operatorId,
-		"operatorAddr", c.Address,
+		"operatorAddr", operatorAddr,
 		"operatorG1Pubkey", operator.blsKeypair.GetPubKeyG1(),
 		"operatorG2Pubkey", operator.blsKeypair.GetPubKeyG2(),
 	)

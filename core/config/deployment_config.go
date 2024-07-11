@@ -9,6 +9,8 @@ type AVSDeploymentParameters struct {
 	BaseStrategy            string `json:"baseStrategyImplementation"`
 	WETH                    string `json:"wETH"`
 	WETHMultiplier          uint64 `json:"wETH_Multiplier"`
+	RETH                    string `json:"rETH"`
+	RETHMultiplier          uint64 `json:"rETH_Multiplier"`
 	TaskResponseWindowBlock uint64 `json:"taskResponseWindowBlock"`
 	TaskGenerator           string `json:"taskGenerator"`
 	Aggregator              string `json:"aggregator"`

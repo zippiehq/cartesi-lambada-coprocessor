@@ -40,6 +40,8 @@ contract LambadaCoprocessorDeployer is Script, Utils {
         StrategyBaseTVLLimits baseStrategy;
         address wETH;
         uint96 wETH_Multiplier;
+        address rETH;
+        uint96 rETH_Multiplier;
     }
 
     struct DeploymentConfig {
@@ -104,6 +106,8 @@ contract LambadaCoprocessorDeployer is Script, Utils {
             eigenLayer.baseStrategy = StrategyBaseTVLLimits(stdJson.readAddress(configData, ".baseStrategyImplementation"));
             eigenLayer.wETH = stdJson.readAddress(configData, ".wETH");
             eigenLayer.wETH_Multiplier = uint96(stdJson.readUint(configData, ".wETH_Multiplier"));
+            eigenLayer.rETH = stdJson.readAddress(configData, ".rETH");
+            eigenLayer.rETH_Multiplier = uint96(stdJson.readUint(configData, ".rETH_Multiplier"));
 
             {
                 config.taskResponseWindowBlock = uint32(stdJson.readUint(configData, ".taskResponseWindowBlock"));

@@ -3,6 +3,7 @@ package integration_test
 import (
 	"bytes"
 	"encoding/json"
+	"flag"
 	"io"
 	"net/http"
 	"testing"
@@ -21,6 +22,14 @@ import (
 	"github.com/zippiehq/cartesi-lambada-coprocessor/core/config"
 )
 
+const (
+	DEVNET  = "devnet"
+	HOLESKY = "holesky"
+	MAINNET = "mainnet"
+)
+
+var network = flag.String("network", DEVNET, "target network")
+
 type task struct {
 	ProgramID string `json:"programId"`
 	Input     string `json:"input"`
@@ -34,9 +43,19 @@ type taskBatch struct {
 }
 
 func TestIntegration(t *testing.T) {
+	var deploymentOutputPath string
+	switch *network {
+	case DEVNET:
+		deploymentOutputPath = "../contracts/script/output/lambada_coprocessor_deployment_output_devnet.json"
+	case HOLESKY:
+		deploymentOutputPath = "../contracts/script/output/lambada_coprocessor_deployment_output_holesky.json"
+	case MAINNET:
+		deploymentOutputPath = "../contracts/script/output/lambada_coprocessor_deployment_output_mainnet.json"
+	}
+
 	config, err := config.NewConfig(
 		"./nodes/aggregator/aggregator.yaml",
-		"../contracts/script/output/lambada_coprocessor_deployment_output_devnet.json",
+		deploymentOutputPath,
 		"0x2a871d0798f97d79848a013d4936a73bf4cc922c825d33c1cf7073dff6d409c6",
 	)
 	if err != nil {
