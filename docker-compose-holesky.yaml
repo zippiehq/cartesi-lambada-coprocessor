@@ -1,10 +1,10 @@
 version: "3"
 
+
 secrets:
   anvil_fork_url_holesky:
     file: anvil_fork_url_holesky.txt
-  anvil_fork_url_mainnet:
-    file: anvil_fork_url_mainnet.txt
+
 
 networks:
   lambada-coprocessor-network:
@@ -35,10 +35,11 @@ services:
 
     networks:
       - lambada-coprocessor-network
+
     secrets:
       - anvil_fork_url_holesky
-      - anvil_fork_url_mainnet
-    
+
+
   aggregator:
     build:
       context: .
