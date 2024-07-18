@@ -18,6 +18,11 @@ bindings: ## generates contract bindings
 tests-contract: ## runs all forge tests
 	cd contracts && forge test
 
-tests-integration: ## runs all integration tests
-	go test ./tests/... -v -count=1
+tests-integration: ## runs integration tests on devnet
+	go test ./tests/... -v -count=1 -args --network devnet
 
+tests-integration-holesky: ## runs integration tests on Holesky fork
+	go test ./tests... -v -count=1 -args --network holesky
+
+tests-integration-mainnet: ## runs integration tests on Mainnet fork
+	go test ./tests... -v -count=1 -args --network mainnet

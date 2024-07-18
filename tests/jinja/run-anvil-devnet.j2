@@ -1,0 +1,22 @@
+#!/bin/bash
+
+rm /cartesi-lambada-coprocessor/tests/anvil/devnet-operators-ready.flag
+
+anvil --load-state /root/.anvil/state.json --host 0.0.0.0 &
+timeout 22 bash -c 'until printf "" 2>>/dev/null >>/dev/tcp/$0/$1; do sleep 1; done' 0.0.0.0:8545
+
+{% for operator in operators %}
+cast send \
+    --rpc-url http://0.0.0.0:8545 \
+    --private-key {{ funder_private_key }} \
+    --value 20ether {{ operator.address }}
+
+cast send \
+    --rpc-url http://0.0.0.0:8545 \
+    --private-key {{ operator.private_key }} \
+    {{ erc20_mock_address }} "mint(address,uint256)" {{ operator.address }} {{ strategy_deposit_amount }}    
+{% endfor %}
+
+touch /cartesi-lambada-coprocessor/tests/anvil/devnet-operators-ready.flag
+
+tail -f /dev/null

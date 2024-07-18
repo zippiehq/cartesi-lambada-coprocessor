@@ -1,25 +1,5 @@
 #!/bin/bash
 
-sleep {{ operator_delay }}
-
-cast send \
-    --rpc-url http://anvil:8545 \
-    --private-key {{ funder_private_key }} \
-    --value 20ether {{ operator_address }}
-
-{% if network == 'devnet' %}
-cast send \
-    --rpc-url http://anvil:8545 \
-    --private-key {{ operator_private_key }} \
-    {{ erc20_mock_address }} "mint(address,uint256)" {{ operator_address }} {{ strategy_deposit_amount }}    
-{% else %}
-cast send \ 
-    --rpc-url http://anvil:8545 \
-    --private-key {{ operator_private_key }} \
-    --value{{ strategy_deposit_amount }}ether \
-    0x94373a4919B3240D86eA41593D5eBa789FEF3848 'deposit()'
-{% endif %}
-
 cli setup-operator \
     --config {{ operator_config }} \
     --bls-password {{ operator_bls_password }} \

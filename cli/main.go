@@ -87,11 +87,6 @@ func main() {
 			Usage:  "generate docker compose with specified number of operator nodes",
 			Action: GenerateDockerCompose,
 			Flags: []cli.Flag{
-				cli.StringFlag{
-					Name:     "network",
-					Usage:    "devent or holesky",
-					Required: true,
-				},
 				cli.UintFlag{
 					Name:     "operators",
 					Usage:    "number of operators nodes",

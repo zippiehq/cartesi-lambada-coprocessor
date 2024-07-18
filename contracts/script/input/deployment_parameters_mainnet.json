@@ -1,0 +1,22 @@
+{
+    "strategyManager": "0x858646372CC42E1A627fcE94aa7A7033e7CF075A",
+    "avsDirectory": "0x135dda560e946695d6f155dacafc6f1f25c1f5af",
+    "delegationManager": "0x39053D51B77DC0d36036Fc1fCc8Cb819df8Ef37A",
+    "baseStrategyImplementation": "0xdfdA04f980bE6A64E3607c95Ca26012Ab9aA46d3",
+    "proxyAdmin": "0x8b9566AdA63B64d1E1dcF1418b43fd1433b72444",
+    "pauserRegistry": "0x0c431C66F4dE941d089625E5B423D00707977060",
+  
+    "taskResponseWindowBlock": 30,
+    "taskGenerator": "0xa0Ee7A142d267C1f36714E4a8F75612F20a79720",
+    "aggregator": "0xa0Ee7A142d267C1f36714E4a8F75612F20a79720",
+    "owner": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+    "churner": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+    "ejector": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+    "confirmer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+    "whitelister": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+  
+    "wETH": "0x80528D6e9A2BAbFc766965E0E26d5aB08D9CFaF9",
+    "wETH_Multiplier": 1000000000000000000,
+    "rETH": "0x1BeE69b7dFFfA4E2d53C2a2Df135C388AD25dCD2",
+    "rETH_Multiplier": 1000000000000000000
+  }

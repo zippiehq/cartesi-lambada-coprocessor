@@ -32,7 +32,6 @@ contract LambadaCoprocessorServiceManager is ServiceManagerBase {
     )
         ServiceManagerBase(
             _avsDirectory,
-            IPaymentCoordinator(address(0)), // inc-sq doesn't need to deal with payments
             _registryCoordinator,
             _stakeRegistry
         )

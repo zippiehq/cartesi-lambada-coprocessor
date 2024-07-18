@@ -1,9 +1,6 @@
 production: true
 
-address: 0xAfE04e56545a90b15DcbDB682F55C151D7af2Eca
-
-registry_coordinator_address: 0x1613beB3B2C4f22Ee086B2b38C1476A3cE7f78E8
-operator_state_retriever_address: 0x95401dc811bb5740090279Ba06cfA8fcF6113778
+avs_deployment_path: ./contracts/script/output/lambada_coprocessor_deployment_output_holesky.json
 
 ecdsa_private_key_store_path: tests/nodes/operators/2/ecdsa.key.json
 bls_private_key_store_path: tests/nodes/operators/2/bls.key.json

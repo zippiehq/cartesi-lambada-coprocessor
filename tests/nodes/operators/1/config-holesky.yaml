@@ -1,0 +1,19 @@
+production: true
+
+avs_deployment_path: ./contracts/script/output/lambada_coprocessor_deployment_output_holesky.json
+
+ecdsa_private_key_store_path: tests/nodes/operators/1/ecdsa.key.json
+bls_private_key_store_path: tests/nodes/operators/1/bls.key.json
+
+eth_rpc_url: http://anvil:8545
+eth_ws_url: ws://anvil:8545
+
+aggregator_server_ip_port_address: lambada-coprocessor-aggregator:8090
+ipfs_ip_port_address: machine1:5001
+lambada_ip_port_address: machine1:3033
+
+enable_metrics: true
+eigen_metrics_ip_port_address: 0.0.0.0:9090
+
+enable_node_api: true
+node_api_ip_port_address: 0.0.0.0:9010
