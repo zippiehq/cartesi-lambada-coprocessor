@@ -38,9 +38,6 @@ services:
     secrets:
       - anvil_fork_url_holesky
       - anvil_fork_url_mainnet
-    environment:
-
-  
     
   aggregator:
     build:
@@ -55,8 +52,8 @@ services:
     volumes:
       - ./:/lambada-coprocessor/
     working_dir: /lambada-coprocessor
-    command:
-      - --config
+    command: 
+      - --config 
       - tests/nodes/aggregator/aggregator-docker-compose.yaml
       - --credible-squaring-deployment 
 

@@ -38,11 +38,6 @@ services:
     secrets:
       - anvil_fork_url_holesky
       - anvil_fork_url_mainnet
-    environment:
-
-      ANVIL_FORK_URL: /run/secrets/anvil_fork_url_mainnet
-
-  
     
   aggregator:
     build:
