@@ -9,32 +9,32 @@ timeout 22 bash -c 'until printf "" 2>>/dev/null >>/dev/tcp/$0/$1; do sleep 1; d
 cast send \
     --rpc-url http://0.0.0.0:8545 \
     --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 \
-    --value 20ether 0x0c84ffF0167E5197499DbcEaD25B9c2fB7C89FA8
+    --value 20ether 0x1eB68Fa77eB7d263320304B8f6A3C08AE9481469
 
 cast send \
     --rpc-url http://0.0.0.0:8545 \
-    --private-key 0xfcef29595390333a70fd43862ab2ba66021c5d96131b8372d9e56ae65a66012d \
-    0x7a2088a1bFc9d81c55368AE168C2C02570cB814F "mint(address,uint256)" 0x0c84ffF0167E5197499DbcEaD25B9c2fB7C89FA8 10    
-
-cast send \
-    --rpc-url http://0.0.0.0:8545 \
-    --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 \
-    --value 20ether 0x8674cdDC2D31C9bA13f38889ae866D0051cB2a3C
-
-cast send \
-    --rpc-url http://0.0.0.0:8545 \
-    --private-key 0x52956691667302e45d9c84dff635e811a34e50d6603cd3b91c46f3fc3b043814 \
-    0x7a2088a1bFc9d81c55368AE168C2C02570cB814F "mint(address,uint256)" 0x8674cdDC2D31C9bA13f38889ae866D0051cB2a3C 10    
+    --private-key 0x90c285f405d1e1611b6c9dc51a3528ca7a4eb0713c3eee0cb11b209ddfa8240c \
+    0x7a2088a1bFc9d81c55368AE168C2C02570cB814F "mint(address,uint256)" 0x1eB68Fa77eB7d263320304B8f6A3C08AE9481469 10    
 
 cast send \
     --rpc-url http://0.0.0.0:8545 \
     --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 \
-    --value 20ether 0x51b6f9Bd94055EE166AD27834102929e058f61C0
+    --value 20ether 0x6F53985155e7204D364e97c2AF41cD2eD02c0dAD
 
 cast send \
     --rpc-url http://0.0.0.0:8545 \
-    --private-key 0x1da692825f17f894caa8170de6f260907216b11ea2f51690a5dcbb972f904c6c \
-    0x7a2088a1bFc9d81c55368AE168C2C02570cB814F "mint(address,uint256)" 0x51b6f9Bd94055EE166AD27834102929e058f61C0 10    
+    --private-key 0xdc294635c567ada925b683fde0eec97a2b3a781fabcbdbbece51ad05f4c5a364 \
+    0x7a2088a1bFc9d81c55368AE168C2C02570cB814F "mint(address,uint256)" 0x6F53985155e7204D364e97c2AF41cD2eD02c0dAD 10    
+
+cast send \
+    --rpc-url http://0.0.0.0:8545 \
+    --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 \
+    --value 20ether 0xe81a23F9fDa51999E689b0A959ff7C24c9CF8918
+
+cast send \
+    --rpc-url http://0.0.0.0:8545 \
+    --private-key 0x84473845357bd4387fddef3bcf3347657ead79e17b258f38f4c8a3f2069dfa85 \
+    0x7a2088a1bFc9d81c55368AE168C2C02570cB814F "mint(address,uint256)" 0xe81a23F9fDa51999E689b0A959ff7C24c9CF8918 10    
 
 
 touch /cartesi-lambada-coprocessor/tests/anvil/devnet-operators-ready.flag

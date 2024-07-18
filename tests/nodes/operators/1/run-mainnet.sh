@@ -2,9 +2,9 @@
 
 cli setup-operator \
     --config tests/nodes/operators/1/config-mainnet.yaml \
-    --bls-password a8Q5Q1G1gVta5tSMbTBZ \
-    --ecdsa-password Z2snWeHXk6PYTmZBcoas \
+    --bls-password mbAhhbncUefnXpYV1X5M \
+    --ecdsa-password 2w1RU1MXk2LPdc3DJAZF \
     --strategy-address 0x1BeE69b7dFFfA4E2d53C2a2Df135C388AD25dCD2 \
     --strategy-deposit-amount 10
 
-OPERATOR_BLS_KEY_PASSWORD=a8Q5Q1G1gVta5tSMbTBZ OPERATOR_ECDSA_KEY_PASSWORD=Z2snWeHXk6PYTmZBcoas operator --config tests/nodes/operators/1/config-mainnet.yaml
+OPERATOR_BLS_KEY_PASSWORD=mbAhhbncUefnXpYV1X5M OPERATOR_ECDSA_KEY_PASSWORD=2w1RU1MXk2LPdc3DJAZF operator --config tests/nodes/operators/1/config-mainnet.yaml

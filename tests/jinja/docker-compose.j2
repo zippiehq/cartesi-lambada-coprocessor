@@ -1,10 +1,14 @@
 version: "3"
 
+{% if network == 'holesky' %}
 secrets:
   anvil_fork_url_holesky:
     file: anvil_fork_url_holesky.txt
+{% elif network == 'mainnet' %}
+secrets:
   anvil_fork_url_mainnet:
     file: anvil_fork_url_mainnet.txt
+{% endif %}
 
 networks:
   lambada-coprocessor-network:
@@ -49,10 +53,14 @@ services:
 {% endif %}
     networks:
       - lambada-coprocessor-network
+{% if network == 'holesky' %}
     secrets:
       - anvil_fork_url_holesky
+{% elif network == 'mainnet' %}
+    secrets:
       - anvil_fork_url_mainnet
-    
+{% endif %}
+
   aggregator:
     build:
       context: .
