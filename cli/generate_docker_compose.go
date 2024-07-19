@@ -230,10 +230,11 @@ func GenerateDockerCompose(ctx *cli.Context) error {
 		operators := make([]map[string]interface{}, operatorCount)
 		for i := 1; i <= int(operatorCount); i++ {
 			operators[i-1] = map[string]interface{}{
-				"name":         fmt.Sprintf("operator%d", i),
-				"machine":      fmt.Sprintf("machine%d", i),
-				"machine_data": machineData[i-1],
-				"run_script":   operatorScripts[network][i-1],
+				"name":           fmt.Sprintf("operator%d", i),
+				"machine":        fmt.Sprintf("machine%d", i),
+				"machine_data":   machineData[i-1],
+				"run_script":     operatorScripts[network][i-1],
+				"host_ipfs_port": 5000 + i,
 			}
 		}
 		composeOperators[network] = operators

@@ -23,7 +23,7 @@ services:
       dockerfile: Dockerfile-anvil
     container_name: anvil
     ports:
-      - 8545:8545
+      - 127.0.0.1:8545:8545
     volumes:
       - ./tests/anvil/avs-and-eigenlayer-deployed-anvil-state.json:/root/.anvil/state.json
       - ./:/cartesi-lambada-coprocessor/
@@ -67,7 +67,7 @@ services:
       dockerfile: aggregator.Dockerfile
     container_name: lambada-coprocessor-aggregator
     ports:
-      - 8080:8080
+      - 127.0.0.1:8080:8080
     depends_on:
       anvil:
         condition: service_healthy
@@ -99,6 +99,8 @@ services:
   {{ operator.machine }}:
     image: ghcr.io/zippiehq/cartesi-lambada:latest
     container_name: lambada-coprocessor-{{ operator.machine }}
+    ports:
+      - 127.0.0.1:{{ operator.host_ipfs_port }}:5001
     volumes:
       - ./{{ operator.machine_data }}:/data
       - ./machine/data-preload:/data/preload
