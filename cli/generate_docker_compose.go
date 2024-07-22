@@ -5,6 +5,7 @@ import (
 	"fmt"
 	mathrand "math/rand"
 	"os"
+	"os/exec"
 	"path/filepath"
 
 	sdkutils "github.com/Layr-Labs/eigensdk-go/utils"
@@ -181,6 +182,7 @@ func GenerateDockerCompose(ctx *cli.Context) error {
 			if _, err = scriptFile.WriteString(script); err != nil {
 				return err
 			}
+			exec.Command("chmod", "+x", scripts[i])
 		}
 		operatorScripts[network] = scripts
 	}
@@ -215,6 +217,7 @@ func GenerateDockerCompose(ctx *cli.Context) error {
 		if _, err = scriptFile.WriteString(script); err != nil {
 			return err
 		}
+		exec.Command("chmod", "+x", script)
 	}
 
 	// Generate directories for machine data

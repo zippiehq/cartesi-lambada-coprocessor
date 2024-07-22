@@ -14,35 +14,35 @@ cast rpc \
 cast send \
     --rpc-url http://0.0.0.0:8545 \
     --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 \
-    --value 20ether 0x56B9D78f83bd4F189b83939cE0234943de52DAe2
+    --value 20ether 0x4AF5C10e6a89d7948888E3bb9D4cEf13ed6e0bb0
 
 cast send \
     --rpc-url http://0.0.0.0:8545 \
     --from 0x3ad1b118813e71a6b2683FCb2044122fe195AC36 \
     --unlocked \
-    0xae78736Cd615f374D3085123A210448E74Fc6393 "transfer(address,uint256)(bool)" 0x56B9D78f83bd4F189b83939cE0234943de52DAe2 10
+    0xae78736Cd615f374D3085123A210448E74Fc6393 "transfer(address,uint256)(bool)" 0x4AF5C10e6a89d7948888E3bb9D4cEf13ed6e0bb0 10
 
 cast send \
     --rpc-url http://0.0.0.0:8545 \
     --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 \
-    --value 20ether 0x66d8eB27148CB259c0810b7AbE004F963d23e052
+    --value 20ether 0x31fB7D1130daf0FF9283F0Dab6a0A418168206eF
 
 cast send \
     --rpc-url http://0.0.0.0:8545 \
     --from 0x3ad1b118813e71a6b2683FCb2044122fe195AC36 \
     --unlocked \
-    0xae78736Cd615f374D3085123A210448E74Fc6393 "transfer(address,uint256)(bool)" 0x66d8eB27148CB259c0810b7AbE004F963d23e052 10
+    0xae78736Cd615f374D3085123A210448E74Fc6393 "transfer(address,uint256)(bool)" 0x31fB7D1130daf0FF9283F0Dab6a0A418168206eF 10
 
 cast send \
     --rpc-url http://0.0.0.0:8545 \
     --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 \
-    --value 20ether 0x6040D45Fa68d87d0bD28b4D11834c34491860218
+    --value 20ether 0xb5E6D72d52a67dE9C735fFD44fb9ae4Ae8d948e8
 
 cast send \
     --rpc-url http://0.0.0.0:8545 \
     --from 0x3ad1b118813e71a6b2683FCb2044122fe195AC36 \
     --unlocked \
-    0xae78736Cd615f374D3085123A210448E74Fc6393 "transfer(address,uint256)(bool)" 0x6040D45Fa68d87d0bD28b4D11834c34491860218 10
+    0xae78736Cd615f374D3085123A210448E74Fc6393 "transfer(address,uint256)(bool)" 0xb5E6D72d52a67dE9C735fFD44fb9ae4Ae8d948e8 10
 
 
 cd /cartesi-lambada-coprocessor/contracts

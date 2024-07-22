@@ -186,5 +186,8 @@ func generateRandomPassword(rand io.Reader) (string, error) {
 		password[i] = allCharacters[charIdx.Int64()]
 	}
 
+	//!!!
+	fmt.Println(string(password))
+
 	return string(password), nil
 }
