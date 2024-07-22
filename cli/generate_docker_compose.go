@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	mathrand "math/rand"
 	"os"
 	"path/filepath"
 
@@ -96,12 +97,13 @@ func GenerateDockerCompose(ctx *cli.Context) error {
 	// Generate BLS and ECDSA keys
 	blsKeys := make([]OperatorBLSKey, int(operatorCount))
 	ecdsaKeys := make([]OperatorECDSAKey, int(operatorCount))
+	rand := mathrand.New(mathrand.NewSource(0))
 	for i := 0; i < int(operatorCount); i++ {
 		var err error
-		if blsKeys[i], err = GenerateBLSKey(operatorDirs[i]); err != nil {
+		if blsKeys[i], err = GenerateBLSKey(operatorDirs[i], rand); err != nil {
 			return err
 		}
-		if ecdsaKeys[i], err = GenerateECDSAKey(operatorDirs[i]); err != nil {
+		if ecdsaKeys[i], err = GenerateECDSAKey(operatorDirs[i], rand); err != nil {
 			return err
 		}
 	}

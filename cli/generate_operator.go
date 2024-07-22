@@ -1,20 +1,25 @@
 package main
 
 import (
+	"crypto/ecdsa"
+	cryptorand "crypto/rand"
 	"encoding/hex"
 	"fmt"
-	"math/rand"
+	"io"
+	"math/big"
 	"os"
 	"path/filepath"
-	"time"
 
+	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/crypto/secp256k1"
+
 	"github.com/nikolalohinski/gonja"
 	"github.com/urfave/cli"
 
 	"github.com/Layr-Labs/eigensdk-go/crypto/bls"
-	"github.com/Layr-Labs/eigensdk-go/crypto/ecdsa"
-	sdkutils "github.com/Layr-Labs/eigensdk-go/utils"
+	eigensdk_ecdsa "github.com/Layr-Labs/eigensdk-go/crypto/ecdsa"
+	eigensdk_utils "github.com/Layr-Labs/eigensdk-go/utils"
 
 	"github.com/zippiehq/cartesi-lambada-coprocessor/core/config"
 )
@@ -22,7 +27,7 @@ import (
 func GenerateOperator(ctx *cli.Context) error {
 	deploymentOutputPath := ctx.String(deploymentOutputFlag.Name)
 	var deploymentOutput config.AVSDeployment
-	if err := sdkutils.ReadJsonConfig(deploymentOutputPath, &deploymentOutput); err != nil {
+	if err := eigensdk_utils.ReadJsonConfig(deploymentOutputPath, &deploymentOutput); err != nil {
 		return fmt.Errorf("failed to read deployment output - %s", err)
 	}
 
@@ -38,11 +43,11 @@ func GenerateOperator(ctx *cli.Context) error {
 	}
 
 	// Generate BLS and ECDSA keys
-	blsKey, err := GenerateBLSKey(operatorDir)
+	blsKey, err := GenerateBLSKey(operatorDir, cryptorand.Reader)
 	if err != nil {
 		return fmt.Errorf("failed to generate BLS key - %s", err)
 	}
-	ecdsaKey, err := GenerateECDSAKey(operatorDir)
+	ecdsaKey, err := GenerateECDSAKey(operatorDir, cryptorand.Reader)
 	if err != nil {
 		return fmt.Errorf("failed to generate ECDSDA key - %s", err)
 	}
@@ -96,13 +101,22 @@ type OperatorBLSKey struct {
 	PrivateKey string
 }
 
-func GenerateBLSKey(path string) (OperatorBLSKey, error) {
-	key, err := bls.GenRandomBlsKeys()
+func GenerateBLSKey(path string, rand io.Reader) (OperatorBLSKey, error) {
+	// Max random value is order of the curve
+	max := new(big.Int)
+	max.SetString(fr.Modulus().String(), 10)
+	// Generate cryptographically strong pseudo-random between 0 - max
+	n, err := cryptorand.Int(rand, max)
 	if err != nil {
 		return OperatorBLSKey{}, err
 	}
+	sk := new(fr.Element).SetBigInt(n)
+	key := bls.NewKeyPair(sk)
 
-	password := generateRandomPassword()
+	password, err := generateRandomPassword(rand)
+	if err != nil {
+		return OperatorBLSKey{}, err
+	}
 
 	keyPath := filepath.Join(path, "bls.key.json")
 	if err = key.SaveToFile(keyPath, password); err != nil {
@@ -125,17 +139,20 @@ type OperatorECDSAKey struct {
 	Address    string
 }
 
-func GenerateECDSAKey(path string) (OperatorECDSAKey, error) {
-	key, err := crypto.GenerateKey()
+func GenerateECDSAKey(path string, rand io.Reader) (OperatorECDSAKey, error) {
+	key, err := ecdsa.GenerateKey(secp256k1.S256(), rand)
 	if err != nil {
 		return OperatorECDSAKey{}, err
 	}
 	privateKeyHex := "0x" + hex.EncodeToString(key.D.Bytes())
 
-	password := generateRandomPassword()
+	password, err := generateRandomPassword(rand)
+	if err != nil {
+		return OperatorECDSAKey{}, err
+	}
 
 	keyPath := filepath.Join(path, "ecdsa.key.json")
-	if err = ecdsa.WriteKey(keyPath, key, password); err != nil {
+	if err = eigensdk_ecdsa.WriteKey(keyPath, key, password); err != nil {
 		return OperatorECDSAKey{}, err
 	}
 
@@ -149,27 +166,25 @@ func GenerateECDSAKey(path string) (OperatorECDSAKey, error) {
 	return operatorKey, nil
 }
 
-func generateRandomPassword() string {
-	// Seed the random number generator
-	random := rand.New(rand.NewSource(time.Now().UnixNano()))
-
+func generateRandomPassword(rand io.Reader) (string, error) {
 	// Define character sets for the password
 	uppercaseLetters := "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 	lowercaseLetters := "abcdefghijklmnopqrstuvwxyz"
 	digits := "0123456789"
-	//specialSymbols := "!@#$%^&*()-_+=[]{}|;:,.<>?/\\"
-
-	// Combine character sets into one
-	//allCharacters := uppercaseLetters + lowercaseLetters + digits + specialSymbols
 	allCharacters := uppercaseLetters + lowercaseLetters + digits
 
-	// Length of the password you want
 	passwordLength := 20
 
 	// Generate the password
 	password := make([]byte, passwordLength)
 	for i := range password {
-		password[i] = allCharacters[random.Intn(len(allCharacters))]
+		idx := big.NewInt(int64(len(allCharacters)))
+		charIdx, err := cryptorand.Int(rand, idx)
+		if err != nil {
+			return "", err
+		}
+		password[i] = allCharacters[charIdx.Int64()]
 	}
-	return string(password)
+
+	return string(password), nil
 }
