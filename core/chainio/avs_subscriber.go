@@ -4,15 +4,14 @@ import (
 	"fmt"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/event"
 
 	"github.com/Layr-Labs/eigensdk-go/chainio/clients/eth"
+	logging "github.com/Layr-Labs/eigensdk-go/logging"
 	sdklogging "github.com/Layr-Labs/eigensdk-go/logging"
 
 	taskmanager "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/LambadaCoprocessorTaskManager"
-	"github.com/zippiehq/cartesi-lambada-coprocessor/core/config"
 )
 
 type AvsSubscriberer interface {
@@ -28,10 +27,13 @@ type AvsSubscriberer interface {
 }
 
 type AvsSubscriber struct {
-	AvsContractBindings *AvsManagersBindings
-	logger              sdklogging.Logger
+	Bindings *AvsManagersBindings
+
+	log sdklogging.Logger
 }
 
+//!!!
+/*
 func BuildAvsSubscriberFromConfig(config *config.AggregatorConfig) (*AvsSubscriber, error) {
 	return BuildAvsSubscriber(
 		config.LambadaCoprocessorRegistryCoordinatorAddr,
@@ -49,25 +51,34 @@ func BuildAvsSubscriber(registryCoordinatorAddr, blsOperatorStateRetrieverAddr g
 	}
 	return NewAvsSubscriber(avsContractBindings, logger), nil
 }
+*/
 
-func NewAvsSubscriber(avsContractBindings *AvsManagersBindings, logger sdklogging.Logger) *AvsSubscriber {
-	return &AvsSubscriber{
-		AvsContractBindings: avsContractBindings,
-		logger:              logger,
+func NewAvsSubscriber(deployment AVSDeployment, ethClient eth.Client, log logging.Logger) (*AvsSubscriber, error) {
+	bindings, err := NewAvsManagersBindings(deployment, ethClient)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create contract bindings - %s", err)
 	}
+
+	s := &AvsSubscriber{
+		Bindings: bindings,
+
+		log: log,
+	}
+
+	return s, nil
 }
 
 func (s *AvsSubscriber) SubscribeToNewBatches(
 	newBatchChan chan *taskmanager.ContractLambadaCoprocessorTaskManagerTaskBatchRegistered,
 ) (event.Subscription, error) {
-	sub, err := s.AvsContractBindings.TaskManager.WatchTaskBatchRegistered(
+	sub, err := s.Bindings.TaskManager.WatchTaskBatchRegistered(
 		&bind.WatchOpts{}, newBatchChan,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to subscribe to NewTaskBatchRegistered events - %s", err)
 	}
 
-	s.logger.Infof("Subscribed to new TaskManager tasks")
+	s.log.Infof("Subscribed to new TaskManager tasks")
 
 	return sub, nil
 }
@@ -75,14 +86,14 @@ func (s *AvsSubscriber) SubscribeToNewBatches(
 func (s *AvsSubscriber) SubscribeToTaskResponses(
 	taskResponseChan chan *taskmanager.ContractLambadaCoprocessorTaskManagerTaskResponded,
 ) (event.Subscription, error) {
-	sub, err := s.AvsContractBindings.TaskManager.WatchTaskResponded(
+	sub, err := s.Bindings.TaskManager.WatchTaskResponded(
 		&bind.WatchOpts{}, taskResponseChan,
 	)
 	if err != nil {
-		s.logger.Error("failed to subscribe to TaskResponded events - %s", err)
+		s.log.Error("failed to subscribe to TaskResponded events - %s", err)
 	}
 
-	s.logger.Infof("Subscribed to TaskResponded events")
+	s.log.Infof("Subscribed to TaskResponded events")
 
 	return sub, nil
 }
@@ -90,5 +101,5 @@ func (s *AvsSubscriber) SubscribeToTaskResponses(
 func (s *AvsSubscriber) ParseTaskResponded(
 	rawLog types.Log,
 ) (*taskmanager.ContractLambadaCoprocessorTaskManagerTaskResponded, error) {
-	return s.AvsContractBindings.TaskManager.ContractLambadaCoprocessorTaskManagerFilterer.ParseTaskResponded(rawLog)
+	return s.Bindings.TaskManager.ContractLambadaCoprocessorTaskManagerFilterer.ParseTaskResponded(rawLog)
 }
