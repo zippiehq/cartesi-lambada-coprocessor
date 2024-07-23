@@ -4,9 +4,13 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
 
+	"github.com/Layr-Labs/eigensdk-go/crypto/ecdsa"
 	sdkutils "github.com/Layr-Labs/eigensdk-go/utils"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/zippiehq/cartesi-lambada-coprocessor/core/config"
 
 	"github.com/nikolalohinski/gonja"
@@ -60,6 +64,9 @@ func GenerateDockerCompose(ctx *cli.Context) error {
 	if operatorCount == 0 {
 		return errors.New("number of operators must be greater then 0")
 	}
+	if operatorCount > 10 {
+		return errors.New("number of operators must be less then 10")
+	}
 
 	deploymentParams := map[string]config.AVSDeploymentParameters{}
 	for network, paramPath := range DEPLOYMENT_PARAM_PATHS {
@@ -93,17 +100,44 @@ func GenerateDockerCompose(ctx *cli.Context) error {
 		}
 	}
 
-	// Generate BLS and ECDSA keys
+	// Read keystore passwords
+	blsPwds, err := readLines("./tests/nodes/operators-keystore/bls/password.txt")
+	if err != nil {
+		return err
+	}
+	ecdsaPwds, err := readLines("./tests/nodes/operators-keystore/ecdsa/password.txt")
+	if err != nil {
+		return err
+	}
+	// Read private keys
+	blsPrivKeys, err := readLines("./tests/nodes/operators-keystore/bls/private_key_hex.txt")
+	if err != nil {
+		return err
+	}
+	ecdsaPrivKeys, err := readLines("./tests/nodes/operators-keystore/ecdsa/private_key_hex.txt")
+	if err != nil {
+		return err
+	}
+
+	// Fill operator keystore information
 	blsKeys := make([]OperatorBLSKey, int(operatorCount))
 	ecdsaKeys := make([]OperatorECDSAKey, int(operatorCount))
 	for i := 0; i < int(operatorCount); i++ {
-		var err error
-		if blsKeys[i], err = GenerateBLSKey(operatorDirs[i]); err != nil {
+		blsKeys[i] = OperatorBLSKey{
+			FilePath:   fmt.Sprintf("./tests/nodes/operators-keystore/bls/keys/%d.bls.key.json", i+1),
+			Password:   blsPwds[i],
+			PrivateKey: blsPrivKeys[i],
+		}
+		ecdsaKeys[i] = OperatorECDSAKey{
+			FilePath:   fmt.Sprintf("./tests/nodes/operators-keystore/ecdsa/keys/%d.ecdsa.key.json", i+1),
+			Password:   ecdsaPwds[i],
+			PrivateKey: ecdsaPrivKeys[i],
+		}
+		ecdsaKey, err := ecdsa.ReadKey(ecdsaKeys[i].FilePath, ecdsaKeys[i].Password)
+		if err != nil {
 			return err
 		}
-		if ecdsaKeys[i], err = GenerateECDSAKey(operatorDirs[i]); err != nil {
-			return err
-		}
+		ecdsaKeys[i].Address = crypto.PubkeyToAddress(ecdsaKey.PublicKey).Hex()
 	}
 
 	// Generate configuration files for each operator
@@ -179,6 +213,7 @@ func GenerateDockerCompose(ctx *cli.Context) error {
 			if _, err = scriptFile.WriteString(script); err != nil {
 				return err
 			}
+			exec.Command("chmod", "+x", scripts[i])
 		}
 		operatorScripts[network] = scripts
 	}
@@ -213,6 +248,7 @@ func GenerateDockerCompose(ctx *cli.Context) error {
 		if _, err = scriptFile.WriteString(script); err != nil {
 			return err
 		}
+		exec.Command("chmod", "+x", script)
 	}
 
 	// Generate directories for machine data
@@ -262,4 +298,12 @@ func GenerateDockerCompose(ctx *cli.Context) error {
 	}
 
 	return nil
+}
+
+func readLines(filePath string) ([]string, error) {
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return nil, err
+	}
+	return strings.Split(string(data), "\n"), nil
 }
