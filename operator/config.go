@@ -1,6 +1,6 @@
-package config
+package operator
 
-type OperatorConfig struct {
+type Config struct {
 	// used to set the logger level (true = info, false = debug)
 	Production bool `yaml:"production"`
 

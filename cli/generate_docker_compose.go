@@ -11,6 +11,7 @@ import (
 	"github.com/Layr-Labs/eigensdk-go/crypto/ecdsa"
 	sdkutils "github.com/Layr-Labs/eigensdk-go/utils"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/zippiehq/cartesi-lambada-coprocessor/core/chainio"
 	"github.com/zippiehq/cartesi-lambada-coprocessor/core/config"
 
 	"github.com/nikolalohinski/gonja"
@@ -77,7 +78,7 @@ func GenerateDockerCompose(ctx *cli.Context) error {
 		deploymentParams[network] = params
 	}
 
-	var devnetDeploymentOutput config.AVSDeployment
+	var devnetDeploymentOutput chainio.AVSDeployment
 	if err := sdkutils.ReadJsonConfig(DEPLOYMENT_OUTPUT_PATHS[DEVNET], &devnetDeploymentOutput); err != nil {
 		return fmt.Errorf("failed to read deployment output - %s", err)
 	}

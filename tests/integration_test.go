@@ -152,7 +152,7 @@ func checkTaskBatch(
 	select {
 	case onchainBatch := <-batchCh:
 		// Validate batch index.
-		nextBatchIdx, err := avsReader.AvsManagersBindings.TaskManager.NextBatchIndex(&bind.CallOpts{})
+		nextBatchIdx, err := avsReader.Bindings.TaskManager.NextBatchIndex(&bind.CallOpts{})
 		if err != nil {
 			t.Fatalf("failed to fetch next batch index - %s", err)
 		}
@@ -173,7 +173,7 @@ func checkTaskBatch(
 		if err != nil {
 			t.Fatalf("failed to compute task batch hash - %s", err)
 		}
-		onchainBatchHash, err := avsReader.AvsManagersBindings.TaskManager.AllBatchHashes(&bind.CallOpts{}, batch.index)
+		onchainBatchHash, err := avsReader.Bindings.TaskManager.AllBatchHashes(&bind.CallOpts{}, batch.index)
 		if err != nil {
 			t.Fatalf("failed to fetch batch hash - %s", err)
 		}
@@ -197,7 +197,7 @@ func checkTaskBatch(
 		if err != nil {
 			t.Fatalf("failed to compute task response metadata hash -%s", err)
 		}
-		respExists, err := avsReader.AvsManagersBindings.TaskManager.AllTaskResponses(&bind.CallOpts{}, onchainHash)
+		respExists, err := avsReader.Bindings.TaskManager.AllTaskResponses(&bind.CallOpts{}, onchainHash)
 		if err != nil {
 			t.Fatalf("failed to fetch task response flag - %s", err)
 		}

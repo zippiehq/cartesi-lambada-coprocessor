@@ -10,22 +10,23 @@ import (
 	"time"
 
 	smt "github.com/FantasyJony/openzeppelin-merkle-tree-go/standard_merkle_tree"
-
-	"github.com/Layr-Labs/eigensdk-go/crypto/bls"
-	"github.com/Layr-Labs/eigensdk-go/logging"
+	"github.com/ethereum/go-ethereum/crypto"
 
 	"github.com/Layr-Labs/eigensdk-go/chainio/clients"
 	sdkclients "github.com/Layr-Labs/eigensdk-go/chainio/clients"
+	"github.com/Layr-Labs/eigensdk-go/chainio/clients/eth"
+	"github.com/Layr-Labs/eigensdk-go/crypto/bls"
+	logging "github.com/Layr-Labs/eigensdk-go/logging"
 	"github.com/Layr-Labs/eigensdk-go/services/avsregistry"
 	blsagg "github.com/Layr-Labs/eigensdk-go/services/bls_aggregation"
 	oprsinfoserv "github.com/Layr-Labs/eigensdk-go/services/operatorsinfo"
 	sdktypes "github.com/Layr-Labs/eigensdk-go/types"
+	sdkutils "github.com/Layr-Labs/eigensdk-go/utils"
 
 	"github.com/zippiehq/cartesi-lambada-coprocessor/aggregator/types"
 	tm "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/LambadaCoprocessorTaskManager"
 	"github.com/zippiehq/cartesi-lambada-coprocessor/core"
 	"github.com/zippiehq/cartesi-lambada-coprocessor/core/chainio"
-	"github.com/zippiehq/cartesi-lambada-coprocessor/core/config"
 )
 
 const (
@@ -77,7 +78,7 @@ const (
 type Aggregator struct {
 	log logging.Logger
 
-	serverIpPortAddr string
+	apiServerAddr string
 
 	avsWriter             chainio.AvsWriterer
 	blsAggregationService blsagg.BlsAggregationService
@@ -95,41 +96,64 @@ type Aggregator struct {
 }
 
 // NewAggregator creates a new Aggregator with the provided config.
-func NewAggregator(c *config.AggregatorConfig) (*Aggregator, error) {
-
-	avsReader, err := chainio.BuildAvsReaderFromConfig(c)
-	if err != nil {
-		c.Logger.Error("Cannot create avsReader", "err", err)
-		return nil, err
+func NewAggregator(privKey string, cfg Config, log logging.Logger) (*Aggregator, error) {
+	var deployment chainio.AVSDeployment
+	if err := sdkutils.ReadJsonConfig(cfg.AVSDeploymentPath, &deployment); err != nil {
+		return nil, fmt.Errorf("failed to read AVS deployment file - %s", err)
 	}
 
-	avsWriter, err := chainio.BuildAvsWriterFromConfig(c)
+	if privKey[:2] == "0x" {
+		privKey = privKey[2:]
+	}
+	ecdsaPrivKey, err := crypto.HexToECDSA(privKey)
 	if err != nil {
-		c.Logger.Errorf("Cannot create avsWriter", "err", err)
-		return nil, err
+		return nil, fmt.Errorf("failed to parse ECDSA private key - %s", err)
 	}
 
 	chainioConfig := sdkclients.BuildAllConfig{
-		EthHttpUrl:                 c.EthHttpRpcUrl,
-		EthWsUrl:                   c.EthWsRpcUrl,
-		RegistryCoordinatorAddr:    c.LambadaCoprocessorRegistryCoordinatorAddr.String(),
-		OperatorStateRetrieverAddr: c.OperatorStateRetrieverAddr.String(),
+		EthHttpUrl:                 cfg.EthHttpRpcUrl,
+		EthWsUrl:                   cfg.EthWsRpcUrl,
+		RegistryCoordinatorAddr:    deployment.Addresses.RegistryCoordinator,
+		OperatorStateRetrieverAddr: deployment.Addresses.OperatorStateRetriever,
 		AvsName:                    avsName,
 		PromMetricsIpPortAddress:   ":9090",
 	}
-	clients, err := clients.BuildAll(chainioConfig, c.EcdsaPrivateKey, c.Logger)
+	clients, err := clients.BuildAll(chainioConfig, ecdsaPrivKey, log)
 	if err != nil {
-		c.Logger.Errorf("Cannot create sdk clients", "err", err)
-		return nil, err
+		return nil, fmt.Errorf("failed to create sdk clients - %s", err)
 	}
 
-	operatorPubkeysService := oprsinfoserv.NewOperatorsInfoServiceInMemory(context.Background(), clients.AvsRegistryChainSubscriber, clients.AvsRegistryChainReader, c.Logger)
-	avsRegistryService := avsregistry.NewAvsRegistryServiceChainCaller(avsReader, operatorPubkeysService, c.Logger)
-	blsAggregationService := blsagg.NewBlsAggregatorService(avsRegistryService, c.Logger)
+	ethClient, err := eth.NewClient(cfg.EthHttpRpcUrl)
+	if err != nil {
+		return nil, fmt.Errorf("faield to create ETH RPC client - %s", err)
+	}
+	avsReader, err := chainio.NewAvsReader(deployment, ethClient, log)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create AVS reader - %s", err)
+	}
+	avsWriter, err := chainio.NewAvsWriter(ecdsaPrivKey, deployment, ethClient, log)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create AVS writer - %s", err)
+	}
+
+	operatorPubkeysService := oprsinfoserv.NewOperatorsInfoServiceInMemory(
+		context.Background(),
+		clients.AvsRegistryChainSubscriber,
+		clients.AvsRegistryChainReader,
+		log,
+	)
+
+	avsRegistryService := avsregistry.NewAvsRegistryServiceChainCaller(
+		avsReader,
+		operatorPubkeysService,
+		log,
+	)
+
+	blsAggregationService := blsagg.NewBlsAggregatorService(avsRegistryService, log)
 
 	return &Aggregator{
-		log:              c.Logger,
-		serverIpPortAddr: c.AggregatorServerIpPortAddr,
+		log:           log,
+		apiServerAddr: cfg.APIServerAddress,
 
 		avsWriter:             avsWriter,
 		blsAggregationService: blsAggregationService,
@@ -151,7 +175,7 @@ func (agg *Aggregator) Start(ctx context.Context) error {
 	go agg.startServer(ctx)
 	go agg.startAPIServer()
 
-	batchTick := time.NewTicker(10 * time.Second)
+	batchTick := time.NewTicker(batchPeriod)
 	defer batchTick.Stop()
 
 	for {

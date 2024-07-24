@@ -16,12 +16,12 @@ import (
 	"github.com/Layr-Labs/eigensdk-go/crypto/ecdsa"
 	sdkutils "github.com/Layr-Labs/eigensdk-go/utils"
 
-	"github.com/zippiehq/cartesi-lambada-coprocessor/core/config"
+	"github.com/zippiehq/cartesi-lambada-coprocessor/core/chainio"
 )
 
 func GenerateOperator(ctx *cli.Context) error {
 	deploymentOutputPath := ctx.String(deploymentOutputFlag.Name)
-	var deploymentOutput config.AVSDeployment
+	var deploymentOutput chainio.AVSDeployment
 	if err := sdkutils.ReadJsonConfig(deploymentOutputPath, &deploymentOutput); err != nil {
 		return fmt.Errorf("failed to read deployment output - %s", err)
 	}

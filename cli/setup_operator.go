@@ -11,7 +11,6 @@ import (
 	sdkecdsa "github.com/Layr-Labs/eigensdk-go/crypto/ecdsa"
 	sdkutils "github.com/Layr-Labs/eigensdk-go/utils"
 
-	"github.com/zippiehq/cartesi-lambada-coprocessor/core/config"
 	"github.com/zippiehq/cartesi-lambada-coprocessor/operator"
 )
 
@@ -23,7 +22,7 @@ type strategyDepoist struct {
 func SetupOperator(ctx *cli.Context) error {
 	// Read configuration.
 	configPath := ctx.String(configFlag.Name)
-	operatorConfig := config.OperatorConfig{}
+	operatorConfig := operator.Config{}
 	if err := sdkutils.ReadYamlConfig(configPath, &operatorConfig); err != nil {
 		return fmt.Errorf("failed to read operator config - %s", err)
 	}
@@ -38,7 +37,7 @@ func SetupOperator(ctx *cli.Context) error {
 	// Init operator without starting it.
 	os.Setenv("OPERATOR_BLS_KEY_PASSWORD", blsPwd)
 	os.Setenv("OPERATOR_ECDSA_KEY_PASSWORD", ecdsaPwd)
-	operator, err := operator.NewOperatorFromConfig(operatorConfig)
+	operator, err := operator.NewOperator(blsPwd, ecdsaPwd, operatorConfig)
 	if err != nil {
 		return fmt.Errorf("failed to init operator - %s", err)
 	}

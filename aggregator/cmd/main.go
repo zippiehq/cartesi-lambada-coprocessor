@@ -9,8 +9,10 @@ import (
 
 	"github.com/urfave/cli"
 
+	sdklogging "github.com/Layr-Labs/eigensdk-go/logging"
+	sdkutils "github.com/Layr-Labs/eigensdk-go/utils"
+
 	"github.com/zippiehq/cartesi-lambada-coprocessor/aggregator"
-	"github.com/zippiehq/cartesi-lambada-coprocessor/core/config"
 )
 
 var (
@@ -18,16 +20,25 @@ var (
 	Version   string
 	GitCommit string
 	GitDate   string
+
+	configFlag = cli.StringFlag{
+		Name:     "config",
+		Required: true,
+		Usage:    "path to aggregator configuration file",
+	}
+	privKeyFlag = cli.StringFlag{
+		Name:     "private-key",
+		Required: true,
+		Usage:    "Ethereum private key",
+	}
 )
 
 func main() {
-
 	app := cli.NewApp()
-	app.Flags = config.Flags
 	app.Version = fmt.Sprintf("%s-%s-%s", Version, GitCommit, GitDate)
-	app.Name = "credible-squaring-aggregator"
-	app.Usage = "Credible Squaring Aggregator"
-	app.Description = "Service that input to be credibly echoed by operator nodes."
+	app.Flags = []cli.Flag{configFlag, privKeyFlag}
+	app.Name = "lambada-coprocessor-aggregator"
+	app.Usage = "Lambada Coprocessor Aggregator"
 
 	app.Action = aggregatorMain
 	err := app.Run(os.Args)
@@ -37,21 +48,28 @@ func main() {
 }
 
 func aggregatorMain(ctx *cli.Context) error {
-
 	log.Println("Initializing Aggregator")
-	config, err := config.NewConfigFromCLI(ctx)
-	if err != nil {
-		return err
+
+	var config aggregator.Config
+	configPath := ctx.String(configFlag.Name)
+	if err := sdkutils.ReadYamlConfig(configPath, &config); err != nil {
+		return fmt.Errorf("failed to read configuration file - %s", err)
 	}
+
 	configJson, err := json.MarshalIndent(config, "", "  ")
 	if err != nil {
-		config.Logger.Fatalf(err.Error())
+		return fmt.Errorf("failed to serialize config to json - %s", err)
 	}
 	fmt.Println("Config:", string(configJson))
 
-	agg, err := aggregator.NewAggregator(config)
+	privKey := ctx.String(privKeyFlag.Name)
+	log, err := sdklogging.NewZapLogger(config.Environment)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create Zap logger - %s", err)
+	}
+	agg, err := aggregator.NewAggregator(privKey, config, log)
+	if err != nil {
+		return fmt.Errorf("failed to create Aggregator instance - %s", err)
 	}
 
 	err = agg.Start(context.Background())
@@ -60,5 +78,4 @@ func aggregatorMain(ctx *cli.Context) error {
 	}
 
 	return nil
-
 }
