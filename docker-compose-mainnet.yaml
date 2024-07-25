@@ -55,12 +55,10 @@ services:
     working_dir: /lambada-coprocessor
     command: 
       - --config 
-      - tests/nodes/aggregator/aggregator-docker-compose.yaml
-      - --credible-squaring-deployment 
 
-      - contracts/script/output/lambada_coprocessor_deployment_output_mainnet.json
+      - tests/nodes/aggregator/config-mainnet.yaml
 
-      - --ecdsa-private-key 
+      - --private-key 
       - "0x2a871d0798f97d79848a013d4936a73bf4cc922c825d33c1cf7073dff6d409c6"
     networks:
       - lambada-coprocessor-network

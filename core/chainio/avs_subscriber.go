@@ -32,27 +32,6 @@ type AvsSubscriber struct {
 	log sdklogging.Logger
 }
 
-//!!!
-/*
-func BuildAvsSubscriberFromConfig(config *config.AggregatorConfig) (*AvsSubscriber, error) {
-	return BuildAvsSubscriber(
-		config.LambadaCoprocessorRegistryCoordinatorAddr,
-		config.OperatorStateRetrieverAddr,
-		config.EthWsClient,
-		config.Logger,
-	)
-}
-
-func BuildAvsSubscriber(registryCoordinatorAddr, blsOperatorStateRetrieverAddr gethcommon.Address, ethclient eth.Client, logger sdklogging.Logger) (*AvsSubscriber, error) {
-	avsContractBindings, err := NewAvsManagersBindings(registryCoordinatorAddr, blsOperatorStateRetrieverAddr, ethclient, logger)
-	if err != nil {
-		logger.Errorf("Failed to create contract bindings", "err", err)
-		return nil, err
-	}
-	return NewAvsSubscriber(avsContractBindings, logger), nil
-}
-*/
-
 func NewAvsSubscriber(deployment AVSDeployment, ethClient eth.Client, log logging.Logger) (*AvsSubscriber, error) {
 	bindings, err := NewAvsManagersBindings(deployment, ethClient)
 	if err != nil {

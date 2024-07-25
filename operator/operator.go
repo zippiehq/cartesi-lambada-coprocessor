@@ -3,6 +3,7 @@ package operator
 import (
 	"bytes"
 	"context"
+	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/binary"
@@ -27,7 +28,7 @@ import (
 	sdkelcontracts "github.com/Layr-Labs/eigensdk-go/chainio/clients/elcontracts"
 	"github.com/Layr-Labs/eigensdk-go/chainio/clients/eth"
 	"github.com/Layr-Labs/eigensdk-go/crypto/bls"
-	"github.com/Layr-Labs/eigensdk-go/crypto/ecdsa"
+	sdkecdsa "github.com/Layr-Labs/eigensdk-go/crypto/ecdsa"
 	"github.com/Layr-Labs/eigensdk-go/logging"
 	sdkmetrics "github.com/Layr-Labs/eigensdk-go/metrics"
 	"github.com/Layr-Labs/eigensdk-go/metrics/collectors/economic"
@@ -51,11 +52,14 @@ const SEM_VER = "0.0.1"
 type Operator struct {
 	config Config
 
+	log logging.Logger
+
+	blsKeypair   *bls.KeyPair
+	ecdsaPrivKey *ecdsa.PrivateKey
+
 	operatorAddr common.Address
 	operatorId   sdktypes.OperatorId
-	blsKeypair   *bls.KeyPair
 
-	log        logging.Logger
 	ethClient  eth.Client
 	ipfsClient *ipfs_api.HttpApi
 	// TODO(samlaf): remove both avsWriter and eigenlayerWrite from operator
@@ -137,7 +141,7 @@ func NewOperator(blsPwd, ecdsaPwd string, cfg Config) (*Operator, error) {
 	}
 
 	var deployment chainio.AVSDeployment
-	if err := sdkutils.ReadJsonConfig(cfg.AVSDeploymentPath, &deployment); err != nil {
+	if err := sdkutils.ReadJsonConfig(cfg.AVSDeploymentOutputPath, &deployment); err != nil {
 		return nil, fmt.Errorf("failed to read deployment parameters - %s", err)
 	}
 
@@ -147,7 +151,7 @@ func NewOperator(blsPwd, ecdsaPwd string, cfg Config) (*Operator, error) {
 		return nil, err
 	}
 
-	ecdsaKey, err := ecdsa.ReadKey(cfg.ECDSAPrivateKeyStorePath, ecdsaPwd)
+	ecdsaKey, err := sdkecdsa.ReadKey(cfg.ECDSAPrivateKeyStorePath, ecdsaPwd)
 	if err != nil {
 		logger.Errorf("Cannot parse ecdsa private key", "err", err)
 		return nil, err
@@ -162,7 +166,7 @@ func NewOperator(blsPwd, ecdsaPwd string, cfg Config) (*Operator, error) {
 		AvsName:                    AVS_NAME,
 		PromMetricsIpPortAddress:   cfg.EigenMetricsIpPortAddress,
 	}
-	operatorEcdsaPrivateKey, err := ecdsa.ReadKey(
+	operatorEcdsaPrivateKey, err := sdkecdsa.ReadKey(
 		cfg.ECDSAPrivateKeyStorePath,
 		ecdsaPwd,
 	)
@@ -211,11 +215,14 @@ func NewOperator(blsPwd, ecdsaPwd string, cfg Config) (*Operator, error) {
 	operator := &Operator{
 		config: cfg,
 
+		log: logger,
+
+		blsKeypair:   blsKeyPair,
+		ecdsaPrivKey: ecdsaKey,
+
 		operatorAddr: operatorAddr,
 		operatorId:   [32]byte{0}, // this is set below
-		blsKeypair:   blsKeyPair,
 
-		log:                        logger,
 		metricsReg:                 reg,
 		metrics:                    avsAndEigenMetrics,
 		nodeApi:                    nodeApi,

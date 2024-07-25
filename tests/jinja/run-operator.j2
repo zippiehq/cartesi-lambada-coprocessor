@@ -1,10 +1,13 @@
 #!/bin/bash
 
 cli setup-operator \
-    --config {{ operator_config }} \
-    --bls-password {{ operator_bls_password }} \
-    --ecdsa-password {{ operator_ecdsa_password }} \
+    --bls-password {{ bls_password }} \
+    --ecdsa-password {{ ecdsa_password }} \
+    --config {{ config }} \
     --strategy-address {{ strategy_address }} \
     --strategy-deposit-amount {{ strategy_deposit_amount }}
 
-OPERATOR_BLS_KEY_PASSWORD={{ operator_bls_password }} OPERATOR_ECDSA_KEY_PASSWORD={{ operator_ecdsa_password }} operator --config {{ operator_config }}
+operator \
+    --bls-password {{ bls_password }} \
+    --ecdsa-password {{ ecdsa_password }} \
+    --config {{ config }}

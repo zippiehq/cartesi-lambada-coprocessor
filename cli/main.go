@@ -8,10 +8,20 @@ import (
 )
 
 var (
+	blsPwdFlag = cli.StringFlag{
+		Name:     "bls-password",
+		Usage:    "BLS keystore password",
+		Required: true,
+	}
+	ecdsaPwdFlag = cli.StringFlag{
+		Name:     "ecdsa-password",
+		Usage:    "ECDSA keystore password",
+		Required: true,
+	}
 	configFlag = cli.StringFlag{
 		Name:     "config",
 		Required: true,
-		Usage:    "configuration file path",
+		Usage:    "path to configuration file",
 	}
 	strategyAddressFlag = cli.StringFlag{
 		Name:     "strategy-address",
@@ -21,11 +31,6 @@ var (
 	strategyDepositAmountFlag = cli.UintFlag{
 		Name:     "strategy-deposit-amount",
 		Usage:    "amount of tokens to deposit into strategy",
-		Required: true,
-	}
-	deploymentOutputFlag = cli.StringFlag{
-		Name:     "deployment-output",
-		Usage:    "path to output of AVS deployment script",
 		Required: true,
 	}
 )
@@ -99,7 +104,6 @@ func main() {
 			Usage:  "generate operator keys and configuration file",
 			Action: GenerateOperator,
 			Flags: []cli.Flag{
-				deploymentOutputFlag,
 				cli.StringFlag{
 					Name:     "operator-dir",
 					Usage:    "output directory with operator keys and configuration file",

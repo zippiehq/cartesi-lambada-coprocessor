@@ -14,18 +14,9 @@ import (
 
 	"github.com/Layr-Labs/eigensdk-go/crypto/bls"
 	"github.com/Layr-Labs/eigensdk-go/crypto/ecdsa"
-	sdkutils "github.com/Layr-Labs/eigensdk-go/utils"
-
-	"github.com/zippiehq/cartesi-lambada-coprocessor/core/chainio"
 )
 
 func GenerateOperator(ctx *cli.Context) error {
-	deploymentOutputPath := ctx.String(deploymentOutputFlag.Name)
-	var deploymentOutput chainio.AVSDeployment
-	if err := sdkutils.ReadJsonConfig(deploymentOutputPath, &deploymentOutput); err != nil {
-		return fmt.Errorf("failed to read deployment output - %s", err)
-	}
-
 	operatorDir := ctx.String("operator-dir")
 
 	// Clear operator directory
@@ -48,14 +39,12 @@ func GenerateOperator(ctx *cli.Context) error {
 	}
 
 	// Generate configuration file
-	configTmpl, err := gonja.FromFile("./tests/jinja/operator-docker-compose.j2")
+	configTmpl, err := gonja.FromFile("./tests/jinja/operator-config.j2")
 	if err != nil {
 		return err
 	}
 	config, err := configTmpl.Execute(gonja.Context{
-		"address":                           ecdsaKey.Address,
-		"registry_coordinator_address":      deploymentOutput.Addresses.RegistryCoordinator,
-		"operator_state_retriever_address":  deploymentOutput.Addresses.OperatorStateRetriever,
+		"avs_deployment_output_path":        "/path/to/avs/deployment/output",
 		"ecdsa_private_key_store_path":      ecdsaKey.FilePath,
 		"bls_private_key_store_path":        blsKey.FilePath,
 		"eth_rpc_url":                       "http://127.0.0.1:8545",

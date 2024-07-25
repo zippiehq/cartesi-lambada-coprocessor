@@ -50,41 +50,6 @@ type AvsWriter struct {
 	txmgr txmgr.TxManager
 }
 
-//!!!
-/*
-func BuildAvsWriterFromConfig(c *config.AggregatorConfig) (*AvsWriter, error) {
-	return BuildAvsWriter(c.TxMgr, c.LambadaCoprocessorRegistryCoordinatorAddr, c.OperatorStateRetrieverAddr, c.EthHttpClient, c.Logger)
-}
-
-func BuildAvsWriter(
-	txMgr txmgr.TxManager,
-	registryCoordinatorAddr,
-	operatorStateRetrieverAddr gethcommon.Address,
-	ethHttpClient eth.Client,
-	log logging.Logger,
-) (*AvsWriter, error) {
-	avsServiceBindings, err := NewAvsManagersBindings(registryCoordinatorAddr, operatorStateRetrieverAddr, ethHttpClient, log)
-	if err != nil {
-		return nil, err
-	}
-	avsRegistryWriter, err := avsregistry.BuildAvsRegistryChainWriter(registryCoordinatorAddr, operatorStateRetrieverAddr, log, ethHttpClient, txMgr)
-	if err != nil {
-		return nil, err
-	}
-
-	writer := AvsWriter{
-		AvsRegistryWriter: avsRegistryWriter,
-
-		Bindings: avsServiceBindings,
-
-		log:      log,
-		txmgr:    txMgr,
-	}
-
-	return &writer, nil
-}
-*/
-
 func NewAvsWriter(privKey *ecdsa.PrivateKey, deployment AVSDeployment, ethClient eth.Client, log logging.Logger) (*AvsWriter, error) {
 	addr, err := sdkutils.EcdsaPrivateKeyToAddress(privKey)
 	if err != nil {

@@ -40,7 +40,7 @@ var (
 func main() {
 	app := cli.NewApp()
 	app.Version = fmt.Sprintf("%s-%s-%s", Version, GitCommit, GitDate)
-	app.Flags = []cli.Flag{configFlag, blsPwdFlag}
+	app.Flags = []cli.Flag{configFlag, blsPwdFlag, ecdsaPwdFlag}
 	app.Name = "lambada-coprocessor-operator"
 	app.Usage = "Lambada Coprocessor Operator"
 
@@ -55,7 +55,7 @@ func operatorMain(ctx *cli.Context) error {
 	log.Println("Initializing Operator")
 
 	var config operator.Config
-	configPath := ctx.GlobalString(configFlag.Name)
+	configPath := ctx.String(configFlag.Name)
 	if err := sdkutils.ReadYamlConfig(configPath, &config); err != nil {
 		return fmt.Errorf("failed to read configuration file - %s", err)
 	}

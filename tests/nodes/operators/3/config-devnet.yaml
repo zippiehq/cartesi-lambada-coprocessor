@@ -1,6 +1,6 @@
 production: true
 
-avs_deployment_path: ./contracts/script/output/lambada_coprocessor_deployment_output_devnet.json
+avs_deployment_output_path: ./contracts/script/output/lambada_coprocessor_deployment_output_devnet.json
 
 ecdsa_private_key_store_path: ./tests/nodes/operators-keystore/ecdsa/keys/3.ecdsa.key.json
 bls_private_key_store_path: ./tests/nodes/operators-keystore/bls/keys/3.bls.key.json

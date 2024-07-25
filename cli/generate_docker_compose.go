@@ -147,13 +147,13 @@ func GenerateDockerCompose(ctx *cli.Context) error {
 		configs := make([]string, operatorCount)
 		for i := range configs {
 			configs[i] = filepath.Join(operatorDirs[i], fmt.Sprintf("config-%s.yaml", network))
-			tmpl, err := gonja.FromFile("./tests/jinja/operator-docker-compose.j2")
+			tmpl, err := gonja.FromFile("./tests/jinja/operator-config.j2")
 			if err != nil {
 				return err
 			}
 			machine := fmt.Sprintf("machine%d", i+1)
 			config, err := tmpl.Execute(gonja.Context{
-				"avs_deployment_path":               DEPLOYMENT_OUTPUT_PATHS[network],
+				"avs_deployment_output_path":        DEPLOYMENT_OUTPUT_PATHS[network],
 				"ecdsa_private_key_store_path":      ecdsaKeys[i].FilePath,
 				"bls_private_key_store_path":        blsKeys[i].FilePath,
 				"eth_rpc_url":                       "http://anvil:8545",
@@ -195,11 +195,10 @@ func GenerateDockerCompose(ctx *cli.Context) error {
 				return err
 			}
 			script, err := tmpl.Execute(gonja.Context{
-				"operator_private_key":    ecdsaKeys[i].PrivateKey,
-				"operator_address":        ecdsaKeys[i].Address,
-				"operator_bls_password":   blsKeys[i].Password,
-				"operator_ecdsa_password": ecdsaKeys[i].Password,
-				"operator_config":         operatorConfigs[network][i],
+				"private_key":             ecdsaKeys[i].PrivateKey,
+				"bls_password":            blsKeys[i].Password,
+				"ecdsa_password":          ecdsaKeys[i].Password,
+				"config":                  operatorConfigs[network][i],
 				"strategy_address":        strategy_address[network],
 				"strategy_deposit_amount": 10,
 			})

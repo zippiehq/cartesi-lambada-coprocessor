@@ -4,7 +4,7 @@ type Config struct {
 	// used to set the logger level (true = info, false = debug)
 	Production bool `yaml:"production"`
 
-	AVSDeploymentPath string `yaml:"avs_deployment_path"`
+	AVSDeploymentOutputPath string `yaml:"avs_deployment_output_path"`
 
 	BLSPrivateKeyStorePath   string `yaml:"bls_private_key_store_path"`
 	ECDSAPrivateKeyStorePath string `yaml:"ecdsa_private_key_store_path"`

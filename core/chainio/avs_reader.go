@@ -34,32 +34,6 @@ type AvsReader struct {
 	log logging.Logger
 }
 
-//!!!
-/*
-func BuildAvsReaderFromConfig(c *config.AggregatorConfig) (*AvsReader, error) {
-	return BuildAvsReader(c.LambadaCoprocessorRegistryCoordinatorAddr, c.OperatorStateRetrieverAddr, c.EthHttpClient, c.Logger)
-}
-
-func BuildAvsReader(registryCoordinatorAddr, operatorStateRetrieverAddr gethcommon.Address, ethHttpClient eth.Client, logger logging.Logger) (*AvsReader, error) {
-	avsManagersBindings, err := NewAvsManagersBindings(registryCoordinatorAddr, operatorStateRetrieverAddr, ethHttpClient, logger)
-	if err != nil {
-		return nil, err
-	}
-	avsRegistryReader, err := sdkavsregistry.BuildAvsRegistryChainReader(registryCoordinatorAddr, operatorStateRetrieverAddr, ethHttpClient, logger)
-	if err != nil {
-		return nil, err
-	}
-
-	reader := AvsReader{
-		AvsRegistryReader:   avsRegistryReader,
-		AvsManagersBindings: avsManagersBindings,
-		log:                 logger,
-	}
-
-	return &reader, nil
-}
-*/
-
 func NewAvsReader(deployment AVSDeployment, ethClient eth.Client, log logging.Logger) (*AvsReader, error) {
 	bindings, err := NewAvsManagersBindings(deployment, ethClient)
 	if err != nil {

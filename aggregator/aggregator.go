@@ -98,7 +98,7 @@ type Aggregator struct {
 // NewAggregator creates a new Aggregator with the provided config.
 func NewAggregator(privKey string, cfg Config, log logging.Logger) (*Aggregator, error) {
 	var deployment chainio.AVSDeployment
-	if err := sdkutils.ReadJsonConfig(cfg.AVSDeploymentPath, &deployment); err != nil {
+	if err := sdkutils.ReadJsonConfig(cfg.AVSDeploymentOutputPath, &deployment); err != nil {
 		return nil, fmt.Errorf("failed to read AVS deployment file - %s", err)
 	}
 
