@@ -4,9 +4,7 @@ Current AVS deployment on Holesky testnet is used as example.
 
 Generate operator directory by providing addresses of deployed AVS contracts
 ```
-go ./cli generate-operator
-    --deployment-output doc/deployment/current_deployment_holesky.json \
-    --operator-dir $OPERATOR_DIR_PATH \
+go ./cli generate-operator --operator-dir $OPERATOR_DIR_PATH
 ```
 Above command will print randomly generated address, its private key and passwords for BLS and ECDSA keystores. Store this information in safe place.
 
@@ -26,9 +24,9 @@ cast send \
 Register operator
 ```
 go run ./cli  setup-operator \
-    --config $CONFIG_PATH \
     --bls-password $BLS_PASSWORD \
     --ecdsa-password $ECDSA_PASSWORD \
+    --config $CONFIG_PATH \
     --strategy-address $STRATEGY_ADDRESS_TO_DEPOSIT \
     --strategy-deposit-amount $STRATEGY_DEPOSIT_AMOUNT
 ```
@@ -44,9 +42,9 @@ docker run \
     ghcr.io/zippiehq/cartesi-lambada:latest
 ```
 
-Update configuration with correct network addresses of aggregator, ETH rpc, IPFS, etc.
+Update configuration with correct path to AVS deployment output file, network addresses of aggregator, ETH rpc, IPFS, etc.
 
 Run operator node by providing keystore passwords and path to configuration file
 ```
-OPERATOR_BLS_KEY_PASSWORD=$BLS_PASSWORD OPERATOR_ECDSA_KEY_PASSWORD=$ECDSA_PASSWORD go run operator/cmd/main.go --config $CONFIG_PATH
+go run operator/cmd/main.go --bls-password=$BLS_PASSWORD --ecdsa-password=$ECDSA_PASSWORD --config $CONFIG_PATH
 ```
