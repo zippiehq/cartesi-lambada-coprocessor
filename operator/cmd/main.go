@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"os"
 
@@ -10,16 +11,38 @@ import (
 
 	sdkutils "github.com/Layr-Labs/eigensdk-go/utils"
 
-	"github.com/zippiehq/cartesi-lambada-coprocessor/core/config"
 	"github.com/zippiehq/cartesi-lambada-coprocessor/operator"
+)
+
+var (
+	// Version is the version of the binary.
+	Version   string
+	GitCommit string
+	GitDate   string
+
+	blsPwdFlag = cli.StringFlag{
+		Name:     "bls-password",
+		Required: true,
+		Usage:    "BLS keystore password",
+	}
+	ecdsaPwdFlag = cli.StringFlag{
+		Name:     "ecdsa-password",
+		Required: true,
+		Usage:    "ECDSA keystore password",
+	}
+	configFlag = cli.StringFlag{
+		Name:     "config",
+		Required: true,
+		Usage:    "path to aggregator configuration file",
+	}
 )
 
 func main() {
 	app := cli.NewApp()
-	app.Flags = []cli.Flag{config.ConfigFileFlag}
-	app.Name = "credible-squaring-operator"
-	app.Usage = "Credible Squaring Operator"
-	app.Description = "Service that reads input onchain, echoes it, signs, and sends them to the aggregator."
+	app.Version = fmt.Sprintf("%s-%s-%s", Version, GitCommit, GitDate)
+	app.Flags = []cli.Flag{configFlag, blsPwdFlag, ecdsaPwdFlag}
+	app.Name = "lambada-coprocessor-operator"
+	app.Usage = "Lambada Coprocessor Operator"
 
 	app.Action = operatorMain
 	err := app.Run(os.Args)
@@ -29,34 +52,37 @@ func main() {
 }
 
 func operatorMain(ctx *cli.Context) error {
-
 	log.Println("Initializing Operator")
-	configPath := ctx.GlobalString(config.ConfigFileFlag.Name)
-	nodeConfig := config.OperatorConfig{}
-	err := sdkutils.ReadYamlConfig(configPath, &nodeConfig)
-	if err != nil {
-		return err
+
+	var config operator.Config
+	configPath := ctx.String(configFlag.Name)
+	if err := sdkutils.ReadYamlConfig(configPath, &config); err != nil {
+		return fmt.Errorf("failed to read configuration file - %s", err)
 	}
-	configJson, err := json.MarshalIndent(nodeConfig, "", "  ")
+
+	configJson, err := json.MarshalIndent(config, "", "  ")
 	if err != nil {
-		log.Fatalf(err.Error())
+		return fmt.Errorf("failed to serialize config to json - %s", err)
 	}
 	log.Println("Config:", string(configJson))
 
-	log.Println("initializing operator")
-	operator, err := operator.NewOperatorFromConfig(nodeConfig)
+	blsPwd := ctx.String(blsPwdFlag.Name)
+	ecdsaPwd := ctx.String(ecdsaPwdFlag.Name)
+	operator, err := operator.NewOperator(blsPwd, ecdsaPwd, config)
 	if err != nil {
 		return err
 	}
+
 	log.Println("initialized operator")
 
 	log.Println("starting operator")
+
 	err = operator.Start(context.Background())
 	if err != nil {
 		return err
 	}
+
 	log.Println("started operator")
 
 	return nil
-
 }

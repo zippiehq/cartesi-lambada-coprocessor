@@ -7,7 +7,6 @@ package operator
 
 import (
 	"context"
-	"crypto/ecdsa"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -45,9 +44,7 @@ func (o *Operator) DepositIntoStrategy(strategyAddr common.Address, amount *big.
 }
 
 // Registration specific functions
-func (o *Operator) RegisterOperatorWithAvs(
-	operatorEcdsaKeyPair *ecdsa.PrivateKey,
-) error {
+func (o *Operator) RegisterOperatorWithAvs() error {
 	// hardcode these things for now
 	quorumNumbers := eigenSdkTypes.QuorumNums{eigenSdkTypes.QuorumNum(0)}
 	socket := "Not Needed"
@@ -66,7 +63,7 @@ func (o *Operator) RegisterOperatorWithAvs(
 	operatorToAvsRegistrationSigExpiry := big.NewInt(int64(curBlock.Time()) + sigValidForSeconds)
 	_, err = o.avsWriter.RegisterOperatorInQuorumWithAVSRegistryCoordinator(
 		context.Background(),
-		operatorEcdsaKeyPair, operatorToAvsRegistrationSigSalt, operatorToAvsRegistrationSigExpiry,
+		o.ecdsaPrivKey, operatorToAvsRegistrationSigSalt, operatorToAvsRegistrationSigExpiry,
 		o.blsKeypair, quorumNumbers, socket,
 	)
 	if err != nil {

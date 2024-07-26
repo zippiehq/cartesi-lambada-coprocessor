@@ -2,53 +2,37 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
-	"os"
 
 	"github.com/urfave/cli"
 
-	sdkecdsa "github.com/Layr-Labs/eigensdk-go/crypto/ecdsa"
 	sdkutils "github.com/Layr-Labs/eigensdk-go/utils"
 
-	"github.com/zippiehq/cartesi-lambada-coprocessor/core/config"
 	"github.com/zippiehq/cartesi-lambada-coprocessor/operator"
 )
 
 func RegisterOperatorWithAvs(ctx *cli.Context) error {
-
 	configPath := ctx.String(configFlag.Name)
-	nodeConfig := config.OperatorConfig{}
-	err := sdkutils.ReadYamlConfig(configPath, &nodeConfig)
-	if err != nil {
-		return err
+	config := operator.Config{}
+	if err := sdkutils.ReadYamlConfig(configPath, &config); err != nil {
+		return fmt.Errorf("failed to read operator config - %s", err)
 	}
-	// need to make sure we don't register the operator on startup
-	// when using the cli commands to register the operator.
-	configJson, err := json.MarshalIndent(nodeConfig, "", "  ")
+
+	configJson, err := json.MarshalIndent(config, "", "  ")
 	if err != nil {
-		log.Fatalf(err.Error())
+		return fmt.Errorf("failed to serialize config to json - %s", err)
 	}
 	log.Println("Config:", string(configJson))
 
-	operator, err := operator.NewOperatorFromConfig(nodeConfig)
+	blsPwd := ctx.String(blsPwdFlag.Name)
+	ecdsaPwd := ctx.String(ecdsaPwdFlag.Name)
+	operator, err := operator.NewOperator(blsPwd, ecdsaPwd, config)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create operator - %s", err)
 	}
 
-	ecdsaKeyPassword, ok := os.LookupEnv("OPERATOR_ECDSA_KEY_PASSWORD")
-	if !ok {
-		log.Printf("OPERATOR_ECDSA_KEY_PASSWORD env var not set. using empty string")
-	}
-	operatorEcdsaPrivKey, err := sdkecdsa.ReadKey(
-		nodeConfig.ECDSAPrivateKeyStorePath,
-		ecdsaKeyPassword,
-	)
-	if err != nil {
-		return err
-	}
-
-	err = operator.RegisterOperatorWithAvs(operatorEcdsaPrivKey)
-	if err != nil {
+	if err = operator.RegisterOperatorWithAvs(); err != nil {
 		return err
 	}
 

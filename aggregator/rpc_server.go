@@ -29,7 +29,7 @@ func (agg *Aggregator) startServer(ctx context.Context) error {
 		agg.log.Fatal("Format of service TaskManager isn't correct. ", "err", err)
 	}
 	rpc.HandleHTTP()
-	err = http.ListenAndServe(agg.serverIpPortAddr, nil)
+	err = http.ListenAndServe(agg.apiServerAddr, nil)
 	if err != nil {
 		agg.log.Fatal("ListenAndServe", "err", err)
 	}

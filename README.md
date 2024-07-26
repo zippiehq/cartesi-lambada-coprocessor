@@ -2,26 +2,24 @@
 
 This is proof of concept of verifiable computing system using  [Cartesi virtual machine](https://github.com/zippiehq/cartesi-lambada) and [Eigenlayer restaking platform](https://github.com/Layr-Labs/eigenlayer-contracts).
 
-## Testing
+## Running tests
 
-1. In first terminal run `docker compose up`
-2. In second terminal run `make tests-integration`
-3. Wait for tests to complete without any errors
-4. Check docker logs for unexpected errors
+To run tests on devnet (local deployment of Eigenlayer and Lambada Coprocessor AVS) in first terminal run `docker compose up`. Then in second terminal run `make tests-integration`.
+
+Use `docker compose -f docker-compose-holesky.yaml` and `make tests-integration-holesky` to run tests on Holesky fork.
+
+Use `docker compose -f docker-compose-mainnet.yaml` and `make tests-integration-mainnet` to run tests on Mainnet fork.
+
+Wait for tests to complete without any errors and check docker compose logs for unexpected errors.
 
 ## Configuring number of operators
 
-Do not change number of operators in `main` branch.
-
-To run avs with different number of operators, in separate branch:
-
-1. Update number of generated operators [here](https://github.com/zippiehq/cartesi-lambada-coprocessor/blob/main/tests/anvil/deploy-avs-save-anvil-state.sh#L26)
-2. Run `make deploy-avs`
+Run `go run ./cli generate-docker-compose --operators $NUMBER_OF_OPERATORS` to set number of operators, used by testing environment. Up to 10 operators are supported currently.
 
 ## Troubleshooting
 
-`tests/nodes/operators` contains mounted docker volumes, which are reused across multiple runs of docker compose. Sometimes it causes `permission denied` errors while running `docker compose build`, `make deploy-avs` and `make tests-integration`. To fix this issue - run `chmod -R 777 tests/nodes/operators`.
+`tests/nodes/operators` contains mounted docker volumes. Sometimes it causes `permission denied` errors while running `docker ocmpose` and `make` commands. To fix this issue run `chmod -R 777 tests/nodes/operators`.
 
 ## Contract development
 
-After changing contract source code in `contracts/src`, run `make deploy-avs`. This will update `tests/anvil/avs-and-eigenlayer-deployed-anvil-state.json` by deploying new version of avs contracts and registering new set of operators from scratch (`tests/nodes/operators` will be updated accordingly).
+If either source code of AVS contracts is changed or new verison of `eigenlayer-middleware` is used, devnet testing environment must be updated by running `make deploy-all`. This will generate new [Anvil state](./tests/anvil/avs-and-eigenlayer-deployed-anvil-state.json), used by Anvil docker compose service.

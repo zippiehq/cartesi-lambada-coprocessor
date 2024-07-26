@@ -16,7 +16,7 @@ forge script \
 cd ../
 ```
 
-Create aggregator configuration file. See the following [example](../tests/nodes/aggregator/aggregator.yaml).
+Create aggregator configuration file. See the following [example](../tests/nodes/aggregator/config-devnet.yaml).
 
 Ensure aggregator has enough ETH to send transactions
 ```
@@ -26,7 +26,6 @@ cast send --private-key $FUNDER_PK --value 20ether 0xa0Ee7A142d267C1f36714E4a8F7
 Run aggregator
  ```
  go run aggregator/cmd/main.go \
+    --private-key 0x2a871d0798f97d79848a013d4936a73bf4cc922c825d33c1cf7073dff6d409c6
     --config $AGGREGATOR_CONFIG
-    --credible-squaring-deployment contracts/script/output/lambada_coprocessor_deployment_output.holesky.json \
-    --ecdsa-private-key 0x2a871d0798f97d79848a013d4936a73bf4cc922c825d33c1cf7073dff6d409c6
  ```

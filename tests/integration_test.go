@@ -12,14 +12,16 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/Layr-Labs/eigensdk-go/chainio/clients/eth"
+	sdklogging "github.com/Layr-Labs/eigensdk-go/logging"
 	sdktypes "github.com/Layr-Labs/eigensdk-go/types"
+	sdkutils "github.com/Layr-Labs/eigensdk-go/utils"
 
 	"github.com/zippiehq/cartesi-lambada-coprocessor/aggregator"
 	aggtypes "github.com/zippiehq/cartesi-lambada-coprocessor/aggregator/types"
 	tm "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/LambadaCoprocessorTaskManager"
 	"github.com/zippiehq/cartesi-lambada-coprocessor/core"
 	"github.com/zippiehq/cartesi-lambada-coprocessor/core/chainio"
-	"github.com/zippiehq/cartesi-lambada-coprocessor/core/config"
 )
 
 const (
@@ -43,30 +45,40 @@ type taskBatch struct {
 }
 
 func TestIntegration(t *testing.T) {
-	var deploymentOutputPath string
+	var deploymentPath string
 	switch *network {
 	case DEVNET:
-		deploymentOutputPath = "../contracts/script/output/lambada_coprocessor_deployment_output_devnet.json"
+		deploymentPath = "../contracts/script/output/lambada_coprocessor_deployment_output_devnet.json"
 	case HOLESKY:
-		deploymentOutputPath = "../contracts/script/output/lambada_coprocessor_deployment_output_holesky.json"
+		deploymentPath = "../contracts/script/output/lambada_coprocessor_deployment_output_holesky.json"
 	case MAINNET:
-		deploymentOutputPath = "../contracts/script/output/lambada_coprocessor_deployment_output_mainnet.json"
+		deploymentPath = "../contracts/script/output/lambada_coprocessor_deployment_output_mainnet.json"
 	}
 
-	config, err := config.NewConfig(
-		"./nodes/aggregator/aggregator.yaml",
-		deploymentOutputPath,
-		"0x2a871d0798f97d79848a013d4936a73bf4cc922c825d33c1cf7073dff6d409c6",
-	)
+	var deployment chainio.AVSDeployment
+	if err := sdkutils.ReadJsonConfig(deploymentPath, &deployment); err != nil {
+		t.Fatalf("failed to read deployment output file - %s", err)
+	}
+
+	log, err := sdklogging.NewZapLogger(sdklogging.Development)
 	if err != nil {
-		t.Fatalf("failed to create avs config - %s", err)
+		t.Fatalf("failed to create Zap logger - %s", err)
 	}
 
-	avsReader, err := chainio.BuildAvsReaderFromConfig(config)
+	rpcClient, err := eth.NewClient("http://127.0.0.1:8545")
+	if err != nil {
+		t.Fatalf("failed to create ETH RPC client - %s", err)
+	}
+	avsReader, err := chainio.NewAvsReader(deployment, rpcClient, log)
 	if err != nil {
 		t.Fatalf("failed to create avs reader - %s", err)
 	}
-	avsSubscriber, err := chainio.BuildAvsSubscriberFromConfig(config)
+
+	wsClient, err := eth.NewClient("ws://127.0.0.1:8545")
+	if err != nil {
+		t.Fatalf("failed to create ETH RPC client - %s", err)
+	}
+	avsSubscriber, err := chainio.NewAvsSubscriber(deployment, wsClient, log)
 	if err != nil {
 		t.Fatalf("failed to create avs subscriber - %s", err)
 	}
@@ -152,7 +164,7 @@ func checkTaskBatch(
 	select {
 	case onchainBatch := <-batchCh:
 		// Validate batch index.
-		nextBatchIdx, err := avsReader.AvsManagersBindings.TaskManager.NextBatchIndex(&bind.CallOpts{})
+		nextBatchIdx, err := avsReader.Bindings.TaskManager.NextBatchIndex(&bind.CallOpts{})
 		if err != nil {
 			t.Fatalf("failed to fetch next batch index - %s", err)
 		}
@@ -173,7 +185,7 @@ func checkTaskBatch(
 		if err != nil {
 			t.Fatalf("failed to compute task batch hash - %s", err)
 		}
-		onchainBatchHash, err := avsReader.AvsManagersBindings.TaskManager.AllBatchHashes(&bind.CallOpts{}, batch.index)
+		onchainBatchHash, err := avsReader.Bindings.TaskManager.AllBatchHashes(&bind.CallOpts{}, batch.index)
 		if err != nil {
 			t.Fatalf("failed to fetch batch hash - %s", err)
 		}
@@ -197,7 +209,7 @@ func checkTaskBatch(
 		if err != nil {
 			t.Fatalf("failed to compute task response metadata hash -%s", err)
 		}
-		respExists, err := avsReader.AvsManagersBindings.TaskManager.AllTaskResponses(&bind.CallOpts{}, onchainHash)
+		respExists, err := avsReader.Bindings.TaskManager.AllTaskResponses(&bind.CallOpts{}, onchainHash)
 		if err != nil {
 			t.Fatalf("failed to fetch task response flag - %s", err)
 		}

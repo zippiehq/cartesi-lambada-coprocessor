@@ -2,17 +2,16 @@ package chainio
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common"
 
 	sdkavsregistry "github.com/Layr-Labs/eigensdk-go/chainio/clients/avsregistry"
 	"github.com/Layr-Labs/eigensdk-go/chainio/clients/eth"
 	logging "github.com/Layr-Labs/eigensdk-go/logging"
 
-	erc20mock "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/ERC20Mock"
 	taskmanager "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/LambadaCoprocessorTaskManager"
-	"github.com/zippiehq/cartesi-lambada-coprocessor/core/config"
 )
 
 type AvsReaderer interface {
@@ -25,57 +24,50 @@ type AvsReaderer interface {
 		referenceBlockNumber uint32,
 		nonSignerStakesAndSignature taskmanager.IBLSSignatureCheckerNonSignerStakesAndSignature,
 	) (taskmanager.IBLSSignatureCheckerQuorumStakeTotals, error)
-
-	GetErc20Mock(ctx context.Context, tokenAddr gethcommon.Address) (*erc20mock.ContractERC20Mock, error)
 }
 
 type AvsReader struct {
 	sdkavsregistry.AvsRegistryReader
 
-	AvsManagersBindings *AvsManagersBindings
-	log                 logging.Logger
+	Bindings *AvsManagersBindings
+
+	log logging.Logger
 }
 
-func BuildAvsReaderFromConfig(c *config.AggregatorConfig) (*AvsReader, error) {
-	return BuildAvsReader(c.LambadaCoprocessorRegistryCoordinatorAddr, c.OperatorStateRetrieverAddr, c.EthHttpClient, c.Logger)
-}
-
-func BuildAvsReader(registryCoordinatorAddr, operatorStateRetrieverAddr gethcommon.Address, ethHttpClient eth.Client, logger logging.Logger) (*AvsReader, error) {
-	avsManagersBindings, err := NewAvsManagersBindings(registryCoordinatorAddr, operatorStateRetrieverAddr, ethHttpClient, logger)
+func NewAvsReader(deployment AVSDeployment, ethClient eth.Client, log logging.Logger) (*AvsReader, error) {
+	bindings, err := NewAvsManagersBindings(deployment, ethClient)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create contract bindings - %s", err)
 	}
-	avsRegistryReader, err := sdkavsregistry.BuildAvsRegistryChainReader(registryCoordinatorAddr, operatorStateRetrieverAddr, ethHttpClient, logger)
+	reader, err := sdkavsregistry.BuildAvsRegistryChainReader(
+		common.HexToAddress(deployment.Addresses.RegistryCoordinator),
+		common.HexToAddress(deployment.Addresses.OperatorStateRetriever),
+		ethClient,
+		log,
+	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create AVS registy chain reader - %s", err)
 	}
 
-	reader := AvsReader{
-		AvsRegistryReader:   avsRegistryReader,
-		AvsManagersBindings: avsManagersBindings,
-		log:                 logger,
+	r := &AvsReader{
+		AvsRegistryReader: reader,
+
+		Bindings: bindings,
+
+		log: log,
 	}
 
-	return &reader, nil
+	return r, nil
 }
 
-func (r *AvsReader) CheckSignatures(
-	ctx context.Context, msgHash [32]byte, quorumNumbers []byte, referenceBlockNumber uint32, nonSignerStakesAndSignature taskmanager.IBLSSignatureCheckerNonSignerStakesAndSignature,
+func (r *AvsReader) CheckSignatures(ctx context.Context, msgHash [32]byte, quorumNumbers []byte,
+	referenceBlockNumber uint32, nonSignerStakesAndSignature taskmanager.IBLSSignatureCheckerNonSignerStakesAndSignature,
 ) (taskmanager.IBLSSignatureCheckerQuorumStakeTotals, error) {
-	stakeTotalsPerQuorum, _, err := r.AvsManagersBindings.TaskManager.CheckSignatures(
+	stakeTotalsPerQuorum, _, err := r.Bindings.TaskManager.CheckSignatures(
 		&bind.CallOpts{}, msgHash, quorumNumbers, referenceBlockNumber, nonSignerStakesAndSignature,
 	)
 	if err != nil {
 		return taskmanager.IBLSSignatureCheckerQuorumStakeTotals{}, err
 	}
 	return stakeTotalsPerQuorum, nil
-}
-
-func (r *AvsReader) GetErc20Mock(ctx context.Context, tokenAddr gethcommon.Address) (*erc20mock.ContractERC20Mock, error) {
-	erc20Mock, err := r.AvsManagersBindings.GetErc20Mock(tokenAddr)
-	if err != nil {
-		r.log.Error("Failed to fetch ERC20Mock contract", "err", err)
-		return nil, err
-	}
-	return erc20Mock, nil
 }

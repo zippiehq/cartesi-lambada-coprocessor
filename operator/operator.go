@@ -3,16 +3,17 @@ package operator
 import (
 	"bytes"
 	"context"
+	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/sha256"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"io"
-	"net/http"
-	"os"
-	"reflect"
-	"encoding/binary"
 	"math/big"
+	"net/http"
+	"reflect"
+
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -26,43 +27,39 @@ import (
 	"github.com/Layr-Labs/eigensdk-go/chainio/clients"
 	sdkelcontracts "github.com/Layr-Labs/eigensdk-go/chainio/clients/elcontracts"
 	"github.com/Layr-Labs/eigensdk-go/chainio/clients/eth"
-	"github.com/Layr-Labs/eigensdk-go/chainio/clients/wallet"
-	"github.com/Layr-Labs/eigensdk-go/chainio/txmgr"
 	"github.com/Layr-Labs/eigensdk-go/crypto/bls"
-	"github.com/Layr-Labs/eigensdk-go/crypto/ecdsa"
 	sdkecdsa "github.com/Layr-Labs/eigensdk-go/crypto/ecdsa"
 	"github.com/Layr-Labs/eigensdk-go/logging"
-	sdklogging "github.com/Layr-Labs/eigensdk-go/logging"
 	sdkmetrics "github.com/Layr-Labs/eigensdk-go/metrics"
 	"github.com/Layr-Labs/eigensdk-go/metrics/collectors/economic"
 	rpccalls "github.com/Layr-Labs/eigensdk-go/metrics/collectors/rpc_calls"
 	"github.com/Layr-Labs/eigensdk-go/nodeapi"
-	"github.com/Layr-Labs/eigensdk-go/signerv2"
 	sdktypes "github.com/Layr-Labs/eigensdk-go/types"
 
 	sdkutils "github.com/Layr-Labs/eigensdk-go/utils"
 	"github.com/zippiehq/cartesi-lambada-coprocessor/aggregator"
 	"github.com/zippiehq/cartesi-lambada-coprocessor/aggregator/types"
+	"github.com/zippiehq/cartesi-lambada-coprocessor/bincode"
 	tm "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/LambadaCoprocessorTaskManager"
 	"github.com/zippiehq/cartesi-lambada-coprocessor/core"
 	"github.com/zippiehq/cartesi-lambada-coprocessor/core/chainio"
-	"github.com/zippiehq/cartesi-lambada-coprocessor/core/config"
 	"github.com/zippiehq/cartesi-lambada-coprocessor/metrics"
-	"github.com/zippiehq/cartesi-lambada-coprocessor/bincode"
-
 )
 
 const AVS_NAME = "lambada-coprocessor"
 const SEM_VER = "0.0.1"
 
 type Operator struct {
-	config config.OperatorConfig
+	config Config
+
+	log logging.Logger
+
+	blsKeypair   *bls.KeyPair
+	ecdsaPrivKey *ecdsa.PrivateKey
 
 	operatorAddr common.Address
 	operatorId   sdktypes.OperatorId
-	blsKeypair   *bls.KeyPair
 
-	log        logging.Logger
 	ethClient  eth.Client
 	ipfsClient *ipfs_api.HttpApi
 	// TODO(samlaf): remove both avsWriter and eigenlayerWrite from operator
@@ -88,114 +85,90 @@ type Operator struct {
 }
 
 type BincodedCompute struct {
-    Metadata map[string][]byte
-    Payload  []byte
+	Metadata map[string][]byte
+	Payload  []byte
 }
 
-func NewOperatorFromConfig(c config.OperatorConfig) (*Operator, error) {
+func NewOperator(blsPwd, ecdsaPwd string, cfg Config) (*Operator, error) {
 	var logLevel logging.LogLevel
-	if c.Production {
-		logLevel = sdklogging.Production
+	if cfg.Production {
+		logLevel = logging.Production
 	} else {
-		logLevel = sdklogging.Development
+		logLevel = logging.Development
 	}
-	logger, err := sdklogging.NewZapLogger(logLevel)
+	logger, err := logging.NewZapLogger(logLevel)
 	if err != nil {
 		return nil, err
 	}
 	reg := prometheus.NewRegistry()
-	eigenMetrics := sdkmetrics.NewEigenMetrics(AVS_NAME, c.EigenMetricsIpPortAddress, reg, logger)
+	eigenMetrics := sdkmetrics.NewEigenMetrics(AVS_NAME, cfg.EigenMetricsIpPortAddress, reg, logger)
 	avsAndEigenMetrics := metrics.NewAvsAndEigenMetrics(AVS_NAME, eigenMetrics, reg)
 
 	// Setup IPFS Api
-	ipfsURL := fmt.Sprintf("http://%s", c.IPFSIpPortAddress)
+	ipfsURL := fmt.Sprintf("http://%s", cfg.IPFSIpPortAddress)
 	ipfsApi, err := ipfs_api.NewURLApiWithClient(ipfsURL, http.DefaultClient)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create IPFS API client - %s", err)
 	}
 
 	// Setup Node Api
-	nodeApi := nodeapi.NewNodeApi(AVS_NAME, SEM_VER, c.NodeApiIpPortAddress, logger)
+	nodeApi := nodeapi.NewNodeApi(AVS_NAME, SEM_VER, cfg.NodeApiIpPortAddress, logger)
 
 	var ethRpcClient, ethWsClient eth.Client
-	if c.EnableMetrics {
+	if cfg.EnableMetrics {
 		rpcCallsCollector := rpccalls.NewCollector(AVS_NAME, reg)
-		ethRpcClient, err = eth.NewInstrumentedClient(c.EthRpcUrl, rpcCallsCollector)
+		ethRpcClient, err = eth.NewInstrumentedClient(cfg.EthRpcUrl, rpcCallsCollector)
 		if err != nil {
 			logger.Errorf("Cannot create http ethclient", "err", err)
 			return nil, err
 		}
-		ethWsClient, err = eth.NewInstrumentedClient(c.EthWsUrl, rpcCallsCollector)
+		ethWsClient, err = eth.NewInstrumentedClient(cfg.EthWsUrl, rpcCallsCollector)
 		if err != nil {
 			logger.Errorf("Cannot create ws ethclient", "err", err)
 			return nil, err
 		}
 	} else {
-		ethRpcClient, err = eth.NewClient(c.EthRpcUrl)
+		ethRpcClient, err = eth.NewClient(cfg.EthRpcUrl)
 		if err != nil {
 			logger.Errorf("Cannot create http ethclient", "err", err)
 			return nil, err
 		}
-		ethWsClient, err = eth.NewClient(c.EthWsUrl)
+		ethWsClient, err = eth.NewClient(cfg.EthWsUrl)
 		if err != nil {
 			logger.Errorf("Cannot create ws ethclient", "err", err)
 			return nil, err
 		}
 	}
 
-	var deployment config.AVSDeployment
-	if err := sdkutils.ReadJsonConfig(c.AVSDeploymentPath, &deployment); err != nil {
+	var deployment chainio.AVSDeployment
+	if err := sdkutils.ReadJsonConfig(cfg.AVSDeploymentOutputPath, &deployment); err != nil {
 		return nil, fmt.Errorf("failed to read deployment parameters - %s", err)
 	}
 
-	blsKeyPassword, ok := os.LookupEnv("OPERATOR_BLS_KEY_PASSWORD")
-	if !ok {
-		logger.Warnf("OPERATOR_BLS_KEY_PASSWORD env var not set. using empty string")
-	}
-	blsKeyPair, err := bls.ReadPrivateKeyFromFile(c.BLSPrivateKeyStorePath, blsKeyPassword)
+	blsKeyPair, err := bls.ReadPrivateKeyFromFile(cfg.BLSPrivateKeyStorePath, blsPwd)
 	if err != nil {
 		logger.Errorf("Cannot parse bls private key", "err", err)
 		return nil, err
 	}
 
-	ecdsaKeyPassword, ok := os.LookupEnv("OPERATOR_ECDSA_KEY_PASSWORD")
-	if !ok {
-		logger.Warnf("OPERATOR_ECDSA_KEY_PASSWORD env var not set. using empty string")
-	}
-	ecdsaKey, err := ecdsa.ReadKey(c.ECDSAPrivateKeyStorePath, ecdsaKeyPassword)
+	ecdsaKey, err := sdkecdsa.ReadKey(cfg.ECDSAPrivateKeyStorePath, ecdsaPwd)
 	if err != nil {
 		logger.Errorf("Cannot parse ecdsa private key", "err", err)
 		return nil, err
 	}
 	operatorAddr := crypto.PubkeyToAddress(ecdsaKey.PublicKey)
 
-	// TODO(samlaf): should we add the chainId to the config instead?
-	// this way we can prevent creating a signer that signs on mainnet by mistake
-	// if the config says chainId=5, then we can only create a goerli signer
-	chainId, err := ethRpcClient.ChainID(context.Background())
-	if err != nil {
-		logger.Error("Cannot get chainId", "err", err)
-		return nil, err
-	}
-
-	signerV2, _, err := signerv2.SignerFromConfig(signerv2.Config{
-		KeystorePath: c.ECDSAPrivateKeyStorePath,
-		Password:     ecdsaKeyPassword,
-	}, chainId)
-	if err != nil {
-		panic(err)
-	}
 	chainioConfig := clients.BuildAllConfig{
-		EthHttpUrl:                 c.EthRpcUrl,
-		EthWsUrl:                   c.EthWsUrl,
+		EthHttpUrl:                 cfg.EthRpcUrl,
+		EthWsUrl:                   cfg.EthWsUrl,
 		RegistryCoordinatorAddr:    deployment.Addresses.RegistryCoordinator,
 		OperatorStateRetrieverAddr: deployment.Addresses.OperatorStateRetriever,
 		AvsName:                    AVS_NAME,
-		PromMetricsIpPortAddress:   c.EigenMetricsIpPortAddress,
+		PromMetricsIpPortAddress:   cfg.EigenMetricsIpPortAddress,
 	}
 	operatorEcdsaPrivateKey, err := sdkecdsa.ReadKey(
-		c.ECDSAPrivateKeyStorePath,
-		ecdsaKeyPassword,
+		cfg.ECDSAPrivateKeyStorePath,
+		ecdsaPwd,
 	)
 	if err != nil {
 		return nil, err
@@ -204,32 +177,20 @@ func NewOperatorFromConfig(c config.OperatorConfig) (*Operator, error) {
 	if err != nil {
 		panic(err)
 	}
-	skWallet, err := wallet.NewPrivateKeyWallet(ethRpcClient, signerV2, operatorAddr, logger)
-	if err != nil {
-		return nil, err
-	}
-	txMgr := txmgr.NewSimpleTxManager(skWallet, ethRpcClient, logger, operatorAddr)
 
-	avsWriter, err := chainio.BuildAvsWriter(
-		txMgr, common.HexToAddress(deployment.Addresses.RegistryCoordinator),
-		common.HexToAddress(deployment.Addresses.OperatorStateRetriever), ethRpcClient, logger,
-	)
+	avsWriter, err := chainio.NewAvsWriter(ecdsaKey, deployment, ethRpcClient, logger)
 	if err != nil {
 		logger.Error("Cannot create AvsWriter", "err", err)
 		return nil, err
 	}
 
-	avsReader, err := chainio.BuildAvsReader(
-		common.HexToAddress(deployment.Addresses.RegistryCoordinator),
-		common.HexToAddress(deployment.Addresses.OperatorStateRetriever),
-		ethRpcClient, logger)
+	avsReader, err := chainio.NewAvsReader(deployment, ethRpcClient, logger)
 	if err != nil {
 		logger.Error("Cannot create AvsReader", "err", err)
 		return nil, err
 	}
-	avsSubscriber, err := chainio.BuildAvsSubscriber(common.HexToAddress(deployment.Addresses.RegistryCoordinator),
-		common.HexToAddress(deployment.Addresses.OperatorStateRetriever), ethWsClient, logger,
-	)
+
+	avsSubscriber, err := chainio.NewAvsSubscriber(deployment, ethWsClient, logger)
 	if err != nil {
 		logger.Error("Cannot create AvsSubscriber", "err", err)
 		return nil, err
@@ -245,20 +206,23 @@ func NewOperatorFromConfig(c config.OperatorConfig) (*Operator, error) {
 		AVS_NAME, logger, operatorAddr, quorumNames)
 	reg.MustRegister(economicMetricsCollector)
 
-	aggregatorRpcClient, err := NewAggregatorRpcClient(c.AggregatorServerIpPortAddress, logger, avsAndEigenMetrics)
+	aggregatorRpcClient, err := NewAggregatorRpcClient(cfg.AggregatorServerIpPortAddress, logger, avsAndEigenMetrics)
 	if err != nil {
 		logger.Error("Cannot create AggregatorRpcClient. Is aggregator running?", "err", err)
 		return nil, err
 	}
 
 	operator := &Operator{
-		config: c,
+		config: cfg,
+
+		log: logger,
+
+		blsKeypair:   blsKeyPair,
+		ecdsaPrivKey: ecdsaKey,
 
 		operatorAddr: operatorAddr,
 		operatorId:   [32]byte{0}, // this is set below
-		blsKeypair:   blsKeyPair,
 
-		log:                        logger,
 		metricsReg:                 reg,
 		metrics:                    avsAndEigenMetrics,
 		nodeApi:                    nodeApi,
@@ -269,7 +233,7 @@ func NewOperatorFromConfig(c config.OperatorConfig) (*Operator, error) {
 		avsSubscriber:              avsSubscriber,
 		eigenlayerReader:           sdkClients.ElChainReader,
 		eigenlayerWriter:           sdkClients.ElChainWriter,
-		aggregatorServerIpPortAddr: c.AggregatorServerIpPortAddress,
+		aggregatorServerIpPortAddr: cfg.AggregatorServerIpPortAddress,
 		aggregatorRpcClient:        aggregatorRpcClient,
 
 		newBatchChan: make(chan *tm.ContractLambadaCoprocessorTaskManagerTaskBatchRegistered),
@@ -402,7 +366,7 @@ func (o *Operator) computeTaskOutput(t types.Task, blockNumber uint32) (string, 
 
 	bincodedCompute := BincodedCompute{
 		Metadata: map[string][]byte{"sequencer": []byte("coprocessor"), "coprocessor-batch-block-number": blockNumberBytes, "coprocessor-batch-block-hash": curBlock.Hash().Bytes()},
-		Payload: t.Input,
+		Payload:  t.Input,
 	}
 
 	input, err := bincode.SerializeData(reflect.ValueOf(bincodedCompute))
