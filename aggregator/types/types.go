@@ -32,6 +32,7 @@ type TaskDigest [32]byte
 
 type Task struct {
 	tm.ILambadaCoprocessorTaskManagerTask
+	Input []byte
 	Index sdktypes.TaskIndex
 }
 

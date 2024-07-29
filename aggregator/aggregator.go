@@ -86,8 +86,8 @@ type Aggregator struct {
 	taskMu sync.RWMutex
 
 	nextTaskIdx    sdktypes.TaskIndex
-	pendingTasks   map[sdktypes.TaskIndex]tm.ILambadaCoprocessorTaskManagerTask
-	submittedTasks map[sdktypes.TaskIndex]tm.ILambadaCoprocessorTaskManagerTask
+	pendingTasks   map[sdktypes.TaskIndex]types.Task
+	submittedTasks map[sdktypes.TaskIndex]types.Task
 
 	batchIndex types.TaskBatchIndex
 	batches    map[types.TaskBatchIndex]types.TaskBatch
@@ -159,8 +159,8 @@ func NewAggregator(privKey string, cfg Config, log logging.Logger) (*Aggregator,
 		blsAggregationService: blsAggregationService,
 
 		nextTaskIdx:    0,
-		pendingTasks:   make(map[sdktypes.TaskIndex]tm.ILambadaCoprocessorTaskManagerTask),
-		submittedTasks: make(map[sdktypes.TaskIndex]tm.ILambadaCoprocessorTaskManagerTask),
+		pendingTasks:   make(map[sdktypes.TaskIndex]types.Task),
+		submittedTasks: make(map[sdktypes.TaskIndex]types.Task),
 
 		batchIndex: 0,
 		batches:    make(map[types.TaskBatchIndex]types.TaskBatch),
@@ -199,9 +199,13 @@ func (agg *Aggregator) addTask(programID []byte, input []byte) (sdktypes.TaskInd
 	agg.taskMu.Lock()
 	defer agg.taskMu.Unlock()
 
-	agg.pendingTasks[agg.nextTaskIdx] = tm.ILambadaCoprocessorTaskManagerTask{
-		ProgramId: programID,
-		Input:     input,
+	agg.pendingTasks[agg.nextTaskIdx] = types.Task{
+		ILambadaCoprocessorTaskManagerTask: tm.ILambadaCoprocessorTaskManagerTask{
+			ProgramId: programID,
+			InputHash: core.Keccack256(input),
+		},
+		Input: input,
+		Index: agg.nextTaskIdx,
 	}
 	agg.nextTaskIdx++
 
@@ -261,10 +265,11 @@ func (agg *Aggregator) makeBatch() ([]types.Task, *smt.StandardTree, error) {
 
 	// Sort pending tasks.
 	tasks := make([]types.Task, 0, len(agg.pendingTasks))
-	for i, t := range agg.pendingTasks {
+	for _, t := range agg.pendingTasks {
 		tasks = append(tasks, types.Task{
-			ILambadaCoprocessorTaskManagerTask: t,
-			Index:                              i,
+			ILambadaCoprocessorTaskManagerTask: t.ILambadaCoprocessorTaskManagerTask,
+			Input:                              t.Input,
+			Index:                              t.Index,
 		})
 	}
 
@@ -291,7 +296,7 @@ func (agg *Aggregator) confirmBatch(
 	// Update task lookup.
 	for _, t := range batch.Tasks {
 		delete(agg.pendingTasks, t.Index)
-		agg.submittedTasks[t.Index] = t.ILambadaCoprocessorTaskManagerTask
+		agg.submittedTasks[t.Index] = t
 	}
 
 	return batch
@@ -422,7 +427,7 @@ func BuildTaskBatchMerkle(tasks []types.Task) ([]types.Task, *smt.StandardTree, 
 	for i, t := range tasks {
 		values[i] = []interface{}{
 			smt.SolBytes(hex.EncodeToString(t.ProgramId)),
-			smt.SolBytes(hex.EncodeToString(t.Input)),
+			smt.SolBytes(hex.EncodeToString(t.InputHash)),
 		}
 	}
 
