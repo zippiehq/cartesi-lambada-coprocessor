@@ -24,7 +24,7 @@ interface ILambadaCoprocessorTaskManager is IBLSSignatureChecker {
 
     struct Task {
         bytes programId;
-        bytes input;
+        bytes inputHash;
     }
 
     // Task response is hashed and signed by operators.
@@ -37,7 +37,7 @@ interface ILambadaCoprocessorTaskManager is IBLSSignatureChecker {
     struct TaskResponseMetadata {
         uint32 batchIndex;
         bytes programId;
-        bytes taskInput;
+        bytes taskInputHash;
     }
   
     function registerNewTaskBatch(

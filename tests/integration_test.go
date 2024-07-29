@@ -205,7 +205,8 @@ func checkTaskBatch(
 	}
 	// Validate task response mapping.
 	for _, task := range batch.tasks {
-		onchainHash, err := core.GetTaskResponseMetadataDigest(batch.index, []byte(task.ProgramID), []byte(task.Input))
+		inputHash := core.Keccack256([]byte(task.Input))
+		onchainHash, err := core.GetTaskResponseMetadataDigest(batch.index, []byte(task.ProgramID), inputHash)
 		if err != nil {
 			t.Fatalf("failed to compute task response metadata hash -%s", err)
 		}
@@ -251,8 +252,9 @@ func batchMerkleRoot(batch taskBatch) ([32]byte, error) {
 		aggTasks[i] = aggtypes.Task{
 			ILambadaCoprocessorTaskManagerTask: tm.ILambadaCoprocessorTaskManagerTask{
 				ProgramId: []byte(t.ProgramID),
-				Input:     []byte(t.Input),
+				InputHash: core.Keccack256([]byte(t.Input)),
 			},
+			Input: []byte(t.Input),
 			Index: batch.firstTaskIndex + uint32(i),
 		}
 	}

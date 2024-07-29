@@ -146,7 +146,7 @@ contract LambadaCoprocessorTaskManager is
         TaskResponseMetadata memory responseMeta;
         responseMeta.batchIndex = batch.index;
         responseMeta.programId = task.programId;
-        responseMeta.taskInput = task.input;
+        responseMeta.taskInputHash = task.inputHash;
         bytes32 responseMetaHash = keccak256(abi.encode(responseMeta));
         require(
             !allTaskResponses[responseMetaHash],
@@ -154,7 +154,7 @@ contract LambadaCoprocessorTaskManager is
         );
 
         // Check that batch contains specified task.
-        bytes32 taskHash = keccak256(bytes.concat(keccak256(abi.encode(task.programId, task.input))));
+        bytes32 taskHash = keccak256(bytes.concat(keccak256(abi.encode(task.programId, task.inputHash))));
         require(
             MerkleProof.verifyCalldata(taskProof, batch.merkeRoot, taskHash),
             "Task does not belong to batch"

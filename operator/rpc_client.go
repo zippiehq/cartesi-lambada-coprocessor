@@ -53,7 +53,7 @@ func (c *AggregatorRpcClient) GetBatchTasks(batchIdx types.TaskBatchIndex) ([]ty
 	tasks := aggregator.BatchTasks{}
 	for i := 0; i < 5; i++ {
 		if err := c.rpcClient.Call("Aggregator.GetBatchTasks", batchIdx, &tasks); err != nil {
-			c.log.Errorf("failed to tasks for batch %d from aggregator - %s, retrying in 2 seconds", batchIdx, err)
+			c.log.Errorf("failed to fetch task batch %d from aggregator - %s, retrying in 2 seconds", batchIdx, err)
 			time.Sleep(2 * time.Second)
 		} else {
 			break

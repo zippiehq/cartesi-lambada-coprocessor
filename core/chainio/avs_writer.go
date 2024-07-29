@@ -159,7 +159,7 @@ func (w *AvsWriter) RespondTask(
 
 	receipt, err := w.txmgr.Send(ctx, tx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to send CreateNewTask tx - %s", err)
+		return nil, fmt.Errorf("failed to send RespondTask tx - %s", err)
 	}
 
 	return receipt, nil

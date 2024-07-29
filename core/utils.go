@@ -5,8 +5,10 @@ import (
 
 	"golang.org/x/crypto/sha3"
 
-	"github.com/Layr-Labs/eigensdk-go/crypto/bls"
 	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/ethereum/go-ethereum/crypto"
+
+	"github.com/Layr-Labs/eigensdk-go/crypto/bls"
 
 	aggtypes "github.com/zippiehq/cartesi-lambada-coprocessor/aggregator/types"
 	tm "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/LambadaCoprocessorTaskManager"
@@ -29,7 +31,7 @@ func GetTaskResponseDigest(r *tm.ILambadaCoprocessorTaskManagerTaskResponse) ([3
 }
 
 // GetTaskResponseMetadataDigest returns the hash of the TaskResponseMetadata
-func GetTaskResponseMetadataDigest(batchIdx aggtypes.TaskBatchIndex, programID []byte, taskInput []byte) ([32]byte, error) {
+func GetTaskResponseMetadataDigest(batchIdx aggtypes.TaskBatchIndex, programID []byte, taskInputHash []byte) ([32]byte, error) {
 	t, err := abi.NewType("tuple", "", []abi.ArgumentMarshaling{
 		{
 			Name: "batchIndex",
@@ -40,7 +42,7 @@ func GetTaskResponseMetadataDigest(batchIdx aggtypes.TaskBatchIndex, programID [
 			Type: "bytes",
 		},
 		{
-			Name: "taskInput",
+			Name: "taskInputHash",
 			Type: "bytes",
 		},
 	})
@@ -49,13 +51,13 @@ func GetTaskResponseMetadataDigest(batchIdx aggtypes.TaskBatchIndex, programID [
 	}
 
 	meta := struct {
-		BatchIndex uint32
-		ProgramID  []byte
-		TaskInput  []byte
+		BatchIndex    uint32
+		ProgramID     []byte
+		TaskInputHash []byte
 	}{
-		BatchIndex: batchIdx,
-		ProgramID:  programID,
-		TaskInput:  taskInput,
+		BatchIndex:    batchIdx,
+		ProgramID:     programID,
+		TaskInputHash: taskInputHash,
 	}
 
 	return hashObject(t, &meta)
@@ -132,4 +134,8 @@ func ConvertToBN254G2Point(input *bls.G2Point) tm.BN254G2Point {
 		Y: [2]*big.Int{input.Y.A1.BigInt(big.NewInt(0)), input.Y.A0.BigInt(big.NewInt(0))},
 	}
 	return output
+}
+
+func Keccack256(data []byte) []byte {
+	return crypto.Keccak256(data)
 }
