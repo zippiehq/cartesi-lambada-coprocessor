@@ -22,4 +22,10 @@ Run `go run ./cli generate-docker-compose --operators $NUMBER_OF_OPERATORS` to s
 
 ## Contract development
 
-If either source code of AVS contracts is changed or new verison of `eigenlayer-middleware` is used, devnet testing environment must be updated by running `make deploy-all`. This will generate new [Anvil state](./tests/anvil/avs-and-eigenlayer-deployed-anvil-state.json), used by Anvil docker compose service.
+Devnet testing environment is based on [local Anvil state](./tests/anvil/avs-and-eigenlayer-deployed-anvil-state.json), used by Anvil docker compose service. That state inlcudes:
+- Deployment of core Eigenlayer contracts
+- Deployment of AVS contracts
+
+In case source code of AVS contracts is changed, AVS must be re-deployed to local Anvil state by running `make deploy-avs`.
+
+In case new verion of `eigenlayer-middleware` is used, appropriate verison of Eigenlayer contracts must be re-deployed by running `make deploy-eigenlayer` and then `make deploy-avs` (or by executing single `make deploy-all` command).
