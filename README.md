@@ -4,11 +4,13 @@ This is proof of concept of verifiable computing system using  [Cartesi virtual 
 
 ## Running tests
 
+Run `git submodule update --init --recursive`
+
 To run tests on devnet (local deployment of Eigenlayer and Lambada Coprocessor AVS) in first terminal run `docker compose up`. Then in second terminal run `make tests-integration`.
 
-Use `docker compose -f docker-compose-holesky.yaml` and `make tests-integration-holesky` to run tests on Holesky fork.
+Use `docker compose -f docker-compose-holesky.yaml up` and `make tests-integration-holesky` to run tests on Holesky fork.
 
-Use `docker compose -f docker-compose-mainnet.yaml` and `make tests-integration-mainnet` to run tests on Mainnet fork.
+Use `docker compose -f docker-compose-mainnet.yaml up` and `make tests-integration-mainnet` to run tests on Mainnet fork.
 
 Wait for tests to complete without any errors and check docker compose logs for unexpected errors.
 
