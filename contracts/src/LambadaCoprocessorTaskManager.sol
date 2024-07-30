@@ -35,7 +35,7 @@ contract LambadaCoprocessorTaskManager is
     uint32 public nextBatchIndex;
 
     mapping(uint32 => bytes32) public allBatchHashes;
-    mapping(bytes32 => bool) public allTaskResponses;
+    mapping(bytes32 => bytes32) public allTaskOutputs;
 
     address public aggregator;
     address public generator;
@@ -125,16 +125,16 @@ contract LambadaCoprocessorTaskManager is
         }
         
         // Update task responses.
-        allTaskResponses[responseMetaHash] = true;
+        allTaskOutputs[responseMetaHash] = taskResponse.outputHash;
 
-        emit TaskResponded(taskResponse);
+        emit TaskResponded(responseMetaHash, taskResponse);
     }
 
     function verifyBatchTask(
         TaskBatch calldata batch,
         Task calldata task,
         bytes32[] calldata taskProof
-    ) internal returns (bytes32) {
+    ) internal view returns (bytes32) {
          // Check that batch has been registered.
         bytes32 batchHash = keccak256(abi.encode(batch));
         require(
@@ -143,13 +143,9 @@ contract LambadaCoprocessorTaskManager is
         );
 
         // Check if task has been already responded.
-        TaskResponseMetadata memory responseMeta;
-        responseMeta.batchIndex = batch.index;
-        responseMeta.programId = task.programId;
-        responseMeta.taskInputHash = task.inputHash;
-        bytes32 responseMetaHash = keccak256(abi.encode(responseMeta));
+        (bytes32 responseMetaHash, bytes32 outputHash) = taskOutputHash(batch.index, task.programId, task.inputHash);
         require(
-            !allTaskResponses[responseMetaHash],
+            outputHash == "",
             "Task response already responded"
         );
 
@@ -161,5 +157,29 @@ contract LambadaCoprocessorTaskManager is
         );
 
         return responseMetaHash;
+    }
+
+    function getTaskOutputHash(
+        uint32 batchIndex,
+        bytes calldata programId,
+        bytes calldata taskInputHash
+    ) external view returns (bytes32) {
+        (bytes32 responseMetaHash, bytes32 outputHash) = taskOutputHash(batchIndex, programId, taskInputHash);
+        return outputHash;
+    }
+
+    function taskOutputHash(
+        uint32 batchIndex,
+        bytes calldata programId,
+        bytes calldata taskInputHash
+    ) internal view returns (bytes32, bytes32) {
+        TaskResponseMetadata memory responseMeta;
+        responseMeta.batchIndex = batchIndex;
+        responseMeta.programId = programId;
+        responseMeta.taskInputHash = taskInputHash;
+        
+        bytes32 responseMetaHash = keccak256(abi.encode(responseMeta));
+        
+        return (responseMetaHash, allTaskOutputs[responseMetaHash]);
     }
 }
