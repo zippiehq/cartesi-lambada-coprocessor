@@ -1,0 +1,54 @@
+name: Build docker containers
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - '*'
+
+jobs:
+  build:
+    name: Build and Push Docker Image
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v1
+
+    - name: Cache Docker layers
+      uses: actions/cache@v2
+      with:
+        path: /tmp/.buildx-cache
+        key: ${{ runner.os }}-buildx-${{ github.sha }}
+        restore-keys: |
+          ${{ runner.os }}-buildx-
+
+    - name: Build the containers
+      run: |
+            docker compose build
+    - name: Start the containers
+      run: |
+            docker compose up --remove-orphans --detach --wait
+    - name: Install golang 
+      uses: actions/setup-go@v5
+   
+    - name: Checkout repository for tests specifically
+      uses: actions/checkout@v2
+      with:
+          path: 'tests-checkout'
+    
+    - name: Build and Run tests
+      run: |
+        while true; do 
+          docker compose logs operator1 | grep "Subscribed to new TaskManager tasks" || continue
+          docker compose logs operator2 | grep "Subscribed to new TaskManager tasks" || continue
+          docker compose logs operator3 | grep "Subscribed to new TaskManager tasks" || continue
+          break
+        done
+        cd tests-checkout
+        make tests-integration
