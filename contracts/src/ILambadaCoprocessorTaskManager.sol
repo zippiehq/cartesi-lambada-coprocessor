@@ -6,7 +6,7 @@ import "@eigenlayer-middleware/src/BLSSignatureChecker.sol";
 
 interface ILambadaCoprocessorTaskManager is IBLSSignatureChecker {
     event TaskBatchRegistered(TaskBatch batch);
-    event TaskResponded(TaskResponse taskResponse);
+    event TaskResponded(bytes32 responseMetaHash, TaskResponse response);
 
     struct TaskBatch {
         uint32 index;
@@ -53,4 +53,10 @@ interface ILambadaCoprocessorTaskManager is IBLSSignatureChecker {
         TaskResponse calldata taskResponse,
         NonSignerStakesAndSignature memory nonSignerStakesAndSignature
     ) external;
+
+    function getTaskOutputHash(
+        uint32 batchIndex,
+        bytes calldata programId,
+        bytes calldata taskInputHash
+    ) external view returns (bytes32);
 }

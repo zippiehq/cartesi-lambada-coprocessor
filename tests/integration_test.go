@@ -30,6 +30,8 @@ const (
 	MAINNET = "mainnet"
 )
 
+var ZERO_TASK_OUTPUT_HASH [32]byte
+
 var network = flag.String("network", DEVNET, "target network")
 
 type task struct {
@@ -206,15 +208,18 @@ func checkTaskBatch(
 	// Validate task response mapping.
 	for _, task := range batch.tasks {
 		inputHash := core.Keccack256([]byte(task.Input))
-		onchainHash, err := core.GetTaskResponseMetadataDigest(batch.index, []byte(task.ProgramID), inputHash)
+		outputHash, err := avsReader.Bindings.TaskManager.GetTaskOutputHash(&bind.CallOpts{}, batch.index, []byte(task.ProgramID), inputHash)
 		if err != nil {
-			t.Fatalf("failed to compute task response metadata hash -%s", err)
+			t.Fatalf("failed to fetch task output hash - %s", err)
 		}
-		respExists, err := avsReader.Bindings.TaskManager.AllTaskResponses(&bind.CallOpts{}, onchainHash)
-		if err != nil {
-			t.Fatalf("failed to fetch task response flag - %s", err)
-		}
-		assert.True(t, respExists, "invalid onchain task response flag for batch %d", batch.index)
+		assert.NotEqual(
+			t,
+			ZERO_TASK_OUTPUT_HASH,
+			outputHash,
+			"can not find task output hash for batch %d and program %s",
+			batch.index,
+			task.ProgramID,
+		)
 	}
 }
 
