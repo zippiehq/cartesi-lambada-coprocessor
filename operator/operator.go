@@ -8,11 +8,11 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"encoding/json"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"math/big"
 	"net/http"
-	"reflect"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -39,7 +39,6 @@ import (
 	sdkutils "github.com/Layr-Labs/eigensdk-go/utils"
 	"github.com/zippiehq/cartesi-lambada-coprocessor/aggregator"
 	"github.com/zippiehq/cartesi-lambada-coprocessor/aggregator/types"
-	"github.com/zippiehq/cartesi-lambada-coprocessor/bincode"
 	tm "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/LambadaCoprocessorTaskManager"
 	"github.com/zippiehq/cartesi-lambada-coprocessor/core"
 	"github.com/zippiehq/cartesi-lambada-coprocessor/core/chainio"
@@ -85,8 +84,8 @@ type Operator struct {
 }
 
 type BincodedCompute struct {
-	Metadata map[string][]byte
-	Payload  []byte
+	Metadata map[string]string `json:"metadata"`
+	Payload string `json:"payload"`
 }
 
 func NewOperator(blsPwd, ecdsaPwd string, cfg Config) (*Operator, error) {
@@ -350,7 +349,7 @@ func (o *Operator) processTaskBatch(newBatch *tm.ContractLambadaCoprocessorTaskM
 func (o *Operator) computeTaskOutput(t types.Task, blockNumber uint32) (string, []byte, error) {
 	// Query lambada compute endpoint.
 	taskCID := string(t.ProgramId)
-	requestURL := fmt.Sprintf("http://%s/compute/%s?bincoded=true",
+	requestURL := fmt.Sprintf("http://%s/compute/%s?json=true",
 		o.config.LambadaIpPortAddress,
 		taskCID,
 	)
@@ -364,16 +363,25 @@ func (o *Operator) computeTaskOutput(t types.Task, blockNumber uint32) (string, 
 		return "", nil, err
 	}
 
-	bincodedCompute := BincodedCompute{
-		Metadata: map[string][]byte{"sequencer": []byte("coprocessor"), "coprocessor-batch-block-number": blockNumberBytes, "coprocessor-batch-block-hash": curBlock.Hash().Bytes()},
-		Payload:  t.Input,
+	base64Hash := func(d []byte) string {
+		hash := sha256.Sum256(d)
+		return base64.StdEncoding.EncodeToString(hash[:])
 	}
-
-	input, err := bincode.SerializeData(reflect.ValueOf(bincodedCompute))
+	
+	bincodedCompute := BincodedCompute{
+		Metadata: map[string]string{
+			base64Hash([]byte("sequencer")): base64Hash([]byte("coprocessor")),
+			base64Hash([]byte("coprocessor-batch-block-number")): base64.StdEncoding.EncodeToString(blockNumberBytes), 
+			base64Hash([]byte("coprocessor-batch-block-hash")): base64.StdEncoding.EncodeToString(curBlock.Hash().Bytes()),
+		},
+		Payload:  base64.StdEncoding.EncodeToString(t.Input),
+	}
+	
+	input, err := json.Marshal(bincodedCompute)
 	if err != nil {
 		return "", nil, err
 	}
-
+	
 	o.log.Infof("sending request to lambada instance - %s", requestURL)
 
 	resp, err := http.Post(requestURL, "application/octet-stream", bytes.NewBuffer(input))
