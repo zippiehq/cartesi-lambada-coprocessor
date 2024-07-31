@@ -271,6 +271,7 @@ func GenerateDockerCompose(ctx *cli.Context) error {
 				"machine_data":   machineData[i-1],
 				"run_script":     operatorScripts[network][i-1],
 				"host_ipfs_port": 5000 + i,
+				"host_lambada_port": 3000 + i,
 			}
 		}
 		composeOperators[network] = operators

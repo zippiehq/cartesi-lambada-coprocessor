@@ -74,6 +74,7 @@ services:
     container_name: lambada-coprocessor-machine1
     ports:
       - 127.0.0.1:5001:5001
+      - 127.0.0.1:3001:3033
     volumes:
       - ./tests/nodes/operators/1/data:/data
       - ./machine/data-preload:/data/preload
@@ -104,6 +105,7 @@ services:
     container_name: lambada-coprocessor-machine2
     ports:
       - 127.0.0.1:5002:5001
+      - 127.0.0.1:3002:3033
     volumes:
       - ./tests/nodes/operators/2/data:/data
       - ./machine/data-preload:/data/preload
@@ -134,6 +136,7 @@ services:
     container_name: lambada-coprocessor-machine3
     ports:
       - 127.0.0.1:5003:5001
+      - 127.0.0.1:3003:3033
     volumes:
       - ./tests/nodes/operators/3/data:/data
       - ./machine/data-preload:/data/preload

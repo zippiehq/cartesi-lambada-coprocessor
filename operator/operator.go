@@ -83,7 +83,7 @@ type Operator struct {
 	newBatchChan chan *tm.ContractLambadaCoprocessorTaskManagerTaskBatchRegistered
 }
 
-type BincodedCompute struct {
+type JSONCompute struct {
 	Metadata map[string]string `json:"metadata"`
 	Payload string `json:"payload"`
 }
@@ -368,16 +368,16 @@ func (o *Operator) computeTaskOutput(t types.Task, blockNumber uint32) (string, 
 		return base64.StdEncoding.EncodeToString(hash[:])
 	}
 	
-	bincodedCompute := BincodedCompute{
+	jsonCompute := JSONCompute {
 		Metadata: map[string]string{
 			base64Hash([]byte("sequencer")): base64Hash([]byte("coprocessor")),
 			base64Hash([]byte("coprocessor-batch-block-number")): base64.StdEncoding.EncodeToString(blockNumberBytes), 
 			base64Hash([]byte("coprocessor-batch-block-hash")): base64.StdEncoding.EncodeToString(curBlock.Hash().Bytes()),
 		},
-		Payload:  base64.StdEncoding.EncodeToString(t.Input),
+		Payload: base64.StdEncoding.EncodeToString(t.Input),
 	}
 	
-	input, err := json.Marshal(bincodedCompute)
+	input, err := json.Marshal(jsonCompute)
 	if err != nil {
 		return "", nil, err
 	}
