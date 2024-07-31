@@ -99,7 +99,7 @@ contract LambadaCoprocessorTaskManager is
         TaskResponse calldata taskResponse,
         NonSignerStakesAndSignature memory nonSignerStakesAndSignature
     ) external onlyAggregator {
-        bytes32 responseMetaHash = verifyBatchTask(batch, task, taskProof);
+        (TaskResponseMetadata memory responseMeta, bytes32 responseMetaHash) = verifyBatchTask(batch, task, taskProof);
 
         // Check the BLS signature.
         bytes32 responseHash = keccak256(abi.encode(taskResponse));
@@ -127,14 +127,14 @@ contract LambadaCoprocessorTaskManager is
         // Update task responses.
         allTaskOutputs[responseMetaHash] = taskResponse.outputHash;
 
-        emit TaskResponded(responseMetaHash, taskResponse);
+        emit TaskResponded(responseMeta, taskResponse);
     }
 
     function verifyBatchTask(
         TaskBatch calldata batch,
         Task calldata task,
         bytes32[] calldata taskProof
-    ) internal view returns (bytes32) {
+    ) internal view returns (TaskResponseMetadata memory, bytes32) {
          // Check that batch has been registered.
         bytes32 batchHash = keccak256(abi.encode(batch));
         require(
@@ -143,7 +143,7 @@ contract LambadaCoprocessorTaskManager is
         );
 
         // Check if task has been already responded.
-        (bytes32 responseMetaHash, bytes32 outputHash) = taskOutputHash(batch.index, task.programId, task.inputHash);
+        (TaskResponseMetadata memory responseMeta, bytes32 responseMetaHash, bytes32 outputHash) = taskOutputHash(batch.index, task.programId, task.inputHash);
         require(
             outputHash == "",
             "Task response already responded"
@@ -156,7 +156,7 @@ contract LambadaCoprocessorTaskManager is
             "Task does not belong to batch"
         );
 
-        return responseMetaHash;
+        return (responseMeta, responseMetaHash);
     }
 
     function getTaskOutputHash(
@@ -164,7 +164,7 @@ contract LambadaCoprocessorTaskManager is
         bytes calldata programId,
         bytes calldata taskInputHash
     ) external view returns (bytes32) {
-        (bytes32 responseMetaHash, bytes32 outputHash) = taskOutputHash(batchIndex, programId, taskInputHash);
+        (TaskResponseMetadata memory responseMeta, bytes32 responseMetaHash, bytes32 outputHash) = taskOutputHash(batchIndex, programId, taskInputHash);
         return outputHash;
     }
 
@@ -172,7 +172,7 @@ contract LambadaCoprocessorTaskManager is
         uint32 batchIndex,
         bytes calldata programId,
         bytes calldata taskInputHash
-    ) internal view returns (bytes32, bytes32) {
+    ) internal view returns (TaskResponseMetadata memory, bytes32, bytes32) {
         TaskResponseMetadata memory responseMeta;
         responseMeta.batchIndex = batchIndex;
         responseMeta.programId = programId;
@@ -180,6 +180,10 @@ contract LambadaCoprocessorTaskManager is
         
         bytes32 responseMetaHash = keccak256(abi.encode(responseMeta));
         
-        return (responseMetaHash, allTaskOutputs[responseMetaHash]);
+        return (responseMeta, responseMetaHash, allTaskOutputs[responseMetaHash]);
+    }
+
+    function getNextBatchIndex() external view returns (uint32) {
+	return nextBatchIndex;
     }
 }
