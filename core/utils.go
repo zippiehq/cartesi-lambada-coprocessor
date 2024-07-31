@@ -19,6 +19,10 @@ func GetTaskResponseDigest(r *tm.ILambadaCoprocessorTaskManagerTaskResponse) ([3
 	// The order here has to match the field ordering of taskmanager.ILambadaCoprocessorTaskManagerTaskResponse
 	t, err := abi.NewType("tuple", "", []abi.ArgumentMarshaling{
 		{
+			Name: "resultCID",
+			Type: "bytes",
+		},
+		{
 			Name: "outputHash",
 			Type: "bytes32",
 		},

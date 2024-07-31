@@ -17,7 +17,6 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/go-faster/xor"
 	ipfs_files "github.com/ipfs/boxo/files"
 	ipfs_path "github.com/ipfs/boxo/path"
 	"github.com/ipfs/go-cid"
@@ -338,7 +337,7 @@ func (o *Operator) processTaskBatch(newBatch *tm.ContractLambadaCoprocessorTaskM
 				err, cid, string(output))
 		}
 
-		if err = o.sendTaskOutput(t.Index, hashOutput(cid, output)); err != nil {
+		if err = o.sendTaskOutput(t.Index, cid, hashOutput(output)); err != nil {
 			return err
 		}
 	}
@@ -425,9 +424,14 @@ func (o *Operator) computeTaskOutput(t types.Task, blockNumber uint32) (string, 
 	return cid.String(), output, nil
 }
 
-func (o *Operator) sendTaskOutput(taskIdx sdktypes.TaskIndex, outputHash [32]byte) error {
+func (o *Operator) sendTaskOutput(taskIdx sdktypes.TaskIndex, resultCID string, outputHash [32]byte) error {
 	// Sign task response;
+	cid, err := cid.Decode(resultCID)
+	if err != nil {
+		return fmt.Errorf("failed to decode result CID - %s", err)
+	}
 	resp := tm.ILambadaCoprocessorTaskManagerTaskResponse{
+		ResultCID: cid.Bytes(),
 		OutputHash: outputHash,
 	}
 	taskResponseHash, err := core.GetTaskResponseDigest(&resp)
@@ -455,10 +459,7 @@ func fakeOutput(size int) (string, []byte) {
 	return cid, output
 }
 
-func hashOutput(ouputCID string, output []byte) [32]byte {
-	cidHash := sha256.Sum256([]byte(ouputCID))
+func hashOutput(output []byte) [32]byte {
 	outputHash := sha256.Sum256(output)
-	var hash [32]byte
-	xor.Bytes(hash[:], cidHash[:], outputHash[:])
-	return hash
+	return outputHash
 }

@@ -30,7 +30,7 @@ interface ILambadaCoprocessorTaskManager is IBLSSignatureChecker {
     // Task response is hashed and signed by operators.
     // these signatures are aggregated and sent to the contract as response.
     struct TaskResponse {
-        // This is just the response that the operator has to compute by itself.
+	bytes resultCID;
         bytes32 outputHash;
     }
 
@@ -54,7 +54,7 @@ interface ILambadaCoprocessorTaskManager is IBLSSignatureChecker {
         NonSignerStakesAndSignature memory nonSignerStakesAndSignature
     ) external;
 
-    function getTaskOutputHash(
+    function getTaskResponseHash(
         uint32 batchIndex,
         bytes calldata programId,
         bytes calldata taskInputHash

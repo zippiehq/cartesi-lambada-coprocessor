@@ -92,11 +92,11 @@ func TestIntegration(t *testing.T) {
 			tasks: []task{
 				{
 					ProgramID: "bafybeicdhhtwmgpnt7jugvlv3xtp2u4w4mkunpmg6txkkkjhpvnt2buyqa",
-					Input:     "input1",
+					Input:     "echo input1",
 				},
 				{
 					ProgramID: "bafybeicdhhtwmgpnt7jugvlv3xtp2u4w4mkunpmg6txkkkjhpvnt2buyqa",
-					Input:     "input2",
+					Input:     "echo input2",
 				},
 			},
 			firstTaskIndex: 0,
@@ -108,7 +108,7 @@ func TestIntegration(t *testing.T) {
 			tasks: []task{
 				{
 					ProgramID: "bafybeicdhhtwmgpnt7jugvlv3xtp2u4w4mkunpmg6txkkkjhpvnt2buyqa",
-					Input:     "input3",
+					Input:     "echo input3",
 				},
 			},
 			firstTaskIndex: 2,
@@ -120,15 +120,15 @@ func TestIntegration(t *testing.T) {
 			tasks: []task{
 				{
 					ProgramID: "bafybeicdhhtwmgpnt7jugvlv3xtp2u4w4mkunpmg6txkkkjhpvnt2buyqa",
-					Input:     "input4",
+					Input:     "echo input4",
 				},
 				{
 					ProgramID: "bafybeicdhhtwmgpnt7jugvlv3xtp2u4w4mkunpmg6txkkkjhpvnt2buyqa",
-					Input:     "input5",
+					Input:     "echo input5",
 				},
 				{
 					ProgramID: "bafybeicdhhtwmgpnt7jugvlv3xtp2u4w4mkunpmg6txkkkjhpvnt2buyqa",
-					Input:     "input6",
+					Input:     "echo input6",
 				},
 			},
 			firstTaskIndex: 3,
@@ -208,7 +208,7 @@ func checkTaskBatch(
 	// Validate task response mapping.
 	for _, task := range batch.tasks {
 		inputHash := core.Keccack256([]byte(task.Input))
-		outputHash, err := avsReader.Bindings.TaskManager.GetTaskOutputHash(&bind.CallOpts{}, batch.index, []byte(task.ProgramID), inputHash)
+		outputHash, err := avsReader.Bindings.TaskManager.GetTaskResponseHash(&bind.CallOpts{}, batch.index, []byte(task.ProgramID), inputHash)
 		if err != nil {
 			t.Fatalf("failed to fetch task output hash - %s", err)
 		}

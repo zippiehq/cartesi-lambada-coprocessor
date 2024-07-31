@@ -125,7 +125,7 @@ contract LambadaCoprocessorTaskManager is
         }
         
         // Update task responses.
-        allTaskOutputs[responseMetaHash] = taskResponse.outputHash;
+        allTaskOutputs[responseMetaHash] = responseHash;
 
         emit TaskResponded(responseMeta, taskResponse);
     }
@@ -143,9 +143,9 @@ contract LambadaCoprocessorTaskManager is
         );
 
         // Check if task has been already responded.
-        (TaskResponseMetadata memory responseMeta, bytes32 responseMetaHash, bytes32 outputHash) = taskOutputHash(batch.index, task.programId, task.inputHash);
+        (TaskResponseMetadata memory responseMeta, bytes32 responseMetaHash, bytes32 responseHash) = taskResponseHash(batch.index, task.programId, task.inputHash);
         require(
-            outputHash == "",
+            responseHash == "",
             "Task response already responded"
         );
 
@@ -159,16 +159,16 @@ contract LambadaCoprocessorTaskManager is
         return (responseMeta, responseMetaHash);
     }
 
-    function getTaskOutputHash(
+    function getTaskResponseHash(
         uint32 batchIndex,
         bytes calldata programId,
         bytes calldata taskInputHash
     ) external view returns (bytes32) {
-        (TaskResponseMetadata memory responseMeta, bytes32 responseMetaHash, bytes32 outputHash) = taskOutputHash(batchIndex, programId, taskInputHash);
-        return outputHash;
+        (TaskResponseMetadata memory responseMeta, bytes32 responseMetaHash, bytes32 responseHash) = taskResponseHash(batchIndex, programId, taskInputHash);
+        return responseHash;
     }
 
-    function taskOutputHash(
+    function taskResponseHash(
         uint32 batchIndex,
         bytes calldata programId,
         bytes calldata taskInputHash
@@ -184,6 +184,6 @@ contract LambadaCoprocessorTaskManager is
     }
 
     function getNextBatchIndex() external view returns (uint32) {
-	return nextBatchIndex;
+        return nextBatchIndex;
     }
 }
