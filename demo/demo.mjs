@@ -1,6 +1,8 @@
-const { ethers } = require("ethers");
-const fs = require("fs");
-const crypto = require("crypto");
+import ethers from "ethers";
+import fs from "fs";
+import crypto from "crypto"
+import { CID } from "multiformats";
+
 const providerUrl = "http://localhost:8545";
 
 const deploymentPath = "../contracts/script/output/lambada_coprocessor_deployment_output_devnet.json";
@@ -43,12 +45,14 @@ function handleTaskBatchRegistered(index, blockNumber, merkeRoot, quorumNumbers,
 
 // Function to handle TaskResponded event
 async function handleTaskResponded(responseMeta, response) {
+    console.log(response);
     const { batchIndex, programId: respProgramId, taskInputHash: respTaskInputHash } = responseMeta;
-    const { outputHash } = response;
+    const { resultCID, outputHash } = response;
     if (batchIndex >= nextBatchIndex && Buffer.from(respProgramId.slice(2), "hex").toString("utf8") === programId && respTaskInputHash === taskInputHash) {
         console.log("Task Responded:", {
             batchIndex,
-            outputHash
+            outputHash,
+            resultCID: response.resultCID
         });
 
         const blockNumber = taskBatchRegistry[batchIndex]?.blockNumber;
@@ -74,17 +78,12 @@ async function handleTaskResponded(responseMeta, response) {
             
 
         console.log(computeJob);
-        let resultCID = (await computeResult(programId, computeJob)).cid;
-        let output = await ipfsGet(resultCID + "/output");
-        
-        let r1 = crypto.createHash("sha256").update(Buffer.from(resultCID, "utf8")).digest();
+        let newResultCID = (await computeResult(programId, computeJob)).cid;
+        let output = await ipfsGet(newResultCID + "/output");
+        let cid = CID.decode(Buffer.from(resultCID.slice(2), "hex"));
         let r2 = crypto.createHash("sha256").update(output).digest();
-        let r3 = Buffer.alloc(r1.length);
-        for (let i = 0; i < r3.length; i++) {
-            r3.writeUint8(r1.readUint8(i) ^ r2.readUint8(i), i);
-        }
-        if (outputHash.slice(2) === r3.toString("hex")) {
-            console.log("Local compute job matches output of co-processor, result CID " + resultCID + " output file hash: " + r2.toString("hex"));
+        if (outputHash.slice(2) === r2.toString("hex") && cid.toString() == newResultCID) {
+            console.log("Local compute job matches output of co-processor, result CID " + cid.toString() + " output file hash: " + r2.toString("hex"));
             console.log("output file contents: " + output.toString("utf8"));
             process.exit(0);
         }

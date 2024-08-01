@@ -10,6 +10,7 @@
   "license": "ISC",
   "dependencies": {
     "ethers": "^5.7.2",
+    "multiformats": "^13.2.2",
     "ts-node": "^10.9.2"
   }
 }
