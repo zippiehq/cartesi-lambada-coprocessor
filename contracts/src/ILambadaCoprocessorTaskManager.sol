@@ -54,6 +54,14 @@ interface ILambadaCoprocessorTaskManager is IBLSSignatureChecker {
         NonSignerStakesAndSignature memory nonSignerStakesAndSignature
     ) external;
 
+    function checkValidTaskResponse(
+        TaskBatch calldata batch,
+        Task calldata task,
+        bytes32[] calldata taskProof,
+        TaskResponse calldata taskResponse,
+        NonSignerStakesAndSignature memory nonSignerStakesAndSignature
+    ) external view;
+
     function getTaskResponseHash(
         uint32 batchIndex,
         bytes calldata programId,

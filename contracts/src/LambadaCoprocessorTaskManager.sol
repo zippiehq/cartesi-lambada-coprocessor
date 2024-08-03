@@ -100,34 +100,27 @@ contract LambadaCoprocessorTaskManager is
         NonSignerStakesAndSignature memory nonSignerStakesAndSignature
     ) external onlyAggregator {
         (TaskResponseMetadata memory responseMeta, bytes32 responseMetaHash) = verifyBatchTask(batch, task, taskProof);
-
-        // Check the BLS signature.
         bytes32 responseHash = keccak256(abi.encode(taskResponse));
-        (
-            QuorumStakeTotals memory quorumStakeTotals,
-            bytes32 hashOfNonSigners
-        ) = checkSignatures(
-            responseHash,
-            batch.quorumNumbers,
-            batch.blockNumber,
-            nonSignerStakesAndSignature
-        );
+        checkBLSSig(batch, responseHash, nonSignerStakesAndSignature);
 
-        // Check that signatories own at least a threshold percentage of each quourm.
-        for (uint i = 0; i < batch.quorumNumbers.length; i++) {
-            // we don't check that the quorumThresholdPercentages are not >100 because a greater value would trivially fail the check, implying
-            // signed stake > total stake
-            require(
-                quorumStakeTotals.signedStakeForQuorum[i] * _THRESHOLD_DENOMINATOR >=
-                quorumStakeTotals.totalStakeForQuorum[i] * uint8(batch.quorumThresholdPercentage),
-                "Signatories do not own at least threshold percentage of a quorum"
-            );
-        }
-        
         // Update task responses.
         allTaskOutputs[responseMetaHash] = responseHash;
 
         emit TaskResponded(responseMeta, taskResponse);
+    }
+
+    function checkValidTaskResponse(
+        TaskBatch calldata batch,
+        Task calldata task,
+        bytes32[] calldata taskProof,
+        TaskResponse calldata taskResponse,
+        NonSignerStakesAndSignature memory nonSignerStakesAndSignature
+    ) external view {
+        (TaskResponseMetadata memory responseMeta, bytes32 responseMetaHash) = verifyBatchTask(batch, task, taskProof);
+        bytes32 responseHash = keccak256(abi.encode(taskResponse));
+        checkBLSSig(batch, responseHash, nonSignerStakesAndSignature);
+
+        return;
     }
 
     function verifyBatchTask(
@@ -156,9 +149,33 @@ contract LambadaCoprocessorTaskManager is
             "Task does not belong to batch"
         );
 
+
         return (responseMeta, responseMetaHash);
     }
 
+    function checkBLSSig(TaskBatch calldata batch, bytes32 responseHash, NonSignerStakesAndSignature memory nonSignerStakesAndSignature) internal view {
+        // Check the BLS signature.
+        (
+            QuorumStakeTotals memory quorumStakeTotals,
+            bytes32 hashOfNonSigners
+        ) = checkSignatures(
+            responseHash,
+            batch.quorumNumbers,
+            batch.blockNumber,
+            nonSignerStakesAndSignature
+        );
+
+        // Check that signatories own at least a threshold percentage of each quourm.
+        for (uint i = 0; i < batch.quorumNumbers.length; i++) {
+            // we don't check that the quorumThresholdPercentages are not >100 because a greater value would trivially fail the check, implying
+            // signed stake > total stake
+            require(
+                quorumStakeTotals.signedStakeForQuorum[i] * _THRESHOLD_DENOMINATOR >=
+                quorumStakeTotals.totalStakeForQuorum[i] * uint8(batch.quorumThresholdPercentage),
+                "Signatories do not own at least threshold percentage of a quorum"
+            );
+        }
+    }
     function getTaskResponseHash(
         uint32 batchIndex,
         bytes calldata programId,
