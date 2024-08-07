@@ -2,17 +2,21 @@ import ethers from "ethers";
 import fs from "fs";
 import crypto from "crypto"
 import { CID } from "multiformats";
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
 
 const providerUrl = "http://localhost:8545";
 
-const deploymentPath = "../contracts/script/output/lambada_coprocessor_deployment_output_devnet.json";
-const abiFilePath = "../contracts/out/ILambadaCoprocessorTaskManager.sol/ILambadaCoprocessorTaskManager.json"; 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const deploymentPath = __dirname + "/../contracts/script/output/lambada_coprocessor_deployment_output_devnet.json";
+const abiFilePath = __dirname + "/../contracts/out/ILambadaCoprocessorTaskManager.sol/ILambadaCoprocessorTaskManager.json"; 
 
 const contractAddress = JSON.parse(fs.readFileSync(deploymentPath, 'utf8')).addresses.taskManager;
 
 // Replace with actual programId and taskInputHash
-const programId = "bafybeicdhhtwmgpnt7jugvlv3xtp2u4w4mkunpmg6txkkkjhpvnt2buyqa";
-const taskInput = "echo hello world";
+const programId = process.env["PROGRAM_CID"] ? process.env["PROGRAM_CID"] : "bafybeicdhhtwmgpnt7jugvlv3xtp2u4w4mkunpmg6txkkkjhpvnt2buyqa";
+const taskInput = process.env["PROGRAM_INPUT"] ? process.env["PROGRAM_INPUT"] : "echo hello world";
 const taskInputBuf = Buffer.from(taskInput, "utf8");
 const taskInputHash = ethers.utils.keccak256(taskInputBuf);
 console.log("taskInputHash: " + taskInputHash);
