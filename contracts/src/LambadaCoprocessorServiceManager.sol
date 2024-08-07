@@ -3,32 +3,35 @@ pragma solidity ^0.8.9;
 
 import "@eigenlayer/contracts/libraries/BytesLib.sol";
 import "@eigenlayer-middleware/src/ServiceManagerBase.sol";
-import {ILambadaCoprocessorTaskManager} from "./ILambadaCoprocessorTaskManager.sol";
 
-/**
- * @title Primary entrypoint for procuring services from IncredibleSquaring.
- * @author Layr Labs, Inc.
- */
+import "./ILambadaCoprocessorTaskManager.sol";
+import "./Errors.sol";
+
 contract LambadaCoprocessorServiceManager is ServiceManagerBase {
     using BytesLib for bytes;
 
-    ILambadaCoprocessorTaskManager
-        public immutable lambadaCoprocessorTaskManager;
+    event OperatorWhitelistEnabled();
+    event OperatorWhitelistDisabled();
+    event OperatorAddedToWhitelist(address operator);
+    event OperatorRemovedFromWhitelist(address operator);
 
-    /// @notice when applied to a function, ensures that the function is only callable by the `registryCoordinator`.
-    modifier onlyLambadaCoprocessorTaskManager() {
-        require(
-            msg.sender == address(lambadaCoprocessorTaskManager),
-            "not from lambada coprocessor task manager"
-        );
+    ILambadaCoprocessorTaskManager public lambadaCoprocessorTaskManager;
+
+    address operatorWhitelister;
+    bool operatorWhitelistEnabled;
+    mapping(address => bool) operatorWhitelist;
+
+    modifier onlyOperatorWhitelister() {
+        if (_msgSender() != operatorWhitelister) {
+            revert NotOperatorWhitelister();
+        }
         _;
     }
 
     constructor(
         IAVSDirectory _avsDirectory,
         IRegistryCoordinator _registryCoordinator,
-        IStakeRegistry _stakeRegistry,
-        ILambadaCoprocessorTaskManager _lambadaCoprocessorTaskManager
+        IStakeRegistry _stakeRegistry
     )
         ServiceManagerBase(
             _avsDirectory,
@@ -36,15 +39,89 @@ contract LambadaCoprocessorServiceManager is ServiceManagerBase {
             _stakeRegistry
         )
     {
-        lambadaCoprocessorTaskManager = _lambadaCoprocessorTaskManager;
+       _disableInitializers();
     }
 
-    /// @notice Called in the event of challenge resolution, in order to forward a call to the Slasher, which 'freezes' the `operator`.
-    /// @dev The Slasher contract is under active development and its interface expected to change.
-    ///      We recommend writing slashing logic without integrating with the Slasher at this point in time.
-    function freezeOperator(
-        address operatorAddr
-    ) external onlyLambadaCoprocessorTaskManager {
-        // slasher.freezeOperator(operatorAddr);
+    function initialize(
+        ILambadaCoprocessorTaskManager _lambadaCoprocessorTaskManager,
+        bool _operatorWhitelistEnabled,
+        address[] calldata _operatorWhitelist
+    ) public initializer() {
+        lambadaCoprocessorTaskManager = _lambadaCoprocessorTaskManager;
+
+        operatorWhitelister = _msgSender();
+        operatorWhitelistEnabled = _operatorWhitelistEnabled;
+
+        for (uint256 i; i < _operatorWhitelist.length; ++i) {
+            address operator = _operatorWhitelist[i];
+            if (operator == address(0)) {
+                revert InvalidOpeatroAddress();
+            }
+            
+            operatorWhitelist[operator] = true;
+        
+            emit OperatorAddedToWhitelist(operator);
+        }
+    }
+
+    function enableOperatorWhitelist() external onlyOperatorWhitelister {
+        if (operatorWhitelistEnabled) {
+            revert OperatorWhitelistAlreadyEnabled();
+        }
+        
+        operatorWhitelistEnabled = true;
+        
+        emit OperatorWhitelistEnabled();
+    }
+
+    function disableOperatorWhitelist() external onlyOperatorWhitelister {
+        if (!operatorWhitelistEnabled) {
+            revert OperatorWhitelistAlreadyDisabled();
+        }
+
+        operatorWhitelistEnabled = false;
+        
+        emit OperatorWhitelistDisabled();
+    }
+
+    function addOperatorsToWhitelist(address[] calldata operators) external onlyOperatorWhitelister {
+        for (uint256 i; i < operators.length; ++i) {
+            address operator = operators[i];
+            if (operator == address(0)) {
+                revert InvalidOpeatroAddress();
+            }
+            if (operatorWhitelist[operator]) {
+                revert OperatorAlreadyInWhitelist();
+            }
+
+            operatorWhitelist[operator] = true;
+
+            emit OperatorAddedToWhitelist(operator);
+        }
+    }
+
+    function removeOperatorsFromWhitelist(address[] calldata operators) external onlyOperatorWhitelister {
+        for (uint256 i; i < operators.length; ++i) {
+            address operator = operators[i];
+            if (!operatorWhitelist[operator]) {
+                revert OperatorNotInWhitelist();
+            }
+
+            delete operatorWhitelist[operator];
+
+            emit OperatorRemovedFromWhitelist(operator);
+        }
+    }
+
+    function registerOperatorToAVS(
+        address operator,
+        ISignatureUtils.SignatureWithSaltAndExpiry memory operatorSignature
+    ) public override(ServiceManagerBase) onlyRegistryCoordinator {        
+        if (operatorWhitelistEnabled && !operatorWhitelist[operator]) {
+            revert OperatorNotInWhitelist();
+        }
+        //  don't check if this operator has registered or not as AVSDirectory has such checking already
+        // Stake requirement for quorum is checked in StakeRegistry
+        _avsDirectory.registerOperatorToAVS(operator, operatorSignature);
     }
 }

@@ -59,6 +59,8 @@ contract LambadaCoprocessorDeployer is Script, Utils {
         uint16 kickBIPsOfOperatorStake; // an operator needs to have kickBIPsOfOperatorStake / 10000 times the stake of the operator with the least stake to kick them out
         uint16 kickBIPsOfTotalStake; // an operator needs to have less than kickBIPsOfTotalStake / 10000 of the total stake to be kicked out
         uint96 minimumStake;
+        bool operatorWhitelistEnabled;
+        address[] operatorWhitelist;
     }
 
     struct StrategyConfig {
@@ -118,6 +120,8 @@ contract LambadaCoprocessorDeployer is Script, Utils {
                 config.ejector = stdJson.readAddress(configData, ".ejector");
                 config.confirmer = stdJson.readAddress(configData, ".confirmer");
                 config.whitelister = stdJson.readAddress(configData, ".whitelister");
+                config.operatorWhitelistEnabled = stdJson.readBool(configData, ".operatorWhitelistEnabled");
+                config.operatorWhitelist = stdJson.readAddressArray(configData, ".operatorWhitelist");
             }
         }
 
@@ -276,12 +280,17 @@ contract LambadaCoprocessorDeployer is Script, Utils {
         contracts.serviceManagerImplementation = new LambadaCoprocessorServiceManager(
             eigenLayer.avsDirectory,
             contracts.registryCoordinator,
-            contracts.stakeRegistry,
-            contracts.taskManager
+            contracts.stakeRegistry
         );
-        contracts.proxyAdmin.upgrade(
+        contracts.proxyAdmin.upgradeAndCall(
             TransparentUpgradeableProxy(payable(address(contracts.serviceManager))),
-            address(contracts.serviceManagerImplementation)
+            address(contracts.serviceManagerImplementation),
+            abi.encodeWithSelector(
+                LambadaCoprocessorServiceManager.initialize.selector,
+                contracts.taskManager,
+                config.operatorWhitelistEnabled,
+                config.operatorWhitelist
+            )
         );
 
         return contracts;
