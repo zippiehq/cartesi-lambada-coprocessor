@@ -2,6 +2,7 @@ package integration_test
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"flag"
 	"io"
@@ -224,7 +225,13 @@ func checkTaskBatch(
 }
 
 func submitTasks(tasks []task) (sdktypes.TaskIndex, error) {
-	body, err := json.Marshal(tasks)
+	encodedTasks := make([]task, len(tasks))
+	for i, t := range tasks {
+		encodedTasks[i].ProgramID = t.ProgramID
+		encodedTasks[i].Input = base64.StdEncoding.EncodeToString([]byte(t.Input))
+	}
+
+	body, err := json.Marshal(encodedTasks)
 	if err != nil {
 		return 0, err
 	}

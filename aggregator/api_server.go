@@ -1,6 +1,7 @@
 package aggregator
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"io"
 	"log"
@@ -40,7 +41,12 @@ func (agg *Aggregator) createTask(w http.ResponseWriter, r *http.Request) {
 
 	var taskIndex sdktypes.TaskIndex
 	for _, t := range tasks {
-		if taskIndex, err = agg.addTask([]byte(t.ProgramID), []byte(t.Input)); err != nil {
+		input, err := base64.StdEncoding.DecodeString(t.Input)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		if taskIndex, err = agg.addTask([]byte(t.ProgramID), input); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
