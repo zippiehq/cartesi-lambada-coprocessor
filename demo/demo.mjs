@@ -108,7 +108,7 @@ async function sendTaskInput(programId, taskInput) {
     const data = [
         {
             "programId": programId,
-            "input": taskInput
+            "input": Buffer.from(taskInput, "utf8").toString("base64")
         }
     ];
 
