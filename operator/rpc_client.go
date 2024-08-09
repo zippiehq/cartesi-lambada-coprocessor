@@ -8,12 +8,11 @@ import (
 	"github.com/Layr-Labs/eigensdk-go/logging"
 
 	"github.com/zippiehq/cartesi-lambada-coprocessor/aggregator"
-	"github.com/zippiehq/cartesi-lambada-coprocessor/aggregator/types"
 	"github.com/zippiehq/cartesi-lambada-coprocessor/metrics"
 )
 
 type AggregatorRpcClienter interface {
-	GetBatchTasks(batchIdx types.TaskBatchIndex) ([]types.Task, error)
+	GetBatchTasks(batchIdx aggregator.TaskBatchIndex) ([]aggregator.Task, error)
 	SendSignedTaskResponseToAggregator(signedTaskResponse *aggregator.SignedTaskResponse)
 }
 type AggregatorRpcClient struct {
@@ -42,7 +41,7 @@ func (c *AggregatorRpcClient) dialAggregatorRpcClient() error {
 	return nil
 }
 
-func (c *AggregatorRpcClient) GetBatchTasks(batchIdx types.TaskBatchIndex) ([]types.Task, error) {
+func (c *AggregatorRpcClient) GetBatchTasks(batchIdx aggregator.TaskBatchIndex) ([]aggregator.Task, error) {
 	if c.rpcClient == nil {
 		c.log.Info("dialing aggregator rpc client")
 		if err := c.dialAggregatorRpcClient(); err != nil {

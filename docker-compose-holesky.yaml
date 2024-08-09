@@ -40,6 +40,15 @@ services:
       - anvil_fork_url_holesky
 
 
+  aggregator-storage:
+    image: mysql
+    volumes:
+      - ./tests/mysql/script:/docker-entrypoint-initdb.d
+    environment:
+      - MYSQL_ROOT_PASSWORD=password
+    networks:
+      - lambada-coprocessor-network
+    
   aggregator:
     build:
       context: .
@@ -50,6 +59,8 @@ services:
     depends_on:
       anvil:
         condition: service_healthy
+      aggregator-storage:
+        condition: service_started
     volumes:
       - ./:/lambada-coprocessor/
     working_dir: /lambada-coprocessor
@@ -60,6 +71,8 @@ services:
 
       - --private-key 
       - "0x2a871d0798f97d79848a013d4936a73bf4cc922c825d33c1cf7073dff6d409c6"
+      - --database-password
+      - password
     networks:
       - lambada-coprocessor-network
     healthcheck:

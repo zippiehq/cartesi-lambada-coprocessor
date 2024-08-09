@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"slices"
-	"sync"
 	"time"
 
 	smt "github.com/FantasyJony/openzeppelin-merkle-tree-go/standard_merkle_tree"
@@ -80,23 +79,25 @@ type Aggregator struct {
 
 	apiServerAddr string
 
-	avsWriter             chainio.AvsWriterer
-	blsAggregationService blsagg.BlsAggregationService
-
-	taskMu sync.RWMutex
-
-	nextTaskIdx    sdktypes.TaskIndex
-	pendingTasks   map[sdktypes.TaskIndex]types.Task
-	submittedTasks map[sdktypes.TaskIndex]types.Task
-
-	batchIndex types.TaskBatchIndex
-	batches    map[types.TaskBatchIndex]types.TaskBatch
-
-	taskResponses map[sdktypes.TaskIndex]map[sdktypes.TaskResponseDigest]tm.ILambadaCoprocessorTaskManagerTaskResponse
+	storage   Storage
+	avsWriter chainio.AvsWriterer
+	blsAgg    blsagg.BlsAggregationService
 }
 
 // NewAggregator creates a new Aggregator with the provided config.
-func NewAggregator(privKey string, cfg Config, log logging.Logger) (*Aggregator, error) {
+func NewAggregator(privKey, dbPwd string, cfg Config, log logging.Logger) (*Aggregator, error) {
+	storageCfg := MySqlStorageConfig{
+		Address:  cfg.DatabaseAddress,
+		Database: cfg.DatabaseName,
+		User:     cfg.DatabaseUser,
+		Password: dbPwd,
+	}
+
+	storage, err := NewMySqlStorage(storageCfg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create storage - %s", err)
+	}
+
 	var deployment chainio.AVSDeployment
 	if err := sdkutils.ReadJsonConfig(cfg.AVSDeploymentOutputPath, &deployment); err != nil {
 		return nil, fmt.Errorf("failed to read AVS deployment file - %s", err)
@@ -155,17 +156,9 @@ func NewAggregator(privKey string, cfg Config, log logging.Logger) (*Aggregator,
 		log:           log,
 		apiServerAddr: cfg.APIServerAddress,
 
-		avsWriter:             avsWriter,
-		blsAggregationService: blsAggregationService,
-
-		nextTaskIdx:    0,
-		pendingTasks:   make(map[sdktypes.TaskIndex]types.Task),
-		submittedTasks: make(map[sdktypes.TaskIndex]types.Task),
-
-		batchIndex: 0,
-		batches:    make(map[types.TaskBatchIndex]types.TaskBatch),
-
-		taskResponses: make(map[sdktypes.TaskIndex]map[sdktypes.TaskResponseDigest]tm.ILambadaCoprocessorTaskManagerTaskResponse),
+		storage:   storage,
+		avsWriter: avsWriter,
+		blsAgg:    blsAggregationService,
 	}, nil
 }
 
@@ -186,7 +179,7 @@ func (agg *Aggregator) Start(ctx context.Context) error {
 			if err := agg.createTaskBatch(); err != nil {
 				agg.log.Errorf("failed to create task batch - %s", err)
 			}
-		case blsAggServiceResp := <-agg.blsAggregationService.GetResponseChannel():
+		case blsAggServiceResp := <-agg.blsAgg.GetResponseChannel():
 			agg.log.Info("Received response from blsAggregationService", "blsAggServiceResp", blsAggServiceResp)
 			if err := agg.sendAggregatedResponseToContract(blsAggServiceResp); err != nil {
 				agg.log.Errorf("failed to send aggregated response to contract - %s", err)
@@ -196,41 +189,48 @@ func (agg *Aggregator) Start(ctx context.Context) error {
 }
 
 func (agg *Aggregator) addTask(programID []byte, input []byte) (sdktypes.TaskIndex, error) {
-	agg.taskMu.Lock()
-	defer agg.taskMu.Unlock()
-
-	agg.pendingTasks[agg.nextTaskIdx] = types.Task{
-		ILambadaCoprocessorTaskManagerTask: tm.ILambadaCoprocessorTaskManagerTask{
-			ProgramId: programID,
-			InputHash: core.Keccack256(input),
-		},
-		Input: input,
-		Index: agg.nextTaskIdx,
+	t := Task{
+		ProgramID: programID,
+		Input:     input,
+		InputHash: core.Keccack256(input),
 	}
-	agg.nextTaskIdx++
-
-	return agg.nextTaskIdx - 1, nil
+	return agg.storage.AddPendingTask(t)
 }
 
 func (agg *Aggregator) createTaskBatch() error {
-	batchTasks, batchMerkle, err := agg.makeBatch()
+	// Create new batch from pedning tasks.
+	pendingTasks, err := agg.storage.AllPendingTasks()
+	if err != nil {
+		return err
+	}
+	if len(pendingTasks) == 0 {
+		return nil
+	}
+	batchTasks, merkle, err := BuildTaskBatchMerkle(pendingTasks)
 	if err != nil {
 		return err
 	}
 
-	if len(batchTasks) == 0 {
-		return nil
-	}
-
 	// Post new batch onchain.
 	onchainBatch, err := agg.avsWriter.RegisterNewTaskBatch(
-		context.TODO(), [32]byte(batchMerkle.GetRoot()), types.QUORUM_THRESHOLD_NUMERATOR, types.QUORUM_NUMBERS,
+		context.TODO(), [32]byte(merkle.GetRoot()), types.QUORUM_THRESHOLD_NUMERATOR, types.QUORUM_NUMBERS,
 	)
 	if err != nil {
 		return err
 	}
 
-	batch := agg.confirmBatch(onchainBatch, batchTasks, batchMerkle)
+	// Write new batch to storage.
+	batch := TaskBatch{
+		Index:                     onchainBatch.Index,
+		BlockNumber:               onchainBatch.BlockNumber,
+		QuorumNumbers:             onchainBatch.QuorumNumbers,
+		QuorumThresholdPercentage: onchainBatch.QuorumThresholdPercentage,
+		Tasks:                     batchTasks,
+		Merkle:                    merkle,
+	}
+	if err := agg.storage.AddTaskBatch(batch); err != nil {
+		return err
+	}
 
 	// Start accepting singed responses for every task in batch.
 	quorumThresholdPercentages := make(sdktypes.QuorumThresholdPercentages, len(batch.QuorumNumbers))
@@ -245,7 +245,7 @@ func (agg *Aggregator) createTaskBatch() error {
 		for _, quorumNum := range batch.QuorumNumbers {
 			quorumNums = append(quorumNums, sdktypes.QuorumNum(quorumNum))
 		}
-		if err := agg.blsAggregationService.InitializeNewTask(
+		if err := agg.blsAgg.InitializeNewTask(
 			t.Index, batch.BlockNumber, quorumNums, quorumThresholdPercentages, taskTimeToExpiry,
 		); err != nil {
 			agg.log.Errorf("failed to initialize bls aggregation for task %d from batch %d", t.Index, batch.Index)
@@ -255,147 +255,104 @@ func (agg *Aggregator) createTaskBatch() error {
 	return nil
 }
 
-func (agg *Aggregator) makeBatch() ([]types.Task, *smt.StandardTree, error) {
-	agg.taskMu.RLock()
-	defer agg.taskMu.RUnlock()
-
-	if len(agg.pendingTasks) == 0 {
-		return make([]types.Task, 0), nil, nil
-	}
-
-	// Sort pending tasks.
-	tasks := make([]types.Task, 0, len(agg.pendingTasks))
-	for _, t := range agg.pendingTasks {
-		tasks = append(tasks, types.Task{
-			ILambadaCoprocessorTaskManagerTask: t.ILambadaCoprocessorTaskManagerTask,
-			Input:                              t.Input,
-			Index:                              t.Index,
-		})
-	}
-
-	return BuildTaskBatchMerkle(tasks)
-}
-
-func (agg *Aggregator) confirmBatch(
-	onchain tm.ILambadaCoprocessorTaskManagerTaskBatch,
-	tasks []types.Task,
-	merkle *smt.StandardTree,
-) types.TaskBatch {
-	agg.taskMu.Lock()
-	defer agg.taskMu.Unlock()
-
-	// Update batch lookup.
-	agg.batchIndex = onchain.Index
-	batch := types.TaskBatch{
-		ILambadaCoprocessorTaskManagerTaskBatch: onchain,
-		Tasks:                                   tasks,
-		Merkle:                                  merkle,
-	}
-	agg.batches[batch.Index] = batch
-
-	// Update task lookup.
-	for _, t := range batch.Tasks {
-		delete(agg.pendingTasks, t.Index)
-		agg.submittedTasks[t.Index] = t
-	}
-
-	return batch
-}
-
-func (agg *Aggregator) getBatchTasks(batchIdx types.TaskBatchIndex) ([]types.Task, error) {
-	agg.taskMu.Lock()
-	defer agg.taskMu.Unlock()
-
-	batch, ok := agg.batches[batchIdx]
-	if !ok {
-		return nil, fmt.Errorf("batch with index %d does not exist", batchIdx)
-	}
-
-	tasks := make([]types.Task, len(batch.Tasks))
-	copy(tasks, batch.Tasks)
-
-	return tasks, nil
-}
-
-func (agg *Aggregator) processTaskResponse(
-	taskIndex sdktypes.TaskIndex,
-	operatorID sdktypes.OperatorId,
-	response tm.ILambadaCoprocessorTaskManagerTaskResponse,
-	sig bls.Signature,
-) error {
-	agg.taskMu.Lock()
-	defer agg.taskMu.Unlock()
-
-	// Create new lookup of task's responses if neccessary.
-	if _, ok := agg.taskResponses[taskIndex]; !ok {
-		agg.taskResponses[taskIndex] = make(map[sdktypes.TaskResponseDigest]tm.ILambadaCoprocessorTaskManagerTaskResponse)
-	}
-
-	// Memorize response from operator.
-	responseDigest, err := core.GetTaskResponseDigest(&response)
+func (agg *Aggregator) getBatchTasks(batchIdx types.TaskBatchIndex) ([]Task, error) {
+	b, err := agg.storage.TaskBatch(batchIdx)
 	if err != nil {
-		agg.log.Error("Failed to get task response digest", "err", err)
-		return TaskResponseDigestNotFoundError500
-	}
-	if _, ok := agg.taskResponses[taskIndex][responseDigest]; !ok {
-		agg.taskResponses[taskIndex][responseDigest] = response
+		return nil, err
 	}
 
-	return agg.blsAggregationService.ProcessNewSignature(
-		context.Background(), taskIndex, responseDigest, &sig, operatorID,
-	)
+	return b.Tasks, nil
+}
+
+func (agg *Aggregator) processTaskResponse(resp TaskResponse, sig bls.Signature) error {
+	r := tm.ILambadaCoprocessorTaskManagerTaskResponse{
+		ResultCID:  resp.ResultCID,
+		OutputHash: [32]byte(resp.OutputHash),
+	}
+
+	responseDigest, err := core.GetTaskResponseDigest(&r)
+	if err != nil {
+		return err
+	}
+
+	if err := agg.blsAgg.ProcessNewSignature(
+		context.Background(), resp.TaskIndex, responseDigest, &sig, resp.OperatorID,
+	); err != nil {
+		return err
+	}
+
+	return agg.storage.AddTaskResponse(resp)
 }
 
 func (agg *Aggregator) sendAggregatedResponseToContract(
-	blsAggServiceResp blsagg.BlsAggregationServiceResponse,
+	resp blsagg.BlsAggregationServiceResponse,
 ) error {
 	// TODO: check if blsAggServiceResp contains an err
-	if blsAggServiceResp.Err != nil {
-		agg.log.Error("BlsAggregationServiceResponse contains an error", "err", blsAggServiceResp.Err)
+	if resp.Err != nil {
+		agg.log.Error("BlsAggregationServiceResponse contains an error", "err", resp.Err)
 		// panicing to help with debugging (fail fast), but we shouldn't panic if we run this in production
-		panic(blsAggServiceResp.Err)
+		panic(resp.Err)
 	}
 	nonSignerPubkeys := []tm.BN254G1Point{}
-	for _, nonSignerPubkey := range blsAggServiceResp.NonSignersPubkeysG1 {
+	for _, nonSignerPubkey := range resp.NonSignersPubkeysG1 {
 		nonSignerPubkeys = append(nonSignerPubkeys, core.ConvertToBN254G1Point(nonSignerPubkey))
 	}
 	quorumApks := []tm.BN254G1Point{}
-	for _, quorumApk := range blsAggServiceResp.QuorumApksG1 {
+	for _, quorumApk := range resp.QuorumApksG1 {
 		quorumApks = append(quorumApks, core.ConvertToBN254G1Point(quorumApk))
 	}
 	nonSignerStakesAndSignature := tm.IBLSSignatureCheckerNonSignerStakesAndSignature{
 		NonSignerPubkeys:             nonSignerPubkeys,
 		QuorumApks:                   quorumApks,
-		ApkG2:                        core.ConvertToBN254G2Point(blsAggServiceResp.SignersApkG2),
-		Sigma:                        core.ConvertToBN254G1Point(blsAggServiceResp.SignersAggSigG1.G1Point),
-		NonSignerQuorumBitmapIndices: blsAggServiceResp.NonSignerQuorumBitmapIndices,
-		QuorumApkIndices:             blsAggServiceResp.QuorumApkIndices,
-		TotalStakeIndices:            blsAggServiceResp.TotalStakeIndices,
-		NonSignerStakeIndices:        blsAggServiceResp.NonSignerStakeIndices,
+		ApkG2:                        core.ConvertToBN254G2Point(resp.SignersApkG2),
+		Sigma:                        core.ConvertToBN254G1Point(resp.SignersAggSigG1.G1Point),
+		NonSignerQuorumBitmapIndices: resp.NonSignerQuorumBitmapIndices,
+		QuorumApkIndices:             resp.QuorumApkIndices,
+		TotalStakeIndices:            resp.TotalStakeIndices,
+		NonSignerStakeIndices:        resp.NonSignerStakeIndices,
 	}
 
 	agg.log.Info("Threshold reached. Sending aggregated response onchain.",
-		"taskIndex", blsAggServiceResp.TaskIndex,
+		"taskIndex", resp.TaskIndex,
 	)
 
-	// Get task, batch and task response from local "storage".
-	agg.taskMu.Lock()
-	batch, ok := agg.batches[agg.batchIndex]
-	if !ok {
-		panic("batch with sepcified index does not exist")
+	// Ensure that sig aggregation result is consistent with storage.
+	task, batchIdx, err := agg.storage.SubmittedTask(resp.TaskIndex)
+	if err != nil {
+		panic("submitted task not found in storage")
 	}
-	task, taskBatchIdx, ok := batch.TaskByIndex(blsAggServiceResp.TaskIndex)
-	if !ok {
-		panic("batch does not contain task with specified index")
+	batch, err := agg.storage.TaskBatch(batchIdx)
+	if err != nil {
+		panic("task batch not found in storage")
 	}
-	taskResponse, ok := agg.taskResponses[blsAggServiceResp.TaskIndex][blsAggServiceResp.TaskResponseDigest]
-	if !ok {
-		panic("response with specified digest and task index deos not exist")
+	taskResponses, err := agg.storage.TaskResponses(resp.TaskIndex)
+	if err != nil {
+		return err
 	}
-	agg.taskMu.Unlock()
+	var (
+		taskResp      TaskResponse
+		taskRespFound bool
+	)
+	for _, tr := range taskResponses {
+		r := tm.ILambadaCoprocessorTaskManagerTaskResponse{
+			OutputHash: [32]byte(tr.OutputHash),
+			ResultCID:  tr.ResultCID,
+		}
+		digest, err := core.GetTaskResponseDigest(&r)
+		if err != nil {
+			return err
+		}
+		if digest == resp.TaskResponseDigest {
+			taskResp = tr
+			taskRespFound = true
+		}
+	}
+	if !taskRespFound {
+		panic("task response not found in storage")
+	}
 
 	// Generate proof for task.
-	taskProof, err := batch.Merkle.GetProofWithIndex(taskBatchIdx)
+	taskProof, err := TaskProof(batch, resp.TaskIndex)
 	if err != nil {
 		return err
 	}
@@ -404,20 +361,34 @@ func (agg *Aggregator) sendAggregatedResponseToContract(
 		taskProofOnchain[i] = [32]byte(p)
 	}
 
+	// Post task response onchain.
 	_, err = agg.avsWriter.RespondTask(
 		context.Background(),
-		batch.ILambadaCoprocessorTaskManagerTaskBatch,
-		task.ILambadaCoprocessorTaskManagerTask,
+		tm.ILambadaCoprocessorTaskManagerTaskBatch{
+			Index:                     batch.Index,
+			BlockNumber:               batch.BlockNumber,
+			MerkeRoot:                 [32]byte(batch.Merkle.GetRoot()),
+			QuorumNumbers:             batch.QuorumNumbers,
+			QuorumThresholdPercentage: batch.QuorumThresholdPercentage,
+		},
+		tm.ILambadaCoprocessorTaskManagerTask{
+			//TODO: here must be task index
+			ProgramId: task.ProgramID,
+			InputHash: task.InputHash,
+		},
 		taskProofOnchain,
-		taskResponse,
+		tm.ILambadaCoprocessorTaskManagerTaskResponse{
+			OutputHash: [32]byte(taskResp.OutputHash),
+			ResultCID:  taskResp.ResultCID,
+		},
 		nonSignerStakesAndSignature,
 	)
 
 	return err
 }
 
-func BuildTaskBatchMerkle(tasks []types.Task) ([]types.Task, *smt.StandardTree, error) {
-	taskCmp := func(t1, t2 types.Task) int {
+func BuildTaskBatchMerkle(tasks []Task) ([]Task, *smt.StandardTree, error) {
+	taskCmp := func(t1, t2 Task) int {
 		return cmp.Compare(t1.Index, t2.Index)
 	}
 	slices.SortFunc(tasks, taskCmp)
@@ -426,7 +397,7 @@ func BuildTaskBatchMerkle(tasks []types.Task) ([]types.Task, *smt.StandardTree, 
 	values := make([][]interface{}, len(tasks))
 	for i, t := range tasks {
 		values[i] = []interface{}{
-			smt.SolBytes(hex.EncodeToString(t.ProgramId)),
+			smt.SolBytes(hex.EncodeToString(t.ProgramID)),
 			smt.SolBytes(hex.EncodeToString(t.InputHash)),
 		}
 	}
@@ -441,4 +412,19 @@ func BuildTaskBatchMerkle(tasks []types.Task) ([]types.Task, *smt.StandardTree, 
 	}
 
 	return tasks, merkle, nil
+}
+
+func TaskProof(batch TaskBatch, taskIdx sdktypes.TaskIndex) ([][]byte, error) {
+	taskCmp := func(t1, t2 Task) int {
+		return cmp.Compare(t1.Index, t2.Index)
+	}
+	slices.SortFunc(batch.Tasks, taskCmp)
+
+	for i, t := range batch.Tasks {
+		if t.Index == taskIdx {
+			return batch.Merkle.GetProofWithIndex(i)
+		}
+	}
+
+	return nil, fmt.Errorf("batch does not contain task with index %d", taskIdx)
 }

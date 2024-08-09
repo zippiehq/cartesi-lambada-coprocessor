@@ -100,8 +100,8 @@ func TestIntegration(t *testing.T) {
 					Input:     "echo input2",
 				},
 			},
-			firstTaskIndex: 0,
-			lastTaskIndex:  1,
+			firstTaskIndex: 1,
+			lastTaskIndex:  2,
 		},
 		// batch 1
 		{
@@ -112,8 +112,8 @@ func TestIntegration(t *testing.T) {
 					Input:     "echo input3",
 				},
 			},
-			firstTaskIndex: 2,
-			lastTaskIndex:  2,
+			firstTaskIndex: 3,
+			lastTaskIndex:  3,
 		},
 		// batch 2
 		{
@@ -132,8 +132,8 @@ func TestIntegration(t *testing.T) {
 					Input:     "echo input6",
 				},
 			},
-			firstTaskIndex: 3,
-			lastTaskIndex:  5,
+			firstTaskIndex: 4,
+			lastTaskIndex:  6,
 		},
 	}
 
@@ -259,15 +259,13 @@ func submitTasks(tasks []task) (sdktypes.TaskIndex, error) {
 
 func batchMerkleRoot(batch taskBatch) ([32]byte, error) {
 	// Tasks in aggregator must be in order
-	aggTasks := make([]aggtypes.Task, len(batch.tasks))
+	aggTasks := make([]aggregator.Task, len(batch.tasks))
 	for i, t := range batch.tasks {
-		aggTasks[i] = aggtypes.Task{
-			ILambadaCoprocessorTaskManagerTask: tm.ILambadaCoprocessorTaskManagerTask{
-				ProgramId: []byte(t.ProgramID),
-				InputHash: core.Keccack256([]byte(t.Input)),
-			},
-			Input: []byte(t.Input),
-			Index: batch.firstTaskIndex + uint32(i),
+		aggTasks[i] = aggregator.Task{
+			Index:     batch.firstTaskIndex + uint32(i),
+			ProgramID: []byte(t.ProgramID),
+			Input:     []byte(t.Input),
+			InputHash: core.Keccack256([]byte(t.Input)),
 		}
 	}
 
