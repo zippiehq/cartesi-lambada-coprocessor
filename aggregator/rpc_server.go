@@ -7,10 +7,8 @@ import (
 	"net/rpc"
 
 	"github.com/Layr-Labs/eigensdk-go/crypto/bls"
-	sdktypes "github.com/Layr-Labs/eigensdk-go/types"
 
 	"github.com/zippiehq/cartesi-lambada-coprocessor/aggregator/types"
-	tm "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/LambadaCoprocessorTaskManager"
 )
 
 var (
@@ -38,7 +36,7 @@ func (agg *Aggregator) startServer(ctx context.Context) error {
 }
 
 type BatchTasks struct {
-	Tasks []types.Task
+	Tasks []Task
 }
 
 func (agg *Aggregator) GetBatchTasks(batchIdx types.TaskBatchIndex, tasks *BatchTasks) error {
@@ -55,10 +53,8 @@ func (agg *Aggregator) GetBatchTasks(batchIdx types.TaskBatchIndex, tasks *Batch
 }
 
 type SignedTaskResponse struct {
-	tm.ILambadaCoprocessorTaskManagerTaskResponse
-	TaskIndex    sdktypes.TaskIndex
+	TaskResponse
 	BlsSignature bls.Signature
-	OperatorId   sdktypes.OperatorId
 }
 
 // rpc endpoint which is called by operator
@@ -66,7 +62,5 @@ type SignedTaskResponse struct {
 // rpc framework forces a reply type to exist, so we put bool as a placeholder
 func (agg *Aggregator) ProcessSignedTaskResponse(resp *SignedTaskResponse, reply *bool) error {
 	agg.log.Infof("Received signed task response: %#v", resp)
-	return agg.processTaskResponse(
-		resp.TaskIndex, resp.OperatorId, resp.ILambadaCoprocessorTaskManagerTaskResponse, resp.BlsSignature,
-	)
+	return agg.processTaskResponse(resp.TaskResponse, resp.BlsSignature)
 }

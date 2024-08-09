@@ -8,7 +8,7 @@ require (
 	github.com/FantasyJony/openzeppelin-merkle-tree-go v1.1.2
 	github.com/Layr-Labs/eigensdk-go v0.1.7-0.20240425202952-954cd7661775
 	github.com/ethereum/go-ethereum v1.14.0
-	github.com/go-faster/xor v1.0.0
+	github.com/go-sql-driver/mysql v1.8.1
 	github.com/ipfs/boxo v0.17.0
 	github.com/ipfs/go-cid v0.4.1
 	github.com/ipfs/kubo v0.26.0
@@ -24,6 +24,7 @@ require (
 replace github.com/Layr-Labs/eigensdk-go v0.1.7-0.20240425202952-954cd7661775 => github.com/not4x217/eigensdk-go v0.1.7-lambada-coprocessor-mainnet-fork-test
 
 require (
+	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/Microsoft/go-winio v0.6.1 // indirect
 	github.com/StackExchange/wmi v1.2.1 // indirect
 	github.com/aws/aws-sdk-go-v2 v1.26.1 // indirect

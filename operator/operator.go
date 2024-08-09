@@ -6,9 +6,9 @@ import (
 	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/binary"
 	"encoding/json"
-	"encoding/base64"
 	"fmt"
 	"io"
 	"math/big"
@@ -37,7 +37,6 @@ import (
 
 	sdkutils "github.com/Layr-Labs/eigensdk-go/utils"
 	"github.com/zippiehq/cartesi-lambada-coprocessor/aggregator"
-	"github.com/zippiehq/cartesi-lambada-coprocessor/aggregator/types"
 	tm "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/LambadaCoprocessorTaskManager"
 	"github.com/zippiehq/cartesi-lambada-coprocessor/core"
 	"github.com/zippiehq/cartesi-lambada-coprocessor/core/chainio"
@@ -84,7 +83,7 @@ type Operator struct {
 
 type JSONCompute struct {
 	Metadata map[string]string `json:"metadata"`
-	Payload string `json:"payload"`
+	Payload  string            `json:"payload"`
 }
 
 func NewOperator(blsPwd, ecdsaPwd string, cfg Config) (*Operator, error) {
@@ -345,9 +344,9 @@ func (o *Operator) processTaskBatch(newBatch *tm.ContractLambadaCoprocessorTaskM
 	return nil
 }
 
-func (o *Operator) computeTaskOutput(t types.Task, blockNumber uint32) (string, []byte, error) {
+func (o *Operator) computeTaskOutput(t aggregator.Task, blockNumber uint32) (string, []byte, error) {
 	// Query lambada compute endpoint.
-	taskCID := string(t.ProgramId)
+	taskCID := string(t.ProgramID)
 	requestURL := fmt.Sprintf("http://%s/compute/%s?json=true",
 		o.config.LambadaIpPortAddress,
 		taskCID,
@@ -366,21 +365,21 @@ func (o *Operator) computeTaskOutput(t types.Task, blockNumber uint32) (string, 
 		hash := sha256.Sum256(d)
 		return base64.StdEncoding.EncodeToString(hash[:])
 	}
-	
-	jsonCompute := JSONCompute {
+
+	jsonCompute := JSONCompute{
 		Metadata: map[string]string{
-			base64Hash([]byte("sequencer")): base64Hash([]byte("coprocessor")),
-			base64Hash([]byte("coprocessor-batch-block-number")): base64.StdEncoding.EncodeToString(blockNumberBytes), 
-			base64Hash([]byte("coprocessor-batch-block-hash")): base64.StdEncoding.EncodeToString(curBlock.Hash().Bytes()),
+			base64Hash([]byte("sequencer")):                      base64Hash([]byte("coprocessor")),
+			base64Hash([]byte("coprocessor-batch-block-number")): base64.StdEncoding.EncodeToString(blockNumberBytes),
+			base64Hash([]byte("coprocessor-batch-block-hash")):   base64.StdEncoding.EncodeToString(curBlock.Hash().Bytes()),
 		},
 		Payload: base64.StdEncoding.EncodeToString(t.Input),
 	}
-	
+
 	input, err := json.Marshal(jsonCompute)
 	if err != nil {
 		return "", nil, err
 	}
-	
+
 	o.log.Infof("sending request to lambada instance - %s", requestURL)
 
 	resp, err := http.Post(requestURL, "application/octet-stream", bytes.NewBuffer(input))
@@ -431,21 +430,26 @@ func (o *Operator) sendTaskOutput(taskIdx sdktypes.TaskIndex, resultCID string, 
 		return fmt.Errorf("failed to decode result CID - %s", err)
 	}
 	resp := tm.ILambadaCoprocessorTaskManagerTaskResponse{
-		ResultCID: cid.Bytes(),
+		ResultCID:  cid.Bytes(),
 		OutputHash: outputHash,
 	}
+
 	taskResponseHash, err := core.GetTaskResponseDigest(&resp)
 	if err != nil {
 		return fmt.Errorf("failed to compute task response digest - %s", err)
 	}
+
 	blsSignature := o.blsKeypair.SignMessage(taskResponseHash)
 
 	// Send task to aggregator
 	signedTaskResponse := &aggregator.SignedTaskResponse{
-		ILambadaCoprocessorTaskManagerTaskResponse: resp,
-		TaskIndex:    taskIdx,
+		TaskResponse: aggregator.TaskResponse{
+			TaskIndex:  taskIdx,
+			OperatorID: o.operatorId,
+			OutputHash: resp.OutputHash[:],
+			ResultCID:  resp.ResultCID,
+		},
 		BlsSignature: *blsSignature,
-		OperatorId:   o.operatorId,
 	}
 	go o.aggregatorRpcClient.SendSignedTaskResponseToAggregator(signedTaskResponse)
 

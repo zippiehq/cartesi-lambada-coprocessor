@@ -14,6 +14,7 @@ import (
 	tm "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/LambadaCoprocessorTaskManager"
 )
 
+// TODO: task index must be here
 // GetTaskResponseDigest returns the hash of the TaskResponse
 func GetTaskResponseDigest(r *tm.ILambadaCoprocessorTaskManagerTaskResponse) ([32]byte, error) {
 	// The order here has to match the field ordering of taskmanager.ILambadaCoprocessorTaskManagerTaskResponse

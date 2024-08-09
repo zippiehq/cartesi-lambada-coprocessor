@@ -31,12 +31,17 @@ var (
 		Required: true,
 		Usage:    "Ethereum private key",
 	}
+	dbPwdFlag = cli.StringFlag{
+		Name:     "database-password",
+		Required: true,
+		Usage:    "MySQL database password",
+	}
 )
 
 func main() {
 	app := cli.NewApp()
 	app.Version = fmt.Sprintf("%s-%s-%s", Version, GitCommit, GitDate)
-	app.Flags = []cli.Flag{configFlag, privKeyFlag}
+	app.Flags = []cli.Flag{configFlag, privKeyFlag, dbPwdFlag}
 	app.Name = "lambada-coprocessor-aggregator"
 	app.Usage = "Lambada Coprocessor Aggregator"
 
@@ -67,7 +72,10 @@ func aggregatorMain(ctx *cli.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to create Zap logger - %s", err)
 	}
-	agg, err := aggregator.NewAggregator(privKey, config, log)
+
+	dbPwd := ctx.String(dbPwdFlag.Name)
+
+	agg, err := aggregator.NewAggregator(privKey, dbPwd, config, log)
 	if err != nil {
 		return fmt.Errorf("failed to create Aggregator instance - %s", err)
 	}
