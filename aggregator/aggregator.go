@@ -1,17 +1,12 @@
 package aggregator
 
 import (
-	"cmp"
 	"context"
-	"encoding/hex"
 	"fmt"
-	"slices"
 	"time"
 
-	smt "github.com/FantasyJony/openzeppelin-merkle-tree-go/standard_merkle_tree"
 	"github.com/ethereum/go-ethereum/crypto"
 
-	"github.com/Layr-Labs/eigensdk-go/chainio/clients"
 	sdkclients "github.com/Layr-Labs/eigensdk-go/chainio/clients"
 	"github.com/Layr-Labs/eigensdk-go/chainio/clients/eth"
 	"github.com/Layr-Labs/eigensdk-go/crypto/bls"
@@ -22,24 +17,31 @@ import (
 	sdktypes "github.com/Layr-Labs/eigensdk-go/types"
 	sdkutils "github.com/Layr-Labs/eigensdk-go/utils"
 
-	"github.com/zippiehq/cartesi-lambada-coprocessor/aggregator/types"
 	tm "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/LambadaCoprocessorTaskManager"
 	"github.com/zippiehq/cartesi-lambada-coprocessor/core"
 	"github.com/zippiehq/cartesi-lambada-coprocessor/core/chainio"
 )
 
 const (
+	// all operators in quorum0 must sign the task response in order for it to be accepted
+	// TODO: our contracts require uint8 but right now sdktypes.QuorumThresholdPercentage is uint8 prob need to update our inc-sq contracts to use uint8 as well?
+	QUORUM_THRESHOLD_NUMERATOR   = sdktypes.QuorumThresholdPercentage(100)
+	QUORUM_THRESHOLD_DENOMINATOR = sdktypes.QuorumThresholdPercentage(100)
+
 	// task batch parameters
-	batchPeriod = 10 * time.Second
+	BATCH_PERIOD = 10 * time.Second
 
 	// number of blocks after which a task is considered expired
 	// this hardcoded here because it's also hardcoded in the contracts, but should
 	// ideally be fetched from the contracts
-	taskChallengeWindowBlock = 100
-	blockTimeSeconds         = 12 * time.Second
+	TASK_CHALLENGE_WIDNOW_BLOCK = 100
+	BLOCK_TIME_SECONDS          = 12 * time.Second
 
-	avsName = "lambada-coprocessor"
+	AVS_NAME = "lambada-coprocessor"
 )
+
+// we only use a single quorum (quorum 0) for incredible squaring
+var QUORUM_NUMBERS = sdktypes.QuorumNums{0}
 
 // Aggregator sends tasks (input to echo) onchain, then listens for operator signed TaskResponses.
 // It aggregates responses signatures, and if any of the TaskResponses reaches the QuorumThresholdPercentage for each quorum
@@ -116,10 +118,10 @@ func NewAggregator(privKey, dbPwd string, cfg Config, log logging.Logger) (*Aggr
 		EthWsUrl:                   cfg.EthWsRpcUrl,
 		RegistryCoordinatorAddr:    deployment.Addresses.RegistryCoordinator,
 		OperatorStateRetrieverAddr: deployment.Addresses.OperatorStateRetriever,
-		AvsName:                    avsName,
+		AvsName:                    AVS_NAME,
 		PromMetricsIpPortAddress:   ":9090",
 	}
-	clients, err := clients.BuildAll(chainioConfig, ecdsaPrivKey, log)
+	clients, err := sdkclients.BuildAll(chainioConfig, ecdsaPrivKey, log)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create sdk clients - %s", err)
 	}
@@ -168,7 +170,7 @@ func (agg *Aggregator) Start(ctx context.Context) error {
 	go agg.startServer(ctx)
 	go agg.startAPIServer()
 
-	batchTick := time.NewTicker(batchPeriod)
+	batchTick := time.NewTicker(BATCH_PERIOD)
 	defer batchTick.Stop()
 
 	for {
@@ -189,7 +191,7 @@ func (agg *Aggregator) Start(ctx context.Context) error {
 }
 
 func (agg *Aggregator) addTask(programID []byte, input []byte) (sdktypes.TaskIndex, error) {
-	t := Task{
+	t := core.Task{
 		ProgramID: programID,
 		Input:     input,
 		InputHash: core.Keccack256(input),
@@ -206,21 +208,21 @@ func (agg *Aggregator) createTaskBatch() error {
 	if len(pendingTasks) == 0 {
 		return nil
 	}
-	batchTasks, merkle, err := BuildTaskBatchMerkle(pendingTasks)
+	batchTasks, merkle, err := core.BuildTaskBatchMerkle(pendingTasks)
 	if err != nil {
 		return err
 	}
 
 	// Post new batch onchain.
 	onchainBatch, err := agg.avsWriter.RegisterNewTaskBatch(
-		context.TODO(), [32]byte(merkle.GetRoot()), types.QUORUM_THRESHOLD_NUMERATOR, types.QUORUM_NUMBERS,
+		context.TODO(), [32]byte(merkle.GetRoot()), QUORUM_THRESHOLD_NUMERATOR, QUORUM_NUMBERS,
 	)
 	if err != nil {
 		return err
 	}
 
 	// Write new batch to storage.
-	batch := TaskBatch{
+	batch := core.TaskBatch{
 		Index:                     onchainBatch.Index,
 		BlockNumber:               onchainBatch.BlockNumber,
 		QuorumNumbers:             onchainBatch.QuorumNumbers,
@@ -239,7 +241,7 @@ func (agg *Aggregator) createTaskBatch() error {
 	}
 	// TODO(samlaf): we use seconds for now, but we should ideally pass a blocknumber to the blsAggregationService
 	// and it should monitor the chain and only expire the task aggregation once the chain has reached that block number.
-	taskTimeToExpiry := taskChallengeWindowBlock * blockTimeSeconds
+	taskTimeToExpiry := TASK_CHALLENGE_WIDNOW_BLOCK * BLOCK_TIME_SECONDS
 	for _, t := range batch.Tasks {
 		var quorumNums sdktypes.QuorumNums
 		for _, quorumNum := range batch.QuorumNumbers {
@@ -255,7 +257,7 @@ func (agg *Aggregator) createTaskBatch() error {
 	return nil
 }
 
-func (agg *Aggregator) getBatchTasks(batchIdx types.TaskBatchIndex) ([]Task, error) {
+func (agg *Aggregator) getBatchTasks(batchIdx core.TaskBatchIndex) ([]core.Task, error) {
 	b, err := agg.storage.TaskBatch(batchIdx)
 	if err != nil {
 		return nil, err
@@ -264,7 +266,7 @@ func (agg *Aggregator) getBatchTasks(batchIdx types.TaskBatchIndex) ([]Task, err
 	return b.Tasks, nil
 }
 
-func (agg *Aggregator) processTaskResponse(resp TaskResponse, sig bls.Signature) error {
+func (agg *Aggregator) processTaskResponse(resp core.TaskResponse, sig bls.Signature) error {
 	r := tm.ILambadaCoprocessorTaskManagerTaskResponse{
 		ResultCID:  resp.ResultCID,
 		OutputHash: [32]byte(resp.OutputHash),
@@ -330,7 +332,7 @@ func (agg *Aggregator) sendAggregatedResponseToContract(
 		return err
 	}
 	var (
-		taskResp      TaskResponse
+		taskResp      core.TaskResponse
 		taskRespFound bool
 	)
 	for _, tr := range taskResponses {
@@ -352,7 +354,7 @@ func (agg *Aggregator) sendAggregatedResponseToContract(
 	}
 
 	// Generate proof for task.
-	taskProof, err := TaskProof(batch, resp.TaskIndex)
+	taskProof, err := core.TaskProof(batch, resp.TaskIndex)
 	if err != nil {
 		return err
 	}
@@ -385,46 +387,4 @@ func (agg *Aggregator) sendAggregatedResponseToContract(
 	)
 
 	return err
-}
-
-func BuildTaskBatchMerkle(tasks []Task) ([]Task, *smt.StandardTree, error) {
-	taskCmp := func(t1, t2 Task) int {
-		return cmp.Compare(t1.Index, t2.Index)
-	}
-	slices.SortFunc(tasks, taskCmp)
-
-	// Build merkle tree for tasks in the batch.
-	values := make([][]interface{}, len(tasks))
-	for i, t := range tasks {
-		values[i] = []interface{}{
-			smt.SolBytes(hex.EncodeToString(t.ProgramID)),
-			smt.SolBytes(hex.EncodeToString(t.InputHash)),
-		}
-	}
-
-	leafEncodings := []string{
-		smt.SOL_BYTES,
-		smt.SOL_BYTES,
-	}
-	merkle, err := smt.Of(values, leafEncodings)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return tasks, merkle, nil
-}
-
-func TaskProof(batch TaskBatch, taskIdx sdktypes.TaskIndex) ([][]byte, error) {
-	taskCmp := func(t1, t2 Task) int {
-		return cmp.Compare(t1.Index, t2.Index)
-	}
-	slices.SortFunc(batch.Tasks, taskCmp)
-
-	for i, t := range batch.Tasks {
-		if t.Index == taskIdx {
-			return batch.Merkle.GetProofWithIndex(i)
-		}
-	}
-
-	return nil, fmt.Errorf("batch does not contain task with index %d", taskIdx)
 }

@@ -10,7 +10,6 @@ import (
 
 	"github.com/Layr-Labs/eigensdk-go/crypto/bls"
 
-	aggtypes "github.com/zippiehq/cartesi-lambada-coprocessor/aggregator/types"
 	tm "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/LambadaCoprocessorTaskManager"
 )
 
@@ -36,7 +35,7 @@ func GetTaskResponseDigest(r *tm.ILambadaCoprocessorTaskManagerTaskResponse) ([3
 }
 
 // GetTaskResponseMetadataDigest returns the hash of the TaskResponseMetadata
-func GetTaskResponseMetadataDigest(batchIdx aggtypes.TaskBatchIndex, programID []byte, taskInputHash []byte) ([32]byte, error) {
+func GetTaskResponseMetadataDigest(batchIdx TaskBatchIndex, programID []byte, taskInputHash []byte) ([32]byte, error) {
 	t, err := abi.NewType("tuple", "", []abi.ArgumentMarshaling{
 		{
 			Name: "batchIndex",

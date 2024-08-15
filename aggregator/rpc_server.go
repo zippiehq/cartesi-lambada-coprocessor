@@ -8,7 +8,7 @@ import (
 
 	"github.com/Layr-Labs/eigensdk-go/crypto/bls"
 
-	"github.com/zippiehq/cartesi-lambada-coprocessor/aggregator/types"
+	"github.com/zippiehq/cartesi-lambada-coprocessor/core"
 )
 
 var (
@@ -36,10 +36,10 @@ func (agg *Aggregator) startServer(ctx context.Context) error {
 }
 
 type BatchTasks struct {
-	Tasks []Task
+	Tasks []core.Task
 }
 
-func (agg *Aggregator) GetBatchTasks(batchIdx types.TaskBatchIndex, tasks *BatchTasks) error {
+func (agg *Aggregator) GetBatchTasks(batchIdx core.TaskBatchIndex, tasks *BatchTasks) error {
 	batchTasks, err := agg.getBatchTasks(batchIdx)
 	if err != nil {
 		return err
@@ -53,7 +53,7 @@ func (agg *Aggregator) GetBatchTasks(batchIdx types.TaskBatchIndex, tasks *Batch
 }
 
 type SignedTaskResponse struct {
-	TaskResponse
+	core.TaskResponse
 	BlsSignature bls.Signature
 }
 
