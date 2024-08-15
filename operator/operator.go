@@ -344,7 +344,7 @@ func (o *Operator) processTaskBatch(newBatch *tm.ContractLambadaCoprocessorTaskM
 	return nil
 }
 
-func (o *Operator) computeTaskOutput(t aggregator.Task, blockNumber uint32) (string, []byte, error) {
+func (o *Operator) computeTaskOutput(t core.Task, blockNumber uint32) (string, []byte, error) {
 	// Query lambada compute endpoint.
 	taskCID := string(t.ProgramID)
 	requestURL := fmt.Sprintf("http://%s/compute/%s?json=true",
@@ -443,7 +443,7 @@ func (o *Operator) sendTaskOutput(taskIdx sdktypes.TaskIndex, resultCID string, 
 
 	// Send task to aggregator
 	signedTaskResponse := &aggregator.SignedTaskResponse{
-		TaskResponse: aggregator.TaskResponse{
+		TaskResponse: core.TaskResponse{
 			TaskIndex:  taskIdx,
 			OperatorID: o.operatorId,
 			OutputHash: resp.OutputHash[:],

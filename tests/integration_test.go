@@ -18,8 +18,6 @@ import (
 	sdktypes "github.com/Layr-Labs/eigensdk-go/types"
 	sdkutils "github.com/Layr-Labs/eigensdk-go/utils"
 
-	"github.com/zippiehq/cartesi-lambada-coprocessor/aggregator"
-	aggtypes "github.com/zippiehq/cartesi-lambada-coprocessor/aggregator/types"
 	tm "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/LambadaCoprocessorTaskManager"
 	"github.com/zippiehq/cartesi-lambada-coprocessor/core"
 	"github.com/zippiehq/cartesi-lambada-coprocessor/core/chainio"
@@ -41,7 +39,7 @@ type task struct {
 }
 
 type taskBatch struct {
-	index          aggtypes.TaskBatchIndex
+	index          core.TaskBatchIndex
 	tasks          []task
 	firstTaskIndex sdktypes.TaskIndex
 	lastTaskIndex  sdktypes.TaskIndex
@@ -259,9 +257,9 @@ func submitTasks(tasks []task) (sdktypes.TaskIndex, error) {
 
 func batchMerkleRoot(batch taskBatch) ([32]byte, error) {
 	// Tasks in aggregator must be in order
-	aggTasks := make([]aggregator.Task, len(batch.tasks))
+	aggTasks := make([]core.Task, len(batch.tasks))
 	for i, t := range batch.tasks {
-		aggTasks[i] = aggregator.Task{
+		aggTasks[i] = core.Task{
 			Index:     batch.firstTaskIndex + uint32(i),
 			ProgramID: []byte(t.ProgramID),
 			Input:     []byte(t.Input),
@@ -269,7 +267,7 @@ func batchMerkleRoot(batch taskBatch) ([32]byte, error) {
 		}
 	}
 
-	_, stm, err := aggregator.BuildTaskBatchMerkle(aggTasks)
+	_, stm, err := core.BuildTaskBatchMerkle(aggTasks)
 	if err != nil {
 		var nullRoot [32]byte
 		return nullRoot, err
