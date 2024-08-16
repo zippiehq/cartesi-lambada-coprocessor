@@ -9,13 +9,13 @@ import (
 	"github.com/Layr-Labs/eigensdk-go/chainio/clients/eth"
 	regcoord "github.com/Layr-Labs/eigensdk-go/contracts/bindings/RegistryCoordinator"
 
-	servicemanager "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/LambadaCoprocessorServiceManager"
-	taskmanager "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/LambadaCoprocessorTaskManager"
+	sm "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/LambadaCoprocessorServiceManager"
+	tm "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/LambadaCoprocessorTaskManager"
 )
 
 type AvsManagersBindings struct {
-	TaskManager    *taskmanager.ContractLambadaCoprocessorTaskManager
-	ServiceManager *servicemanager.ContractLambadaCoprocessorServiceManager
+	TaskManager    *tm.ContractLambadaCoprocessorTaskManager
+	ServiceManager *sm.ContractLambadaCoprocessorServiceManager
 }
 
 func NewAvsManagersBindings(deployment AVSDeployment, ethclient eth.Client) (*AvsManagersBindings, error) {
@@ -31,7 +31,7 @@ func NewAvsManagersBindings(deployment AVSDeployment, ethclient eth.Client) (*Av
 	if err != nil {
 		return nil, fmt.Errorf("failed to get ServiceManager address - %s", err)
 	}
-	contractServiceManager, err := servicemanager.NewContractLambadaCoprocessorServiceManager(serviceManagerAddr, ethclient)
+	contractServiceManager, err := sm.NewContractLambadaCoprocessorServiceManager(serviceManagerAddr, ethclient)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create LambadaCoprocessorServiceManager binding - %s", err)
 	}
@@ -40,7 +40,7 @@ func NewAvsManagersBindings(deployment AVSDeployment, ethclient eth.Client) (*Av
 	if err != nil {
 		return nil, fmt.Errorf("failed to get LambadaCorpocessorTaskManager address - %s", err)
 	}
-	contractTaskManager, err := taskmanager.NewContractLambadaCoprocessorTaskManager(taskManagerAddr, ethclient)
+	contractTaskManager, err := tm.NewContractLambadaCoprocessorTaskManager(taskManagerAddr, ethclient)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create LambadaCoprocessorTaskManager binding - %s", err)
 	}

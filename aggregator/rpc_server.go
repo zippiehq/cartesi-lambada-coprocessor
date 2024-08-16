@@ -53,14 +53,16 @@ func (agg *Aggregator) GetBatchTasks(batchIdx core.TaskBatchIndex, tasks *BatchT
 }
 
 type SignedTaskResponse struct {
-	core.TaskResponse
-	BlsSignature bls.Signature
+	BatchIndex core.TaskBatchIndex
+	Task       core.Task
+	Response   core.TaskResponse
+	Signature  bls.Signature
 }
 
 // rpc endpoint which is called by operator
 // reply doesn't need to be checked. If there are no errors, the task response is accepted
 // rpc framework forces a reply type to exist, so we put bool as a placeholder
-func (agg *Aggregator) ProcessSignedTaskResponse(resp *SignedTaskResponse, reply *bool) error {
-	agg.log.Infof("Received signed task response: %#v", resp)
-	return agg.processTaskResponse(resp.TaskResponse, resp.BlsSignature)
+func (agg *Aggregator) ProcessSignedTaskResponse(sr *SignedTaskResponse, reply *bool) error {
+	agg.log.Infof("Received signed task response: %#v", sr)
+	return agg.processTaskResponse(sr.BatchIndex, sr.Task, sr.Response, sr.Signature)
 }

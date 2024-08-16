@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.9;
 
-import "forge-std/console.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "@openzeppelin-upgrades/contracts/proxy/utils/Initializable.sol";
 import "@openzeppelin-upgrades/contracts/access/OwnableUpgradeable.sol";
@@ -22,6 +21,14 @@ contract LambadaCoprocessorTaskManager is
     OperatorStateRetriever,
     ILambadaCoprocessorTaskManager
 {
+    struct TaskResponseSigHashData {
+        uint32 batchIndex;
+        bytes programId;
+        bytes inputHash;
+        bytes resultCID;
+        bytes32 outputHash;
+    }
+
     using BN254 for BN254.G1Point;
 
     /* CONSTANT */
@@ -99,14 +106,14 @@ contract LambadaCoprocessorTaskManager is
         TaskResponse calldata taskResponse,
         NonSignerStakesAndSignature memory nonSignerStakesAndSignature
     ) external onlyAggregator {
-        (TaskResponseMetadata memory responseMeta, bytes32 responseMetaHash) = verifyBatchTask(batch, task, taskProof);
+        bytes32 taskHash = verifyBatchTask(batch, task, taskProof);
+        checkBLSSig(batch, task, taskResponse, nonSignerStakesAndSignature);
+
+        // Mark task as responded.
         bytes32 responseHash = keccak256(abi.encode(taskResponse));
-        checkBLSSig(batch, responseHash, nonSignerStakesAndSignature);
+        allTaskOutputs[taskHash] = responseHash;
 
-        // Update task responses.
-        allTaskOutputs[responseMetaHash] = responseHash;
-
-        emit TaskResponded(responseMeta, taskResponse);
+        emit TaskResponded(task, taskResponse);
     }
 
     function checkValidTaskResponse(
@@ -116,9 +123,8 @@ contract LambadaCoprocessorTaskManager is
         TaskResponse calldata taskResponse,
         NonSignerStakesAndSignature memory nonSignerStakesAndSignature
     ) external view {
-        (TaskResponseMetadata memory responseMeta, bytes32 responseMetaHash) = verifyBatchTask(batch, task, taskProof);
-        bytes32 responseHash = keccak256(abi.encode(taskResponse));
-        checkBLSSig(batch, responseHash, nonSignerStakesAndSignature);
+        bytes32 taskHash = verifyBatchTask(batch, task, taskProof);
+        checkBLSSig(batch, task, taskResponse, nonSignerStakesAndSignature);
 
         return;
     }
@@ -127,8 +133,13 @@ contract LambadaCoprocessorTaskManager is
         TaskBatch calldata batch,
         Task calldata task,
         bytes32[] calldata taskProof
-    ) internal view returns (TaskResponseMetadata memory, bytes32) {
-         // Check that batch has been registered.
+    ) internal view returns (bytes32) {
+        require(
+            batch.index == task.batchIndex,
+            "batch.index and task.batchIndex do not match"
+        );
+        
+        // Check that batch has been registered.
         bytes32 batchHash = keccak256(abi.encode(batch));
         require(
             allBatchHashes[batch.index] == batchHash,
@@ -136,30 +147,43 @@ contract LambadaCoprocessorTaskManager is
         );
 
         // Check if task has been already responded.
-        (TaskResponseMetadata memory responseMeta, bytes32 responseMetaHash, bytes32 responseHash) = taskResponseHash(batch.index, task.programId, task.inputHash);
+        (bytes32 taskHash, bytes32 responseHash) = taskResponseHash(task);
         require(
             responseHash == "",
             "Task response already responded"
         );
 
         // Check that batch contains specified task.
-        bytes32 taskHash = keccak256(bytes.concat(keccak256(abi.encode(task.programId, task.inputHash))));
+        bytes32 batchTaskHash = keccak256(bytes.concat(keccak256(abi.encode(task.programId, task.inputHash))));
         require(
-            MerkleProof.verifyCalldata(taskProof, batch.merkeRoot, taskHash),
+            MerkleProof.verifyCalldata(taskProof, batch.merkeRoot, batchTaskHash),
             "Task does not belong to batch"
         );
 
-
-        return (responseMeta, responseMetaHash);
+        return taskHash;
     }
 
-    function checkBLSSig(TaskBatch calldata batch, bytes32 responseHash, NonSignerStakesAndSignature memory nonSignerStakesAndSignature) internal view {
+    function checkBLSSig(
+        TaskBatch calldata batch,
+        Task calldata task,
+        TaskResponse calldata response,
+        NonSignerStakesAndSignature memory nonSignerStakesAndSignature
+    ) internal view {
+        TaskResponseSigHashData memory hashData;
+        hashData.batchIndex = task.batchIndex;
+        hashData.programId = task.programId;
+        hashData.inputHash = task.inputHash;
+        hashData.resultCID = response.resultCID;
+        hashData.outputHash = response.outputHash;
+        
+        bytes32 responseSigHash = keccak256(abi.encode(hashData));
+        
         // Check the BLS signature.
         (
             QuorumStakeTotals memory quorumStakeTotals,
             bytes32 hashOfNonSigners
         ) = checkSignatures(
-            responseHash,
+            responseSigHash,
             batch.quorumNumbers,
             batch.blockNumber,
             nonSignerStakesAndSignature
@@ -176,28 +200,14 @@ contract LambadaCoprocessorTaskManager is
             );
         }
     }
-    function getTaskResponseHash(
-        uint32 batchIndex,
-        bytes calldata programId,
-        bytes calldata taskInputHash
-    ) external view returns (bytes32) {
-        (TaskResponseMetadata memory responseMeta, bytes32 responseMetaHash, bytes32 responseHash) = taskResponseHash(batchIndex, programId, taskInputHash);
+    function getTaskResponseHash(Task calldata task) external view returns (bytes32) {
+        (bytes32 taskHash, bytes32 responseHash) = taskResponseHash(task);
         return responseHash;
     }
 
-    function taskResponseHash(
-        uint32 batchIndex,
-        bytes calldata programId,
-        bytes calldata taskInputHash
-    ) internal view returns (TaskResponseMetadata memory, bytes32, bytes32) {
-        TaskResponseMetadata memory responseMeta;
-        responseMeta.batchIndex = batchIndex;
-        responseMeta.programId = programId;
-        responseMeta.taskInputHash = taskInputHash;
-        
-        bytes32 responseMetaHash = keccak256(abi.encode(responseMeta));
-        
-        return (responseMeta, responseMetaHash, allTaskOutputs[responseMetaHash]);
+    function taskResponseHash(Task calldata task) internal view returns (bytes32, bytes32) {
+        bytes32 taskHash = keccak256(abi.encode(task));
+        return (taskHash, allTaskOutputs[taskHash]);
     }
 
     function getNextBatchIndex() external view returns (uint32) {

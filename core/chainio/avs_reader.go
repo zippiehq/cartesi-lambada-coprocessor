@@ -11,7 +11,7 @@ import (
 	"github.com/Layr-Labs/eigensdk-go/chainio/clients/eth"
 	logging "github.com/Layr-Labs/eigensdk-go/logging"
 
-	taskmanager "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/LambadaCoprocessorTaskManager"
+	tm "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/LambadaCoprocessorTaskManager"
 )
 
 type AvsReaderer interface {
@@ -22,8 +22,8 @@ type AvsReaderer interface {
 		msgHash [32]byte,
 		quorumNumbers []byte,
 		referenceBlockNumber uint32,
-		nonSignerStakesAndSignature taskmanager.IBLSSignatureCheckerNonSignerStakesAndSignature,
-	) (taskmanager.IBLSSignatureCheckerQuorumStakeTotals, error)
+		nonSignerStakesAndSignature tm.IBLSSignatureCheckerNonSignerStakesAndSignature,
+	) (tm.IBLSSignatureCheckerQuorumStakeTotals, error)
 }
 
 type AvsReader struct {
@@ -61,13 +61,13 @@ func NewAvsReader(deployment AVSDeployment, ethClient eth.Client, log logging.Lo
 }
 
 func (r *AvsReader) CheckSignatures(ctx context.Context, msgHash [32]byte, quorumNumbers []byte,
-	referenceBlockNumber uint32, nonSignerStakesAndSignature taskmanager.IBLSSignatureCheckerNonSignerStakesAndSignature,
-) (taskmanager.IBLSSignatureCheckerQuorumStakeTotals, error) {
+	referenceBlockNumber uint32, nonSignerStakesAndSignature tm.IBLSSignatureCheckerNonSignerStakesAndSignature,
+) (tm.IBLSSignatureCheckerQuorumStakeTotals, error) {
 	stakeTotalsPerQuorum, _, err := r.Bindings.TaskManager.CheckSignatures(
 		&bind.CallOpts{}, msgHash, quorumNumbers, referenceBlockNumber, nonSignerStakesAndSignature,
 	)
 	if err != nil {
-		return taskmanager.IBLSSignatureCheckerQuorumStakeTotals{}, err
+		return tm.IBLSSignatureCheckerQuorumStakeTotals{}, err
 	}
 	return stakeTotalsPerQuorum, nil
 }

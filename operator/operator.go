@@ -336,7 +336,7 @@ func (o *Operator) processTaskBatch(newBatch *tm.ContractLambadaCoprocessorTaskM
 				err, cid, string(output))
 		}
 
-		if err = o.sendTaskOutput(t.Index, cid, hashOutput(output)); err != nil {
+		if err = o.sendTaskOutput(newBatch.Batch.Index, t, cid, hashOutput(output)); err != nil {
 			return err
 		}
 	}
@@ -423,33 +423,36 @@ func (o *Operator) computeTaskOutput(t core.Task, blockNumber uint32) (string, [
 	return cid.String(), output, nil
 }
 
-func (o *Operator) sendTaskOutput(taskIdx sdktypes.TaskIndex, resultCID string, outputHash [32]byte) error {
-	// Sign task response;
+func (o *Operator) sendTaskOutput(
+	bi core.TaskBatchIndex,
+	t core.Task,
+	resultCID string,
+	outputHash [32]byte,
+) error {
 	cid, err := cid.Decode(resultCID)
 	if err != nil {
 		return fmt.Errorf("failed to decode result CID - %s", err)
 	}
-	resp := tm.ILambadaCoprocessorTaskManagerTaskResponse{
-		ResultCID:  cid.Bytes(),
-		OutputHash: outputHash,
-	}
 
-	taskResponseHash, err := core.GetTaskResponseDigest(&resp)
+	// Sign task response
+	r := core.TaskResponse{
+		TaskIndex:  t.Index,
+		OperatorID: o.operatorId,
+		OutputHash: outputHash[:],
+		ResultCID:  cid.Bytes(),
+	}
+	taskResponseDigest, err := core.TaskResponseSigHash(bi, t, r)
 	if err != nil {
 		return fmt.Errorf("failed to compute task response digest - %s", err)
 	}
+	sig := o.blsKeypair.SignMessage(taskResponseDigest)
 
-	blsSignature := o.blsKeypair.SignMessage(taskResponseHash)
-
-	// Send task to aggregator
+	// Send task response to aggregator
 	signedTaskResponse := &aggregator.SignedTaskResponse{
-		TaskResponse: core.TaskResponse{
-			TaskIndex:  taskIdx,
-			OperatorID: o.operatorId,
-			OutputHash: resp.OutputHash[:],
-			ResultCID:  resp.ResultCID,
-		},
-		BlsSignature: *blsSignature,
+		BatchIndex: bi,
+		Task:       t,
+		Response:   r,
+		Signature:  *sig,
 	}
 	go o.aggregatorRpcClient.SendSignedTaskResponseToAggregator(signedTaskResponse)
 

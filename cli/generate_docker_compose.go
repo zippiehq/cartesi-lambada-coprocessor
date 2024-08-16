@@ -12,7 +12,6 @@ import (
 	sdkutils "github.com/Layr-Labs/eigensdk-go/utils"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/zippiehq/cartesi-lambada-coprocessor/core/chainio"
-	"github.com/zippiehq/cartesi-lambada-coprocessor/core/config"
 
 	"github.com/nikolalohinski/gonja"
 	cp "github.com/otiai10/copy"
@@ -69,9 +68,9 @@ func GenerateDockerCompose(ctx *cli.Context) error {
 		return errors.New("number of operators must be less then 10")
 	}
 
-	deploymentParams := map[string]config.AVSDeploymentParameters{}
+	deploymentParams := map[string]chainio.AVSDeploymentParameters{}
 	for network, paramPath := range DEPLOYMENT_PARAM_PATHS {
-		var params config.AVSDeploymentParameters
+		var params chainio.AVSDeploymentParameters
 		if err := sdkutils.ReadJsonConfig(paramPath, &params); err != nil {
 			return fmt.Errorf("failed to read deployment parameters - %s", err)
 		}
@@ -266,11 +265,11 @@ func GenerateDockerCompose(ctx *cli.Context) error {
 		operators := make([]map[string]interface{}, operatorCount)
 		for i := 1; i <= int(operatorCount); i++ {
 			operators[i-1] = map[string]interface{}{
-				"name":           fmt.Sprintf("operator%d", i),
-				"machine":        fmt.Sprintf("machine%d", i),
-				"machine_data":   machineData[i-1],
-				"run_script":     operatorScripts[network][i-1],
-				"host_ipfs_port": 5000 + i,
+				"name":              fmt.Sprintf("operator%d", i),
+				"machine":           fmt.Sprintf("machine%d", i),
+				"machine_data":      machineData[i-1],
+				"run_script":        operatorScripts[network][i-1],
+				"host_ipfs_port":    5000 + i,
 				"host_lambada_port": 3000 + i,
 			}
 		}
