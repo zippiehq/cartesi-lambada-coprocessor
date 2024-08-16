@@ -182,7 +182,7 @@ func checkTaskBatch(
 		// TODO: validate block, quorumNumbers and quroumThresholdPrecentage?
 
 		// Validate batch mapping.
-		batchHash, err := core.GetTaskBatchDigest(&onchainBatch.Batch)
+		batchHash, err := core.TaskBatchHash(&onchainBatch.Batch)
 		if err != nil {
 			t.Fatalf("failed to compute task batch hash - %s", err)
 		}
@@ -207,7 +207,14 @@ func checkTaskBatch(
 	// Validate task response mapping.
 	for _, task := range batch.tasks {
 		inputHash := core.Keccack256([]byte(task.Input))
-		outputHash, err := avsReader.Bindings.TaskManager.GetTaskResponseHash(&bind.CallOpts{}, batch.index, []byte(task.ProgramID), inputHash)
+		outputHash, err := avsReader.Bindings.TaskManager.GetTaskResponseHash(
+			&bind.CallOpts{},
+			tm.ILambadaCoprocessorTaskManagerTask{
+				BatchIndex: batch.index,
+				ProgramId:  []byte(task.ProgramID),
+				InputHash:  inputHash,
+			},
+		)
 		if err != nil {
 			t.Fatalf("failed to fetch task output hash - %s", err)
 		}

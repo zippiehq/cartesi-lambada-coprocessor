@@ -11,19 +11,19 @@ import (
 	logging "github.com/Layr-Labs/eigensdk-go/logging"
 	sdklogging "github.com/Layr-Labs/eigensdk-go/logging"
 
-	taskmanager "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/LambadaCoprocessorTaskManager"
+	tm "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/LambadaCoprocessorTaskManager"
 )
 
 type AvsSubscriberer interface {
 	SubscribeToNewBatches(
-		newBatchChan chan *taskmanager.ContractLambadaCoprocessorTaskManagerTaskBatchRegistered,
+		newBatchChan chan *tm.ContractLambadaCoprocessorTaskManagerTaskBatchRegistered,
 	) (event.Subscription, error)
 
 	SubscribeToTaskResponses(
-		taskResponseLogs chan *taskmanager.ContractLambadaCoprocessorTaskManagerTaskResponded,
+		taskResponseLogs chan *tm.ContractLambadaCoprocessorTaskManagerTaskResponded,
 	) (event.Subscription, error)
 
-	ParseTaskResponded(rawLog types.Log) (*taskmanager.ContractLambadaCoprocessorTaskManagerTaskResponded, error)
+	ParseTaskResponded(rawLog types.Log) (*tm.ContractLambadaCoprocessorTaskManagerTaskResponded, error)
 }
 
 type AvsSubscriber struct {
@@ -48,7 +48,7 @@ func NewAvsSubscriber(deployment AVSDeployment, ethClient eth.Client, log loggin
 }
 
 func (s *AvsSubscriber) SubscribeToNewBatches(
-	newBatchChan chan *taskmanager.ContractLambadaCoprocessorTaskManagerTaskBatchRegistered,
+	newBatchChan chan *tm.ContractLambadaCoprocessorTaskManagerTaskBatchRegistered,
 ) (event.Subscription, error) {
 	sub, err := s.Bindings.TaskManager.WatchTaskBatchRegistered(
 		&bind.WatchOpts{}, newBatchChan,
@@ -63,7 +63,7 @@ func (s *AvsSubscriber) SubscribeToNewBatches(
 }
 
 func (s *AvsSubscriber) SubscribeToTaskResponses(
-	taskResponseChan chan *taskmanager.ContractLambadaCoprocessorTaskManagerTaskResponded,
+	taskResponseChan chan *tm.ContractLambadaCoprocessorTaskManagerTaskResponded,
 ) (event.Subscription, error) {
 	sub, err := s.Bindings.TaskManager.WatchTaskResponded(
 		&bind.WatchOpts{}, taskResponseChan,
@@ -79,6 +79,6 @@ func (s *AvsSubscriber) SubscribeToTaskResponses(
 
 func (s *AvsSubscriber) ParseTaskResponded(
 	rawLog types.Log,
-) (*taskmanager.ContractLambadaCoprocessorTaskManagerTaskResponded, error) {
+) (*tm.ContractLambadaCoprocessorTaskManagerTaskResponded, error) {
 	return s.Bindings.TaskManager.ContractLambadaCoprocessorTaskManagerFilterer.ParseTaskResponded(rawLog)
 }

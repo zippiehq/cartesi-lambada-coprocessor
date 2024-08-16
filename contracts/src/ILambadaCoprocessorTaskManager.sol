@@ -6,8 +6,8 @@ import "@eigenlayer-middleware/src/BLSSignatureChecker.sol";
 
 interface ILambadaCoprocessorTaskManager is IBLSSignatureChecker {
     event TaskBatchRegistered(TaskBatch batch);
-    event TaskResponded(TaskResponseMetadata responseMeta, TaskResponse response);
-
+    event TaskResponded(Task task, TaskResponse response);
+    
     struct TaskBatch {
         uint32 index;
         uint32 blockNumber;
@@ -23,6 +23,7 @@ interface ILambadaCoprocessorTaskManager is IBLSSignatureChecker {
     }
 
     struct Task {
+        uint32 batchIndex;
         bytes programId;
         bytes inputHash;
     }
@@ -30,14 +31,8 @@ interface ILambadaCoprocessorTaskManager is IBLSSignatureChecker {
     // Task response is hashed and signed by operators.
     // these signatures are aggregated and sent to the contract as response.
     struct TaskResponse {
-	bytes resultCID;
+	    bytes resultCID;
         bytes32 outputHash;
-    }
-
-    struct TaskResponseMetadata {
-        uint32 batchIndex;
-        bytes programId;
-        bytes taskInputHash;
     }
   
     function registerNewTaskBatch(
@@ -62,11 +57,7 @@ interface ILambadaCoprocessorTaskManager is IBLSSignatureChecker {
         NonSignerStakesAndSignature memory nonSignerStakesAndSignature
     ) external view;
 
-    function getTaskResponseHash(
-        uint32 batchIndex,
-        bytes calldata programId,
-        bytes calldata taskInputHash
-    ) external view returns (bytes32);
+    function getTaskResponseHash(Task calldata task) external view returns (bytes32);
 
     function getNextBatchIndex() external view returns (uint32);
 }

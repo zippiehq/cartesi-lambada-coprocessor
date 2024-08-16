@@ -266,24 +266,21 @@ func (agg *Aggregator) getBatchTasks(batchIdx core.TaskBatchIndex) ([]core.Task,
 	return b.Tasks, nil
 }
 
-func (agg *Aggregator) processTaskResponse(resp core.TaskResponse, sig bls.Signature) error {
-	r := tm.ILambadaCoprocessorTaskManagerTaskResponse{
-		ResultCID:  resp.ResultCID,
-		OutputHash: [32]byte(resp.OutputHash),
+func (agg *Aggregator) processTaskResponse(
+	bi core.TaskBatchIndex,
+	t core.Task,
+	r core.TaskResponse,
+	s bls.Signature,
+) error {
+	if err := agg.storage.AddTaskResponse(r); err != nil {
+		return err
 	}
 
-	responseDigest, err := core.GetTaskResponseDigest(&r)
+	responseDigest, err := core.TaskResponseSigHash(bi, t, r)
 	if err != nil {
 		return err
 	}
-
-	if err := agg.blsAgg.ProcessNewSignature(
-		context.Background(), resp.TaskIndex, responseDigest, &sig, resp.OperatorID,
-	); err != nil {
-		return err
-	}
-
-	return agg.storage.AddTaskResponse(resp)
+	return agg.blsAgg.ProcessNewSignature(context.Background(), r.TaskIndex, responseDigest, &s, r.OperatorID)
 }
 
 func (agg *Aggregator) sendAggregatedResponseToContract(
@@ -336,11 +333,7 @@ func (agg *Aggregator) sendAggregatedResponseToContract(
 		taskRespFound bool
 	)
 	for _, tr := range taskResponses {
-		r := tm.ILambadaCoprocessorTaskManagerTaskResponse{
-			OutputHash: [32]byte(tr.OutputHash),
-			ResultCID:  tr.ResultCID,
-		}
-		digest, err := core.GetTaskResponseDigest(&r)
+		digest, err := core.TaskResponseSigHash(batch.Index, task, tr)
 		if err != nil {
 			return err
 		}
@@ -374,9 +367,9 @@ func (agg *Aggregator) sendAggregatedResponseToContract(
 			QuorumThresholdPercentage: batch.QuorumThresholdPercentage,
 		},
 		tm.ILambadaCoprocessorTaskManagerTask{
-			//TODO: here must be task index
-			ProgramId: task.ProgramID,
-			InputHash: task.InputHash,
+			BatchIndex: batch.Index,
+			ProgramId:  task.ProgramID,
+			InputHash:  task.InputHash,
 		},
 		taskProofOnchain,
 		tm.ILambadaCoprocessorTaskManagerTaskResponse{
