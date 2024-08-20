@@ -4,11 +4,12 @@ USE aggregator_storage;
 
 CREATE TABLE tasks (
     task_index INT UNSIGNED AUTO_INCREMENT,
-    program_id TEXT NOT NULL,
+    program_id VARCHAR(256) NOT NULL,
     input TEXT NOT NULL,
-    input_hash TEXT NOT NULL,
+    input_hash VARCHAR(256) NOT NULL,
     batch_index INT UNSIGNED,
-    PRIMARY KEY (task_index)
+    PRIMARY KEY (task_index),
+    UNIQUE KEY(program_id, input_hash)
 );
 
 CREATE TABLE task_batches (
