@@ -48,9 +48,9 @@ function handleTaskBatchRegistered(index, blockNumber, merkeRoot, quorumNumbers,
 }
 
 // Function to handle TaskResponded event
-async function handleTaskResponded(responseMeta, response) {
+async function handleTaskResponded(task, response) {
     console.log(response);
-    const { batchIndex, programId: respProgramId, taskInputHash: respTaskInputHash } = responseMeta;
+    const { batchIndex, programId: respProgramId, inputHash: respTaskInputHash } = task;
     const { resultCID, outputHash } = response;
     if (batchIndex >= nextBatchIndex && Buffer.from(respProgramId.slice(2), "hex").toString("utf8") === programId && respTaskInputHash === taskInputHash) {
         console.log("Task Responded:", {
@@ -99,8 +99,8 @@ contract.on("TaskBatchRegistered", (batch) => {
     handleTaskBatchRegistered(batch.index, batch.blockNumber, batch.merkeRoot, batch.quorumNumbers, batch.quorumThresholdPercentage);
 });
 
-contract.on("TaskResponded", (responseMeta, response) => {
-    handleTaskResponded(responseMeta, response);
+contract.on("TaskResponded", (task, response) => {
+    handleTaskResponded(task, response);
 });
 
 async function sendTaskInput(programId, taskInput) {
