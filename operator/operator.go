@@ -13,6 +13,7 @@ import (
 	"io"
 	"math/big"
 	"net/http"
+	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -43,8 +44,13 @@ import (
 	"github.com/zippiehq/cartesi-lambada-coprocessor/metrics"
 )
 
-const AVS_NAME = "lambada-coprocessor"
-const SEM_VER = "0.0.1"
+const (
+	AVS_NAME = "lambada-coprocessor"
+	SEM_VER  = "0.0.1"
+
+	BATCH_SUBSCRIBE_RETRY_COUNT  = 20
+	BATCH_SUBSCRIBE_RETRY_PERIOD = time.Second * 5
+)
 
 type Operator struct {
 	config Config
@@ -293,14 +299,23 @@ func (o *Operator) Start(ctx context.Context) error {
 			// https://eigen.nethermind.io/docs/spec/api/
 			o.log.Fatal("Error in metrics server", "err", err)
 		case err := <-sub.Err():
-			o.log.Error("Error in websocket subscription", "err", err)
-			// TODO(samlaf): write unit tests to check if this fixed the issues we were seeing
+			o.log.Errorf("task batch weboscket subscription failed - %s", err)
+
 			sub.Unsubscribe()
-			// TODO(samlaf): wrap this call with increase in avs-node-spec metric
-			sub, err = o.avsSubscriber.SubscribeToNewBatches(o.newBatchChan)
-			if err != nil {
-				o.log.Errorf("failed to subscribe to task batches - %s", err)
+
+			for i := 0; i < BATCH_SUBSCRIBE_RETRY_COUNT; i++ {
+				sub, err = o.avsSubscriber.SubscribeToNewBatches(o.newBatchChan)
+				if err != nil {
+					o.log.Errorf("failed to subscribe to task batches - %s", err)
+					time.Sleep(BATCH_SUBSCRIBE_RETRY_PERIOD)
+				} else {
+					break
+				}
 			}
+			if err != nil {
+				o.log.Fatalf("failed to subscribe to task batches - %s", err)
+			}
+
 		case newTaskCreatedLog := <-o.newBatchChan:
 			o.metrics.IncNumTasksReceived()
 			if err := o.processTaskBatch(newTaskCreatedLog); err != nil {
