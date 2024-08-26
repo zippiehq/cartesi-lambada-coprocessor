@@ -34,9 +34,9 @@ var (
 	}
 
 	DEPLOYMENT_OUTPUT_PATHS = map[string]string{
-		DEVNET:  "./contracts/script/output/lambada_coprocessor_deployment_output_devnet.json",
-		HOLESKY: "./contracts/script/output/lambada_coprocessor_deployment_output_holesky.json",
-		MAINNET: "./contracts/script/output/lambada_coprocessor_deployment_output_mainnet.json",
+		DEVNET:  "./contracts/script/output/coprocessor_deployment_output_devnet.json",
+		HOLESKY: "./contracts/script/output/coprocessor_deployment_output_holesky.json",
+		MAINNET: "./contracts/script/output/coprocessor_deployment_output_mainnet.json",
 	}
 
 	COMPOSE_FILE_PATHS = map[string]string{

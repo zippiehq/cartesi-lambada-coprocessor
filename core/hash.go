@@ -4,13 +4,13 @@ import (
 	sdktypes "github.com/Layr-Labs/eigensdk-go/types"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/crypto"
-	tm "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/LambadaCoprocessorTaskManager"
+	tm "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/CoprocessorTaskManager"
 	"golang.org/x/crypto/sha3"
 )
 
 // TaskResponseSigHash computes hash, which uniquely indentifies task and its output
 func TaskResponseSigHash(batchIdx TaskBatchIndex, t Task, r TaskResponse) ([32]byte, error) {
-	// The order here has to match the field ordering of taskmanager.ILambadaCoprocessorTaskManagerTaskResponse
+	// The order here has to match the field ordering of taskmanager.ICoprocessorTaskManagerTaskResponse
 	ot, err := abi.NewType("tuple", "", []abi.ArgumentMarshaling{
 		{
 			Name: "batchIndex",
@@ -58,7 +58,7 @@ func TaskResponseSigHash(batchIdx TaskBatchIndex, t Task, r TaskResponse) ([32]b
 }
 
 // TaskBatchHash returns the hash of the TaskBatch
-func TaskBatchHash(b *tm.ILambadaCoprocessorTaskManagerTaskBatch) ([32]byte, error) {
+func TaskBatchHash(b *tm.ICoprocessorTaskManagerTaskBatch) ([32]byte, error) {
 	t, err := abi.NewType("tuple", "", []abi.ArgumentMarshaling{
 		{
 			Name: "index",

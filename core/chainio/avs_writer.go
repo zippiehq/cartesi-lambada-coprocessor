@@ -17,7 +17,7 @@ import (
 	sdktypes "github.com/Layr-Labs/eigensdk-go/types"
 	sdkutils "github.com/Layr-Labs/eigensdk-go/utils"
 
-	tm "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/LambadaCoprocessorTaskManager"
+	tm "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/CoprocessorTaskManager"
 )
 
 type AvsWriterer interface {
@@ -28,14 +28,14 @@ type AvsWriterer interface {
 		batchRoot [32]byte,
 		quorumThresholdPercentage sdktypes.QuorumThresholdPercentage,
 		quorumNumbers sdktypes.QuorumNums,
-	) (tm.ILambadaCoprocessorTaskManagerTaskBatch, error)
+	) (tm.ICoprocessorTaskManagerTaskBatch, error)
 
 	RespondTask(
 		ctx context.Context,
-		taskBatch tm.ILambadaCoprocessorTaskManagerTaskBatch,
-		task tm.ILambadaCoprocessorTaskManagerTask,
+		taskBatch tm.ICoprocessorTaskManagerTaskBatch,
+		task tm.ICoprocessorTaskManagerTask,
 		taskProof [][32]byte,
-		taskResponse tm.ILambadaCoprocessorTaskManagerTaskResponse,
+		taskResponse tm.ICoprocessorTaskManagerTaskResponse,
 		nonSignerStakesAndSignature tm.IBLSSignatureCheckerNonSignerStakesAndSignature,
 	) (*types.Receipt, error)
 }
@@ -106,10 +106,10 @@ func (w *AvsWriter) RegisterNewTaskBatch(
 	batchRoot [32]byte,
 	quorumThresholdPercentage sdktypes.QuorumThresholdPercentage,
 	quorumNumbers sdktypes.QuorumNums,
-) (tm.ILambadaCoprocessorTaskManagerTaskBatch, error) {
+) (tm.ICoprocessorTaskManagerTaskBatch, error) {
 	txOpts, err := w.txmgr.GetNoSendTxOpts()
 	if err != nil {
-		return tm.ILambadaCoprocessorTaskManagerTaskBatch{},
+		return tm.ICoprocessorTaskManagerTaskBatch{},
 			fmt.Errorf("failed to create opts for RegisterNewTaskBatch tx - %s", err)
 	}
 
@@ -117,20 +117,20 @@ func (w *AvsWriter) RegisterNewTaskBatch(
 		txOpts, batchRoot, uint32(quorumThresholdPercentage), quorumNumbers.UnderlyingType(),
 	)
 	if err != nil {
-		return tm.ILambadaCoprocessorTaskManagerTaskBatch{},
+		return tm.ICoprocessorTaskManagerTaskBatch{},
 			fmt.Errorf("failed to create RegisterNewTaskBatch tx - %s", err)
 	}
 
 	receipt, err := w.txmgr.Send(ctx, tx)
 	if err != nil {
-		return tm.ILambadaCoprocessorTaskManagerTaskBatch{},
+		return tm.ICoprocessorTaskManagerTaskBatch{},
 			fmt.Errorf("failed to send RegisterNewTaskBatch tx - %s", err)
 	}
 
-	event, err := w.Bindings.TaskManager.ContractLambadaCoprocessorTaskManagerFilterer.
+	event, err := w.Bindings.TaskManager.ContractCoprocessorTaskManagerFilterer.
 		ParseTaskBatchRegistered(*receipt.Logs[0])
 	if err != nil {
-		return tm.ILambadaCoprocessorTaskManagerTaskBatch{},
+		return tm.ICoprocessorTaskManagerTaskBatch{},
 			fmt.Errorf("failed to parse TaskBatchRegistered event - %S", err)
 	}
 
@@ -139,10 +139,10 @@ func (w *AvsWriter) RegisterNewTaskBatch(
 
 func (w *AvsWriter) RespondTask(
 	ctx context.Context,
-	taskBatch tm.ILambadaCoprocessorTaskManagerTaskBatch,
-	task tm.ILambadaCoprocessorTaskManagerTask,
+	taskBatch tm.ICoprocessorTaskManagerTaskBatch,
+	task tm.ICoprocessorTaskManagerTask,
 	taskProof [][32]byte,
-	taskResponse tm.ILambadaCoprocessorTaskManagerTaskResponse,
+	taskResponse tm.ICoprocessorTaskManagerTaskResponse,
 	nonSignerStakesAndSignature tm.IBLSSignatureCheckerNonSignerStakesAndSignature,
 ) (*types.Receipt, error) {
 	txOpts, err := w.txmgr.GetNoSendTxOpts()

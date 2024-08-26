@@ -1,16 +1,18 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.12;
 
-import "../src/LambadaCoprocessorServiceManager.sol" as incsqsm;
-import {LambadaCoprocessorTaskManager} from "../src/LambadaCoprocessorTaskManager.sol";
-import {BLSMockAVSDeployer} from "@eigenlayer-middleware/test/utils/BLSMockAVSDeployer.sol";
 import {TransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 
-contract LambadaCoprocessorTaskManagerTest is BLSMockAVSDeployer {
-    incsqsm.LambadaCoprocessorServiceManager sm;
-    incsqsm.LambadaCoprocessorServiceManager smImplementation;
-    LambadaCoprocessorTaskManager tm;
-    LambadaCoprocessorTaskManager tmImplementation;
+import {BLSMockAVSDeployer} from "@eigenlayer-middleware/test/utils/BLSMockAVSDeployer.sol";
+
+import "../src/CoprocessorServiceManager.sol" as incsqsm;
+import {CoprocessorTaskManager} from "../src/CoprocessorTaskManager.sol";
+
+contract CoprocessorTaskManagerTest is BLSMockAVSDeployer {
+    incsqsm.CoprocessorServiceManager sm;
+    incsqsm.CoprocessorServiceManager smImplementation;
+    CoprocessorTaskManager tm;
+    CoprocessorTaskManager tmImplementation;
 
     uint32 public constant TASK_RESPONSE_WINDOW_BLOCK = 30;
     address aggregator =
@@ -21,13 +23,13 @@ contract LambadaCoprocessorTaskManagerTest is BLSMockAVSDeployer {
     function setUp() public {
         _setUpBLSMockAVSDeployer();
 
-        tmImplementation = new LambadaCoprocessorTaskManager(
+        tmImplementation = new CoprocessorTaskManager(
             incsqsm.IRegistryCoordinator(address(registryCoordinator)),
             TASK_RESPONSE_WINDOW_BLOCK
         );
 
         // Third, upgrade the proxy contracts to use the correct implementation contracts and initialize them.
-        tm = LambadaCoprocessorTaskManager(
+        tm = CoprocessorTaskManager(
             address(
                 new TransparentUpgradeableProxy(
                     address(tmImplementation),

@@ -5,7 +5,7 @@ import (
 
 	"github.com/Layr-Labs/eigensdk-go/crypto/bls"
 
-	tm "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/LambadaCoprocessorTaskManager"
+	tm "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/CoprocessorTaskManager"
 )
 
 // Conversion from contract structs to golang structs

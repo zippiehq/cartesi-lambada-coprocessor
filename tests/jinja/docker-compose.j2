@@ -41,12 +41,12 @@ services:
       retries: 20
       start_period: 15s
 {% elif network == 'holesky' %}
-      test: bash -c "[ -f /cartesi-lambada-coprocessor/contracts/script/output/lambada_coprocessor_deployment_output_holesky.json ]"
+      test: bash -c "[ -f /cartesi-lambada-coprocessor/contracts/script/output/coprocessor_deployment_output_holesky.json ]"
       interval: 3s
       retries: 20
       start_period: 15s
 {% elif network == 'mainnet' %}
-      test: bash -c "[ -f /cartesi-lambada-coprocessor/contracts/script/output/lambada_coprocessor_deployment_output_mainnet.json ]"
+      test: bash -c "[ -f /cartesi-lambada-coprocessor/contracts/script/output/coprocessor_deployment_output_mainnet.json ]"
       interval: 3s
       retries: 20
       start_period: 15s

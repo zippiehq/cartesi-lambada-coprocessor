@@ -17,7 +17,7 @@ import (
 	sdktypes "github.com/Layr-Labs/eigensdk-go/types"
 	sdkutils "github.com/Layr-Labs/eigensdk-go/utils"
 
-	tm "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/LambadaCoprocessorTaskManager"
+	tm "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/CoprocessorTaskManager"
 	"github.com/zippiehq/cartesi-lambada-coprocessor/core"
 	"github.com/zippiehq/cartesi-lambada-coprocessor/core/chainio"
 )
@@ -359,20 +359,20 @@ func (agg *Aggregator) sendAggregatedResponseToContract(
 	// Post task response onchain.
 	_, err = agg.avsWriter.RespondTask(
 		context.Background(),
-		tm.ILambadaCoprocessorTaskManagerTaskBatch{
+		tm.ICoprocessorTaskManagerTaskBatch{
 			Index:                     batch.Index,
 			BlockNumber:               batch.BlockNumber,
 			MerkeRoot:                 [32]byte(batch.Merkle.GetRoot()),
 			QuorumNumbers:             batch.QuorumNumbers,
 			QuorumThresholdPercentage: batch.QuorumThresholdPercentage,
 		},
-		tm.ILambadaCoprocessorTaskManagerTask{
+		tm.ICoprocessorTaskManagerTask{
 			BatchIndex: batch.Index,
 			ProgramId:  task.ProgramID,
 			InputHash:  task.InputHash,
 		},
 		taskProofOnchain,
-		tm.ILambadaCoprocessorTaskManagerTaskResponse{
+		tm.ICoprocessorTaskManagerTaskResponse{
 			OutputHash: [32]byte(taskResp.OutputHash),
 			ResultCID:  taskResp.ResultCID,
 		},

@@ -38,7 +38,7 @@ import (
 
 	sdkutils "github.com/Layr-Labs/eigensdk-go/utils"
 	"github.com/zippiehq/cartesi-lambada-coprocessor/aggregator"
-	tm "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/LambadaCoprocessorTaskManager"
+	tm "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/CoprocessorTaskManager"
 	"github.com/zippiehq/cartesi-lambada-coprocessor/core"
 	"github.com/zippiehq/cartesi-lambada-coprocessor/core/chainio"
 	"github.com/zippiehq/cartesi-lambada-coprocessor/metrics"
@@ -84,7 +84,7 @@ type Operator struct {
 	aggregatorRpcClient AggregatorRpcClienter
 
 	// receive new tasks in this chan (typically from listening to onchain event)
-	newBatchChan chan *tm.ContractLambadaCoprocessorTaskManagerTaskBatchRegistered
+	newBatchChan chan *tm.ContractCoprocessorTaskManagerTaskBatchRegistered
 }
 
 type JSONCompute struct {
@@ -239,7 +239,7 @@ func NewOperator(blsPwd, ecdsaPwd string, cfg Config) (*Operator, error) {
 		aggregatorServerIpPortAddr: cfg.AggregatorServerIpPortAddress,
 		aggregatorRpcClient:        aggregatorRpcClient,
 
-		newBatchChan: make(chan *tm.ContractLambadaCoprocessorTaskManagerTaskBatchRegistered),
+		newBatchChan: make(chan *tm.ContractCoprocessorTaskManagerTaskBatchRegistered),
 	}
 
 	// OperatorId is set in contract during registration so we get it after registering operator.
@@ -327,7 +327,7 @@ func (o *Operator) Start(ctx context.Context) error {
 
 // Takes a NewTaskCreatedLog struct as input and returns a TaskResponseHeader struct.
 // The TaskResponseHeader struct is the struct that is signed and sent to the contract as a task response.
-func (o *Operator) processTaskBatch(newBatch *tm.ContractLambadaCoprocessorTaskManagerTaskBatchRegistered) error {
+func (o *Operator) processTaskBatch(newBatch *tm.ContractCoprocessorTaskManagerTaskBatchRegistered) error {
 	o.log.Debug("Received new task batch", "task", newBatch)
 
 	o.log.Info("Received new task batch",

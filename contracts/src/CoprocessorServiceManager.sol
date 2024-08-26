@@ -4,10 +4,10 @@ pragma solidity ^0.8.9;
 import "@eigenlayer/contracts/libraries/BytesLib.sol";
 import "@eigenlayer-middleware/src/ServiceManagerBase.sol";
 
-import "./ILambadaCoprocessorTaskManager.sol";
+import "./ICoprocessorTaskManager.sol";
 import "./Errors.sol";
 
-contract LambadaCoprocessorServiceManager is ServiceManagerBase {
+contract CoprocessorServiceManager is ServiceManagerBase {
     using BytesLib for bytes;
 
     event OperatorWhitelistEnabled();
@@ -15,7 +15,7 @@ contract LambadaCoprocessorServiceManager is ServiceManagerBase {
     event OperatorAddedToWhitelist(address operator);
     event OperatorRemovedFromWhitelist(address operator);
 
-    ILambadaCoprocessorTaskManager public lambadaCoprocessorTaskManager;
+    ICoprocessorTaskManager public coprocessorTaskManager;
 
     address operatorWhitelister;
     bool operatorWhitelistEnabled;
@@ -43,11 +43,11 @@ contract LambadaCoprocessorServiceManager is ServiceManagerBase {
     }
 
     function initialize(
-        ILambadaCoprocessorTaskManager _lambadaCoprocessorTaskManager,
+        ICoprocessorTaskManager _lambadaCoprocessorTaskManager,
         bool _operatorWhitelistEnabled,
         address[] calldata _operatorWhitelist
     ) public initializer() {
-        lambadaCoprocessorTaskManager = _lambadaCoprocessorTaskManager;
+        coprocessorTaskManager = _lambadaCoprocessorTaskManager;
 
         operatorWhitelister = _msgSender();
         operatorWhitelistEnabled = _operatorWhitelistEnabled;

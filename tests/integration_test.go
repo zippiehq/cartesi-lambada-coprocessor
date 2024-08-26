@@ -18,7 +18,7 @@ import (
 	sdktypes "github.com/Layr-Labs/eigensdk-go/types"
 	sdkutils "github.com/Layr-Labs/eigensdk-go/utils"
 
-	tm "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/LambadaCoprocessorTaskManager"
+	tm "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/CoprocessorTaskManager"
 	"github.com/zippiehq/cartesi-lambada-coprocessor/core"
 	"github.com/zippiehq/cartesi-lambada-coprocessor/core/chainio"
 )
@@ -49,11 +49,11 @@ func TestIntegration(t *testing.T) {
 	var deploymentPath string
 	switch *network {
 	case DEVNET:
-		deploymentPath = "../contracts/script/output/lambada_coprocessor_deployment_output_devnet.json"
+		deploymentPath = "../contracts/script/output/coprocessor_deployment_output_devnet.json"
 	case HOLESKY:
-		deploymentPath = "../contracts/script/output/lambada_coprocessor_deployment_output_holesky.json"
+		deploymentPath = "../contracts/script/output/coprocessor_deployment_output_holesky.json"
 	case MAINNET:
-		deploymentPath = "../contracts/script/output/lambada_coprocessor_deployment_output_mainnet.json"
+		deploymentPath = "../contracts/script/output/coprocessor_deployment_output_mainnet.json"
 	}
 
 	var deployment chainio.AVSDeployment
@@ -145,12 +145,12 @@ func checkTaskBatch(
 	batch taskBatch,
 	avsReader *chainio.AvsReader, avsSubscriber *chainio.AvsSubscriber,
 ) {
-	batchCh := make(chan *tm.ContractLambadaCoprocessorTaskManagerTaskBatchRegistered)
+	batchCh := make(chan *tm.ContractCoprocessorTaskManagerTaskBatchRegistered)
 	if _, err := avsSubscriber.SubscribeToNewBatches(batchCh); err != nil {
 		t.Fatalf("failed to subscribe to new task batches - %s", err)
 	}
 
-	respCh := make(chan *tm.ContractLambadaCoprocessorTaskManagerTaskResponded)
+	respCh := make(chan *tm.ContractCoprocessorTaskManagerTaskResponded)
 	if _, err := avsSubscriber.SubscribeToTaskResponses(respCh); err != nil {
 		t.Fatalf("failed to subscribe to task responses - %s", err)
 	}
@@ -209,7 +209,7 @@ func checkTaskBatch(
 		inputHash := core.Keccack256([]byte(task.Input))
 		outputHash, err := avsReader.Bindings.TaskManager.GetTaskResponseHash(
 			&bind.CallOpts{},
-			tm.ILambadaCoprocessorTaskManagerTask{
+			tm.ICoprocessorTaskManagerTask{
 				BatchIndex: batch.index,
 				ProgramId:  []byte(task.ProgramID),
 				InputHash:  inputHash,

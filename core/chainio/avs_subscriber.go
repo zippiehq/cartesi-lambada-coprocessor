@@ -11,19 +11,19 @@ import (
 	logging "github.com/Layr-Labs/eigensdk-go/logging"
 	sdklogging "github.com/Layr-Labs/eigensdk-go/logging"
 
-	tm "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/LambadaCoprocessorTaskManager"
+	tm "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/CoprocessorTaskManager"
 )
 
 type AvsSubscriberer interface {
 	SubscribeToNewBatches(
-		newBatchChan chan *tm.ContractLambadaCoprocessorTaskManagerTaskBatchRegistered,
+		newBatchChan chan *tm.ContractCoprocessorTaskManagerTaskBatchRegistered,
 	) (event.Subscription, error)
 
 	SubscribeToTaskResponses(
-		taskResponseLogs chan *tm.ContractLambadaCoprocessorTaskManagerTaskResponded,
+		taskResponseLogs chan *tm.ContractCoprocessorTaskManagerTaskResponded,
 	) (event.Subscription, error)
 
-	ParseTaskResponded(rawLog types.Log) (*tm.ContractLambadaCoprocessorTaskManagerTaskResponded, error)
+	ParseTaskResponded(rawLog types.Log) (*tm.ContractCoprocessorTaskManagerTaskResponded, error)
 }
 
 type AvsSubscriber struct {
@@ -48,7 +48,7 @@ func NewAvsSubscriber(deployment AVSDeployment, ethClient eth.Client, log loggin
 }
 
 func (s *AvsSubscriber) SubscribeToNewBatches(
-	newBatchChan chan *tm.ContractLambadaCoprocessorTaskManagerTaskBatchRegistered,
+	newBatchChan chan *tm.ContractCoprocessorTaskManagerTaskBatchRegistered,
 ) (event.Subscription, error) {
 	sub, err := s.Bindings.TaskManager.WatchTaskBatchRegistered(
 		&bind.WatchOpts{}, newBatchChan,
@@ -63,7 +63,7 @@ func (s *AvsSubscriber) SubscribeToNewBatches(
 }
 
 func (s *AvsSubscriber) SubscribeToTaskResponses(
-	taskResponseChan chan *tm.ContractLambadaCoprocessorTaskManagerTaskResponded,
+	taskResponseChan chan *tm.ContractCoprocessorTaskManagerTaskResponded,
 ) (event.Subscription, error) {
 	sub, err := s.Bindings.TaskManager.WatchTaskResponded(
 		&bind.WatchOpts{}, taskResponseChan,
@@ -79,6 +79,6 @@ func (s *AvsSubscriber) SubscribeToTaskResponses(
 
 func (s *AvsSubscriber) ParseTaskResponded(
 	rawLog types.Log,
-) (*tm.ContractLambadaCoprocessorTaskManagerTaskResponded, error) {
-	return s.Bindings.TaskManager.ContractLambadaCoprocessorTaskManagerFilterer.ParseTaskResponded(rawLog)
+) (*tm.ContractCoprocessorTaskManagerTaskResponded, error) {
+	return s.Bindings.TaskManager.ContractCoprocessorTaskManagerFilterer.ParseTaskResponded(rawLog)
 }
