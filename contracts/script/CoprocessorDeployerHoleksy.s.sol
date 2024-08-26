@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.9;
 
-import {LambadaCoprocessorDeployer} from "./LambadaCoprocessorDeployer.s.sol";
+import {CoprocessorDeployer} from "./CoprocessorDeployer.s.sol";
 
 import "forge-std/Test.sol";
 import "forge-std/Script.sol";
 import "forge-std/StdJson.sol";
 import "forge-std/console.sol";
 
-contract LambadaCoprocessorDeployerHolesky is LambadaCoprocessorDeployer {
+contract CoprocessorDeployerHolesky is CoprocessorDeployer {
     function run() external {
         string memory paramFile = "./script/input/deployment_parameters_holesky.json";
         (EigenLayerContracts memory eigenLayer, DeploymentConfig memory config)
@@ -23,12 +23,12 @@ contract LambadaCoprocessorDeployerHolesky is LambadaCoprocessorDeployer {
             strategyConfig[0].strategy = eigenLayer.wETH;
             strategyConfig[0].weight = eigenLayer.wETH_Multiplier;
         }
-        LambadaCoprocessorContracts memory contracts = deployAVS(eigenLayer, config, strategyConfig);
+        CoprocessorContracts memory contracts = deployAVS(eigenLayer, config, strategyConfig);
         
         vm.stopBroadcast();
 
         AuxContract[] memory auxContracts = new AuxContract[](0);
-        string memory outputPath = "./script/output/lambada_coprocessor_deployment_output_holesky.json";
+        string memory outputPath = "./script/output/coprocessor_deployment_output_holesky.json";
         writeDeploymentOutput(contracts, auxContracts, outputPath);
     }
 }

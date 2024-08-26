@@ -9,13 +9,13 @@ import (
 	"github.com/Layr-Labs/eigensdk-go/chainio/clients/eth"
 	regcoord "github.com/Layr-Labs/eigensdk-go/contracts/bindings/RegistryCoordinator"
 
-	sm "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/LambadaCoprocessorServiceManager"
-	tm "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/LambadaCoprocessorTaskManager"
+	sm "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/CoprocessorServiceManager"
+	tm "github.com/zippiehq/cartesi-lambada-coprocessor/contracts/bindings/CoprocessorTaskManager"
 )
 
 type AvsManagersBindings struct {
-	TaskManager    *tm.ContractLambadaCoprocessorTaskManager
-	ServiceManager *sm.ContractLambadaCoprocessorServiceManager
+	TaskManager    *tm.ContractCoprocessorTaskManager
+	ServiceManager *sm.ContractCoprocessorServiceManager
 }
 
 func NewAvsManagersBindings(deployment AVSDeployment, ethclient eth.Client) (*AvsManagersBindings, error) {
@@ -31,18 +31,18 @@ func NewAvsManagersBindings(deployment AVSDeployment, ethclient eth.Client) (*Av
 	if err != nil {
 		return nil, fmt.Errorf("failed to get ServiceManager address - %s", err)
 	}
-	contractServiceManager, err := sm.NewContractLambadaCoprocessorServiceManager(serviceManagerAddr, ethclient)
+	contractServiceManager, err := sm.NewContractCoprocessorServiceManager(serviceManagerAddr, ethclient)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create LambadaCoprocessorServiceManager binding - %s", err)
+		return nil, fmt.Errorf("failed to create CoprocessorServiceManager binding - %s", err)
 	}
 
-	taskManagerAddr, err := contractServiceManager.LambadaCoprocessorTaskManager(&bind.CallOpts{})
+	taskManagerAddr, err := contractServiceManager.CoprocessorTaskManager(&bind.CallOpts{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get LambadaCorpocessorTaskManager address - %s", err)
 	}
-	contractTaskManager, err := tm.NewContractLambadaCoprocessorTaskManager(taskManagerAddr, ethclient)
+	contractTaskManager, err := tm.NewContractCoprocessorTaskManager(taskManagerAddr, ethclient)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create LambadaCoprocessorTaskManager binding - %s", err)
+		return nil, fmt.Errorf("failed to create CoprocessorTaskManager binding - %s", err)
 	}
 
 	b := &AvsManagersBindings{

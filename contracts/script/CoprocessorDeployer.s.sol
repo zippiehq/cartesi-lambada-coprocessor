@@ -19,8 +19,8 @@ import {IndexRegistry} from "@eigenlayer-middleware/src/IndexRegistry.sol";
 import {StakeRegistry} from "@eigenlayer-middleware/src/StakeRegistry.sol";
 import "@eigenlayer-middleware/src/OperatorStateRetriever.sol";
 
-import {LambadaCoprocessorServiceManager, IServiceManager} from "../src/LambadaCoprocessorServiceManager.sol";
-import {LambadaCoprocessorTaskManager, ILambadaCoprocessorTaskManager} from "../src/LambadaCoprocessorTaskManager.sol";
+import {CoprocessorServiceManager, IServiceManager} from "../src/CoprocessorServiceManager.sol";
+import {CoprocessorTaskManager, ICoprocessorTaskManager} from "../src/CoprocessorTaskManager.sol";
 import "../src/ERC20Mock.sol";
 
 import {Utils} from "./utils/Utils.sol";
@@ -30,7 +30,7 @@ import "forge-std/Script.sol";
 import "forge-std/StdJson.sol";
 import "forge-std/console.sol";
 
-contract LambadaCoprocessorDeployer is Script, Utils {
+contract CoprocessorDeployer is Script, Utils {
     struct EigenLayerContracts {
         IAVSDirectory avsDirectory;
         DelegationManager delegationManager;
@@ -73,11 +73,11 @@ contract LambadaCoprocessorDeployer is Script, Utils {
         address addr;
     }
 
-    struct LambadaCoprocessorContracts {
-        LambadaCoprocessorTaskManager taskManager;
-        LambadaCoprocessorTaskManager taskManagerImplementation;
-        LambadaCoprocessorServiceManager serviceManager;
-        LambadaCoprocessorServiceManager serviceManagerImplementation;
+    struct CoprocessorContracts {
+        CoprocessorTaskManager taskManager;
+        CoprocessorTaskManager taskManagerImplementation;
+        CoprocessorServiceManager serviceManager;
+        CoprocessorServiceManager serviceManagerImplementation;
         IRegistryCoordinator registryCoordinator;
         IRegistryCoordinator registryCoordinatorImplementation;
         IIndexRegistry indexRegistry;
@@ -138,8 +138,8 @@ contract LambadaCoprocessorDeployer is Script, Utils {
         EigenLayerContracts memory eigenLayer,
         DeploymentConfig memory config,
         StrategyConfig[] memory strategyConfig
-    ) internal returns (LambadaCoprocessorContracts memory) {
-        LambadaCoprocessorContracts memory contracts;
+    ) internal returns (CoprocessorContracts memory) {
+        CoprocessorContracts memory contracts;
         
         // deploy proxy admin for ability to upgrade proxy contracts
         contracts.proxyAdmin = new ProxyAdmin();
@@ -170,10 +170,10 @@ contract LambadaCoprocessorDeployer is Script, Utils {
         contracts.registryCoordinator = RegistryCoordinator(
             address(new TransparentUpgradeableProxy(address(emptyContract), address(contracts.proxyAdmin), ""))
         );
-        contracts.taskManager = LambadaCoprocessorTaskManager(
+        contracts.taskManager = CoprocessorTaskManager(
             address(new TransparentUpgradeableProxy(address(emptyContract), address(contracts.proxyAdmin), ""))
         );
-        contracts.serviceManager = LambadaCoprocessorServiceManager(
+        contracts.serviceManager = CoprocessorServiceManager(
             address(new TransparentUpgradeableProxy(address(emptyContract), address(contracts.proxyAdmin), ""))
         );       
 
@@ -261,7 +261,7 @@ contract LambadaCoprocessorDeployer is Script, Utils {
         }
 
         // Third, upgrade the proxy contracts to use the correct implementation contracts and initialize them.
-        contracts.taskManagerImplementation = new LambadaCoprocessorTaskManager(
+        contracts.taskManagerImplementation = new CoprocessorTaskManager(
             contracts.registryCoordinator,
             config.taskResponseWindowBlock
         );
@@ -269,7 +269,7 @@ contract LambadaCoprocessorDeployer is Script, Utils {
             TransparentUpgradeableProxy(payable(address(contracts.taskManager))),
             address(contracts.taskManagerImplementation),
             abi.encodeWithSelector(
-                LambadaCoprocessorTaskManager.initialize.selector,
+                CoprocessorTaskManager.initialize.selector,
                 contracts.pauserRegistry,
                 config.communityMultisig,
                 config.aggregator,
@@ -277,7 +277,7 @@ contract LambadaCoprocessorDeployer is Script, Utils {
             )
         );
         
-        contracts.serviceManagerImplementation = new LambadaCoprocessorServiceManager(
+        contracts.serviceManagerImplementation = new CoprocessorServiceManager(
             eigenLayer.avsDirectory,
             contracts.registryCoordinator,
             contracts.stakeRegistry
@@ -286,7 +286,7 @@ contract LambadaCoprocessorDeployer is Script, Utils {
             TransparentUpgradeableProxy(payable(address(contracts.serviceManager))),
             address(contracts.serviceManagerImplementation),
             abi.encodeWithSelector(
-                LambadaCoprocessorServiceManager.initialize.selector,
+                CoprocessorServiceManager.initialize.selector,
                 contracts.taskManager,
                 config.operatorWhitelistEnabled,
                 config.operatorWhitelist
@@ -297,7 +297,7 @@ contract LambadaCoprocessorDeployer is Script, Utils {
     }
 
     function writeDeploymentOutput(
-        LambadaCoprocessorContracts memory contracts,
+        CoprocessorContracts memory contracts,
         AuxContract[] memory auxContracts,
         string memory outputPath
     ) internal {

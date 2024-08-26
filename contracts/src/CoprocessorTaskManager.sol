@@ -11,15 +11,16 @@ import {RegistryCoordinator} from "@eigenlayer-middleware/src/RegistryCoordinato
 import {BLSSignatureChecker, IRegistryCoordinator} from "@eigenlayer-middleware/src/BLSSignatureChecker.sol";
 import {OperatorStateRetriever} from "@eigenlayer-middleware/src/OperatorStateRetriever.sol";
 import "@eigenlayer-middleware/src/libraries/BN254.sol";
-import "./ILambadaCoprocessorTaskManager.sol";
 
-contract LambadaCoprocessorTaskManager is
+import "./ICoprocessorTaskManager.sol";
+
+contract CoprocessorTaskManager is
     Initializable,
     OwnableUpgradeable,
     Pausable,
     BLSSignatureChecker,
     OperatorStateRetriever,
-    ILambadaCoprocessorTaskManager
+    ICoprocessorTaskManager
 {
     struct TaskResponseSigHashData {
         uint32 batchIndex;

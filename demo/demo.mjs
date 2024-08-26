@@ -9,8 +9,8 @@ const providerUrl = "http://localhost:8545";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const deploymentPath = __dirname + "/../contracts/script/output/lambada_coprocessor_deployment_output_devnet.json";
-const abiFilePath = __dirname + "/../contracts/out/ILambadaCoprocessorTaskManager.sol/ILambadaCoprocessorTaskManager.json"; 
+const deploymentPath = __dirname + "/../contracts/script/output/coprocessor_deployment_output_devnet.json";
+const abiFilePath = __dirname + "/../contracts/out/ICoprocessorTaskManager.sol/ICoprocessorTaskManager.json"; 
 
 const contractAddress = JSON.parse(fs.readFileSync(deploymentPath, 'utf8')).addresses.taskManager;
 

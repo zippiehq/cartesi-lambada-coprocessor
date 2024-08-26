@@ -1,6 +1,6 @@
 #!/bin/bash
 
-rm /cartesi-lambada-coprocessor/contracts/script/output/lambada_coprocessor_deployment_output_holesky.json
+rm /cartesi-lambada-coprocessor/contracts/script/output/coprocessor_deployment_output_holesky.json
 
 ANVIL_FORK_URL=`cat /run/secrets/anvil_fork_url_holesky`
 anvil --fork-url $ANVIL_FORK_URL --host 0.0.0.0 &
@@ -22,7 +22,7 @@ cast send \
 cd /cartesi-lambada-coprocessor/contracts
 
 forge script \
-    script/LambadaCoprocessorDeployerHoleksy.s.sol:LambadaCoprocessorDeployerHolesky \
+    script/CoprocessorDeployerHoleksy.s.sol:CoprocessorDeployerHolesky \
     --rpc-url http://0.0.0.0:8545 \
     --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 \
     --broadcast -v

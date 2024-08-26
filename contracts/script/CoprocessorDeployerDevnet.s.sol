@@ -9,14 +9,14 @@ import {StrategyBaseTVLLimits} from "@eigenlayer/contracts/strategies/StrategyBa
 
 import "../src/ERC20Mock.sol";
 import {Utils} from "./utils/Utils.sol";
-import {LambadaCoprocessorDeployer} from "./LambadaCoprocessorDeployer.s.sol";
+import {CoprocessorDeployer} from "./CoprocessorDeployer.s.sol";
 
 import "forge-std/Test.sol";
 import "forge-std/Script.sol";
 import "forge-std/StdJson.sol";
 import "forge-std/console.sol";
 
-contract LambadaCoprocessorDeployerDevnet is LambadaCoprocessorDeployer {
+contract CoprocessorDeployerDevnet is CoprocessorDeployer {
     function run() external {
         string memory paramFile = "./script/input/deployment_parameters_devnet.json";
         (EigenLayerContracts memory eigenLayer, DeploymentConfig memory config)
@@ -36,7 +36,7 @@ contract LambadaCoprocessorDeployerDevnet is LambadaCoprocessorDeployer {
             strategyConfig[0].strategy = erc20MockStrategy;
             strategyConfig[0].weight = eigenLayer.wETH_Multiplier;
         }
-        LambadaCoprocessorContracts memory contracts = deployAVS(eigenLayer, config, strategyConfig);
+        CoprocessorContracts memory contracts = deployAVS(eigenLayer, config, strategyConfig);
 
         vm.stopBroadcast();
 
@@ -47,7 +47,7 @@ contract LambadaCoprocessorDeployerDevnet is LambadaCoprocessorDeployer {
             auxContracts[1].name = "erc20MockStrategy";
             auxContracts[1].addr = erc20MockStrategy;
         }
-        string memory outputPath = "./script/output/lambada_coprocessor_deployment_output_devnet.json";
+        string memory outputPath = "./script/output/coprocessor_deployment_output_devnet.json";
         writeDeploymentOutput(contracts, auxContracts, outputPath);
     }
 
