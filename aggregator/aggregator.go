@@ -181,10 +181,14 @@ func (agg *Aggregator) Start(ctx context.Context) error {
 			if err := agg.createTaskBatch(); err != nil {
 				agg.log.Errorf("failed to create task batch - %s", err)
 			}
-		case blsAggServiceResp := <-agg.blsAgg.GetResponseChannel():
-			agg.log.Info("Received response from blsAggregationService", "blsAggServiceResp", blsAggServiceResp)
-			if err := agg.sendAggregatedResponseToContract(blsAggServiceResp); err != nil {
-				agg.log.Errorf("failed to send aggregated response to contract - %s", err)
+		case aggResp := <-agg.blsAgg.GetResponseChannel():
+			agg.log.Infof("received response from BLS aggregation service - %s", aggResp)
+			if aggResp.Err != nil {
+				agg.log.Errorf("BLS aggregation failed - %s", aggResp.Err)
+			} else {
+				if err := agg.sendAggregatedResponseToContract(aggResp); err != nil {
+					agg.log.Errorf("failed to send aggregated response to contract - %s", err)
+				}
 			}
 		}
 	}
@@ -286,12 +290,6 @@ func (agg *Aggregator) processTaskResponse(
 func (agg *Aggregator) sendAggregatedResponseToContract(
 	resp blsagg.BlsAggregationServiceResponse,
 ) error {
-	// TODO: check if blsAggServiceResp contains an err
-	if resp.Err != nil {
-		agg.log.Error("BlsAggregationServiceResponse contains an error", "err", resp.Err)
-		// panicing to help with debugging (fail fast), but we shouldn't panic if we run this in production
-		panic(resp.Err)
-	}
 	nonSignerPubkeys := []tm.BN254G1Point{}
 	for _, nonSignerPubkey := range resp.NonSignersPubkeysG1 {
 		nonSignerPubkeys = append(nonSignerPubkeys, core.ConvertToBN254G1Point(nonSignerPubkey))
