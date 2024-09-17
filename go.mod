@@ -21,7 +21,7 @@ require (
 )
 
 //!!!
-replace github.com/Layr-Labs/eigensdk-go v0.1.7-0.20240425202952-954cd7661775 => github.com/not4x217/eigensdk-go v0.1.7-lambada-coprocessor-mainnet-fork-test
+replace github.com/Layr-Labs/eigensdk-go v0.1.7-0.20240425202952-954cd7661775 => github.com/not4x217/eigensdk-go v0.1.7-cartesi-coprocessor
 
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect

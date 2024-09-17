@@ -10,3 +10,6 @@ eth_rpc_url: http://anvil:8545
 eth_ws_url: ws://anvil:8545
 
 api_server_address: 0.0.0.0:8090
+
+query_operators: true
+query_operator_start_block: 20669157

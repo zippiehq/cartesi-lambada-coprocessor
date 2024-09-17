@@ -3,6 +3,7 @@ package aggregator
 import (
 	"context"
 	"fmt"
+	"math/big"
 	"time"
 
 	"github.com/ethereum/go-ethereum/crypto"
@@ -144,6 +145,8 @@ func NewAggregator(privKey, dbPwd string, cfg Config, log logging.Logger) (*Aggr
 		clients.AvsRegistryChainSubscriber,
 		clients.AvsRegistryChainReader,
 		log,
+		cfg.QueryOperators,
+		big.NewInt(int64(cfg.QueryOperatorStartBlock)),
 	)
 
 	avsRegistryService := avsregistry.NewAvsRegistryServiceChainCaller(
