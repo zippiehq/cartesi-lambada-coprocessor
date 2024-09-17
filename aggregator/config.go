@@ -15,4 +15,7 @@ type Config struct {
 	EthWsRpcUrl   string `yaml:"eth_ws_url"`
 
 	APIServerAddress string `yaml:"api_server_address"`
+
+	QueryOperators          bool   `yaml:"query_operators"`
+	QueryOperatorStartBlock uint64 `yaml:"query_operator_start_block"`
 }
