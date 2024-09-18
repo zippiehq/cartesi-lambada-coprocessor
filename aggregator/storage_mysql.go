@@ -11,6 +11,8 @@ import (
 	sdktypes "github.com/Layr-Labs/eigensdk-go/types"
 )
 
+const PENDING_TASK_BATCH_INDEX = -1
+
 type MySqlStorageConfig struct {
 	Address  string
 	Database string
@@ -56,7 +58,7 @@ func (s *MySqlStorage) AddPendingTask(t core.Task) (sdktypes.TaskIndex, error) {
 		taskIndex = lastTask.Index + 1
 	}
 
-	stmt, err := tx.Prepare("INSERT INTO tasks VALUES(NULL, ?, ?, ?, NULL)")
+	stmt, err := tx.Prepare("INSERT INTO tasks VALUES(NULL, ?, ?, ?, ?)")
 	if err != nil {
 		tx.Rollback()
 		return 0, err
@@ -65,6 +67,7 @@ func (s *MySqlStorage) AddPendingTask(t core.Task) (sdktypes.TaskIndex, error) {
 		base64.StdEncoding.EncodeToString(t.ProgramID),
 		base64.StdEncoding.EncodeToString(t.Input),
 		base64.StdEncoding.EncodeToString(t.InputHash),
+		PENDING_TASK_BATCH_INDEX,
 	); err != nil {
 		tx.Rollback()
 		return 0, err
@@ -79,7 +82,10 @@ func (s *MySqlStorage) AddPendingTask(t core.Task) (sdktypes.TaskIndex, error) {
 }
 
 func (s *MySqlStorage) AllPendingTasks() ([]core.Task, error) {
-	rows, err := s.db.Query("SELECT * FROM tasks WHERE batch_index IS NULL ORDER BY task_index ASC")
+	rows, err := s.db.Query(
+		"SELECT * FROM tasks WHERE batch_index=? ORDER BY task_index ASC",
+		PENDING_TASK_BATCH_INDEX,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -167,7 +173,10 @@ func (s *MySqlStorage) TaskBatch(i core.TaskBatchIndex) (core.TaskBatch, error) 
 }
 
 func (s *MySqlStorage) SubmittedTask(i sdktypes.TaskIndex) (core.Task, core.TaskBatchIndex, error) {
-	r := s.db.QueryRow("SELECT * FROM tasks WHERE task_index=? AND batch_index IS NOT NULL", i)
+	r := s.db.QueryRow(
+		"SELECT * FROM tasks WHERE task_index=? AND batch_index!=?",
+		i, PENDING_TASK_BATCH_INDEX,
+	)
 	t, batchIdx, err := readTask(r)
 	if err != nil {
 		return core.Task{}, 0, err
