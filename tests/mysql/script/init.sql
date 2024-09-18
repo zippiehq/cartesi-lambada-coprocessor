@@ -7,9 +7,9 @@ CREATE TABLE tasks (
     program_id VARCHAR(256) NOT NULL,
     input TEXT NOT NULL,
     input_hash VARCHAR(256) NOT NULL,
-    batch_index INT UNSIGNED,
+    batch_index INT NOT NULL,
     PRIMARY KEY (task_index),
-    UNIQUE KEY(program_id, input_hash)
+    UNIQUE KEY(program_id, input_hash, batch_index)
 );
 
 CREATE TABLE task_batches (
