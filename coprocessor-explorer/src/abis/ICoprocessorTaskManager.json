@@ -1,0 +1,39 @@
+[
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": false,
+                "internalType": "uint32",
+                "name": "batchIndex",
+                "type": "uint32"
+            },
+            {
+                "indexed": false,
+                "internalType": "bytes",
+                "name": "programId",
+                "type": "bytes"
+            },
+            {
+                "indexed": false,
+                "internalType": "bytes32",
+                "name": "inputHash",
+                "type": "bytes32"
+            },
+            {
+                "indexed": false,
+                "internalType": "bytes32",
+                "name": "resultCID",
+                "type": "bytes32"
+            },
+            {
+                "indexed": false,
+                "internalType": "bytes32",
+                "name": "outputHash",
+                "type": "bytes32"
+            }
+        ],
+        "name": "TaskResponded",
+        "type": "event"
+    }
+]
