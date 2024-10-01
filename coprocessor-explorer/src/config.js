@@ -1,7 +1,7 @@
 import { ethers } from 'ethers';
 import ICoprocessorTaskManagerABI from './abis/ICoprocessorTaskManager.json';
 
-const CONTRACT_ADDRESS = '0xf1a22A655aA923dF47893a44F3765Bf30A7DD0a8';
+const CONTRACT_ADDRESS = '0xb51032037ee0FB6F2d09BE6Dbe44556bADF370A1';
 
 
 export const getProvider = () => {

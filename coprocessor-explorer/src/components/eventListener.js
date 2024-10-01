@@ -36,12 +36,16 @@ const EventListener = () => {
 
             // Listen to TaskResponded events
             contract.on('TaskResponded', (task, response) => {
+
+                const { batchIndex, programId, inputHash } = task;
+                const { resultCID, outputHash } = response;
+
                 let decodedProgramId;
                 let decodedResultCID;
 
                 try {
-                    decodedProgramId = CID.decode(Buffer.from(task.programId.slice(2), 'hex')).toString();
-                    decodedResultCID = CID.decode(Buffer.from(response.resultCID.slice(2), 'hex')).toString();
+                    decodedProgramId = CID.decode(Buffer.from(programId.slice(2), 'hex')).toString();
+                    decodedResultCID = CID.decode(Buffer.from(resultCID.slice(2), 'hex')).toString();
                 } catch (error) {
                     console.error('Error decoding CID:', error);
                     decodedProgramId = 'Invalid CID';
@@ -49,24 +53,34 @@ const EventListener = () => {
                 }
 
                 const newResponse = {
-                    batchIndex: task.batchIndex.toNumber(),
+                    batchIndex: batchIndex.toNumber(),
                     programId: decodedProgramId,
-                    inputHash: ethers.utils.hexlify(task.inputHash),
+                    inputHash: ethers.utils.hexlify(inputHash),
                     resultCID: decodedResultCID,
-                    outputHash: ethers.utils.hexlify(response.outputHash),
+                    outputHash: ethers.utils.hexlify(outputHash),
                 };
                 setTaskResponses((prev) => [newResponse, ...prev]);
                 console.log('TaskResponded:', newResponse);
             });
 
             // Listen to TaskBatchRegistered events
-            contract.on('TaskBatchRegistered', (batch) => {
+            contract.on(
+            'TaskBatchRegistered',
+            (index, blockNumber, merkleRoot, quorumNumbers, quorumThresholdPercentage, event) => {
+                console.log('TaskBatchRegistered event received:', {
+                    index,
+                    blockNumber,
+                    merkleRoot,
+                    quorumNumbers,
+                    quorumThresholdPercentage,
+                });
+
                 const newBatch = {
-                    index: batch.index.toNumber(),
-                    blockNumber: batch.blockNumber.toNumber(),
-                    merkeRoot: ethers.utils.hexlify(batch.merkeRoot),
-                    quorumNumbers: ethers.utils.hexlify(batch.quorumNumbers),
-                    quorumThresholdPercentage: batch.quorumThresholdPercentage.toNumber(),
+                    index: index.toNumber(),
+                    blockNumber: blockNumber.toNumber(),
+                    merkeRoot: ethers.utils.hexlify(merkleRoot),
+                    quorumNumbers: ethers.utils.hexlify(quorumNumbers),
+                    quorumThresholdPercentage: quorumThresholdPercentage.toNumber(),
                 };
                 setTaskBatches((prev) => [newBatch, ...prev]);
                 console.log('TaskBatchRegistered:', newBatch);
