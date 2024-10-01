@@ -13,6 +13,7 @@ import {
     TablePagination,
 } from '@mui/material';
 import { getProvider, getContract } from '../config';
+
 const EventListener = () => {
     const [taskResponses, setTaskResponses] = useState([]);
     const [taskBatches, setTaskBatches] = useState([]); // For TaskBatchRegistered events
@@ -36,20 +37,27 @@ const EventListener = () => {
 
             // Listen to TaskResponded events
             contract.on('TaskResponded', (task, response) => {
-
                 const { batchIndex, programId, inputHash } = task;
                 const { resultCID, outputHash } = response;
 
-                let decodedProgramId;
-                let decodedResultCID;
+                let decodedProgramId = 'Invalid CID';
+                let decodedResultCID = 'Invalid CID';
 
                 try {
-                    decodedProgramId = CID.decode(Buffer.from(programId.slice(2), 'hex')).toString();
-                    decodedResultCID = CID.decode(Buffer.from(resultCID.slice(2), 'hex')).toString();
+                    let programIdBytes = programId;
+                    let resultCIDBytes = resultCID;
+
+                    if (typeof programId === 'string') {
+                        programIdBytes = ethers.utils.arrayify(programId);
+                    }
+
+                    if (typeof resultCID === 'string') {
+                        resultCIDBytes = ethers.utils.arrayify(resultCID);
+                    }
+                    decodedProgramId = CID.decode(programIdBytes).toString();
+                    decodedResultCID = CID.decode(resultCIDBytes).toString();
                 } catch (error) {
                     console.error('Error decoding CID:', error);
-                    decodedProgramId = 'Invalid CID';
-                    decodedResultCID = 'Invalid CID';
                 }
 
                 const newResponse = {
@@ -63,22 +71,26 @@ const EventListener = () => {
                 console.log('TaskResponded:', newResponse);
             });
 
-            // Listen to TaskBatchRegistered events
-            contract.on(
-            'TaskBatchRegistered',
-            (index, blockNumber, merkleRoot, quorumNumbers, quorumThresholdPercentage, event) => {
-                console.log('TaskBatchRegistered event received:', {
+            contract.on('TaskBatchRegistered', (batch) => {
+                console.log('TaskBatchRegistered event received:', batch);
+
+                const {
                     index,
                     blockNumber,
-                    merkleRoot,
+                    merkeRoot,
                     quorumNumbers,
                     quorumThresholdPercentage,
-                });
+                } = batch;
+
+                if (merkeRoot === undefined || quorumNumbers === undefined) {
+                    console.error('Received undefined values in TaskBatchRegistered event.');
+                    return;
+                }
 
                 const newBatch = {
                     index: index,
                     blockNumber: blockNumber,
-                    merkeRoot: ethers.utils.hexlify(merkleRoot),
+                    merkeRoot: ethers.utils.hexlify(merkeRoot),
                     quorumNumbers: ethers.utils.hexlify(quorumNumbers),
                     quorumThresholdPercentage: quorumThresholdPercentage,
                 };
