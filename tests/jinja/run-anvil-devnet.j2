@@ -2,7 +2,7 @@
 
 rm /cartesi-lambada-coprocessor/tests/anvil/devnet-operators-ready.flag
 
-anvil --load-state /root/.anvil/state.json --host 0.0.0.0 &
+anvil --load-state /root/.anvil/state.json --host 0.0.0.0 --block-time 12 &
 timeout 22 bash -c 'until printf "" 2>>/dev/null >>/dev/tcp/$0/$1; do sleep 1; done' 0.0.0.0:8545
 
 {% for operator in operators %}

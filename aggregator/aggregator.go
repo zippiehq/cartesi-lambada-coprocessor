@@ -39,6 +39,9 @@ const (
 	BLOCK_TIME_SECONDS          = 12 * time.Second
 
 	AVS_NAME = "lambada-coprocessor"
+
+	BLOCK_NUMBER_POLL_COUNT  = 5
+	BLOCK_NUMBER_POLL_PERIOD = 5 * time.Second
 )
 
 // we only use a single quorum (quorum 0) for incredible squaring
@@ -83,6 +86,7 @@ type Aggregator struct {
 	apiServerAddr string
 
 	storage   Storage
+	ethClient eth.Client
 	avsWriter chainio.AvsWriterer
 	blsAgg    blsagg.BlsAggregationService
 }
@@ -162,6 +166,7 @@ func NewAggregator(privKey, dbPwd string, cfg Config, log logging.Logger) (*Aggr
 		apiServerAddr: cfg.APIServerAddress,
 
 		storage:   storage,
+		ethClient: ethClient,
 		avsWriter: avsWriter,
 		blsAgg:    blsAggregationService,
 	}, nil
@@ -189,9 +194,7 @@ func (agg *Aggregator) Start(ctx context.Context) error {
 			if aggResp.Err != nil {
 				agg.log.Errorf("BLS aggregation failed - %s", aggResp.Err)
 			} else {
-				if err := agg.sendAggregatedResponseToContract(aggResp); err != nil {
-					agg.log.Errorf("failed to send aggregated response to contract - %s", err)
-				}
+				go agg.sendAggregatedResponseToContract(aggResp)
 			}
 		}
 	}
@@ -290,9 +293,7 @@ func (agg *Aggregator) processTaskResponse(
 	return agg.blsAgg.ProcessNewSignature(context.Background(), r.TaskIndex, responseDigest, &s, r.OperatorID)
 }
 
-func (agg *Aggregator) sendAggregatedResponseToContract(
-	resp blsagg.BlsAggregationServiceResponse,
-) error {
+func (agg *Aggregator) sendAggregatedResponseToContract(resp blsagg.BlsAggregationServiceResponse) {
 	nonSignerPubkeys := []tm.BN254G1Point{}
 	for _, nonSignerPubkey := range resp.NonSignersPubkeysG1 {
 		nonSignerPubkeys = append(nonSignerPubkeys, core.ConvertToBN254G1Point(nonSignerPubkey))
@@ -327,7 +328,8 @@ func (agg *Aggregator) sendAggregatedResponseToContract(
 	}
 	taskResponses, err := agg.storage.TaskResponses(resp.TaskIndex)
 	if err != nil {
-		return err
+		agg.log.Errorf("failed to fetch task responses from storage - %s", err)
+		return
 	}
 	var (
 		taskResp      core.TaskResponse
@@ -336,7 +338,8 @@ func (agg *Aggregator) sendAggregatedResponseToContract(
 	for _, tr := range taskResponses {
 		digest, err := core.TaskResponseSigHash(batch.Index, task, tr)
 		if err != nil {
-			return err
+			agg.log.Errorf("failed to compute task response signature hash - %s", err)
+			return
 		}
 		if digest == resp.TaskResponseDigest {
 			taskResp = tr
@@ -350,35 +353,51 @@ func (agg *Aggregator) sendAggregatedResponseToContract(
 	// Generate proof for task.
 	taskProof, err := core.TaskProof(batch, resp.TaskIndex)
 	if err != nil {
-		return err
+		agg.log.Errorf("failed to compute task proof - %s", err)
+		return
 	}
 	taskProofOnchain := make([][32]byte, len(taskProof))
 	for i, p := range taskProof {
 		taskProofOnchain[i] = [32]byte(p)
 	}
 
-	// Post task response onchain.
-	_, err = agg.avsWriter.RespondTask(
-		context.Background(),
-		tm.ICoprocessorTaskManagerTaskBatch{
-			Index:                     batch.Index,
-			BlockNumber:               batch.BlockNumber,
-			MerkeRoot:                 [32]byte(batch.Merkle.GetRoot()),
-			QuorumNumbers:             batch.QuorumNumbers,
-			QuorumThresholdPercentage: batch.QuorumThresholdPercentage,
-		},
-		tm.ICoprocessorTaskManagerTask{
-			BatchIndex: batch.Index,
-			ProgramId:  task.ProgramID,
-			InputHash:  task.InputHash,
-		},
-		taskProofOnchain,
-		tm.ICoprocessorTaskManagerTaskResponse{
-			OutputHash: [32]byte(taskResp.OutputHash),
-			ResultCID:  taskResp.ResultCID,
-		},
-		nonSignerStakesAndSignature,
-	)
-
-	return err
+	// Waiting for batch.BlockNumber + 1 block number to avoid issues with eth_estimateGas
+	for i := 0; i < BLOCK_NUMBER_POLL_COUNT; i++ {
+		blockNumber, err := agg.ethClient.BlockNumber(context.Background())
+		if err != nil {
+			agg.log.Errorf("failed to fetch block number - %s", err)
+			return
+		}
+		if uint32(blockNumber) < batch.BlockNumber+1 {
+			agg.log.Infof("current block number is %d, waiting for %d to send task response onchain", blockNumber, batch.BlockNumber+1)
+			time.Sleep(BLOCK_NUMBER_POLL_PERIOD)
+		} else {
+			// Post task response onchain.
+			_, err = agg.avsWriter.RespondTask(
+				context.Background(),
+				tm.ICoprocessorTaskManagerTaskBatch{
+					Index:                     batch.Index,
+					BlockNumber:               batch.BlockNumber,
+					MerkeRoot:                 [32]byte(batch.Merkle.GetRoot()),
+					QuorumNumbers:             batch.QuorumNumbers,
+					QuorumThresholdPercentage: batch.QuorumThresholdPercentage,
+				},
+				tm.ICoprocessorTaskManagerTask{
+					BatchIndex: batch.Index,
+					ProgramId:  task.ProgramID,
+					InputHash:  task.InputHash,
+				},
+				taskProofOnchain,
+				tm.ICoprocessorTaskManagerTaskResponse{
+					OutputHash: [32]byte(taskResp.OutputHash),
+					ResultCID:  taskResp.ResultCID,
+				},
+				nonSignerStakesAndSignature,
+			)
+			if err != nil {
+				agg.log.Errorf("failed to send aggregated response to contract - %s", err)
+			}
+			return
+		}
+	}
 }
