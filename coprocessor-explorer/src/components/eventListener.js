@@ -13,7 +13,6 @@ import {
     TablePagination,
 } from '@mui/material';
 import { getProvider, getContract } from '../config';
-
 const EventListener = () => {
     const [taskResponses, setTaskResponses] = useState([]);
     const [taskBatches, setTaskBatches] = useState([]); // For TaskBatchRegistered events
@@ -21,54 +20,66 @@ const EventListener = () => {
     const [rowsPerPage, setRowsPerPage] = useState(10);
 
     useEffect(() => {
-        const provider = getProvider();
-        if (!provider) return;
+        const setupListeners = async () => {
+            const provider = getProvider();
+            if (!provider) return;
+            console.log('Provider:', provider.connection.url);
 
-        const contract = getContract(provider);
+            const contract = getContract(provider);
 
-        // TaskResponded events
-        contract.on('TaskResponded', (task, response) => {
-            let decodedProgramId;
-            let decodedResultCID;
+            // Log contract address
+            console.log('Contract address:', contract.address);
 
-            try {
-                decodedProgramId = CID.decode(Buffer.from(task.programId.slice(2), 'hex')).toString();
-                decodedResultCID = CID.decode(Buffer.from(response.resultCID.slice(2), 'hex')).toString();
-            } catch (error) {
-                console.error('Error decoding CID:', error);
-                decodedProgramId = 'Invalid CID';
-                decodedResultCID = 'Invalid CID';
-            }
+            // Log network info
+            const network = await contract.provider.getNetwork();
+            console.log('Connected to network:', network);
 
-            const newResponse = {
-                batchIndex: task.batchIndex.toNumber(),
-                programId: decodedProgramId,
-                inputHash: ethers.utils.hexlify(task.inputHash),
-                resultCID: decodedResultCID,
-                outputHash: ethers.utils.hexlify(response.outputHash),
+            // Listen to TaskResponded events
+            contract.on('TaskResponded', (task, response) => {
+                let decodedProgramId;
+                let decodedResultCID;
+
+                try {
+                    decodedProgramId = CID.decode(Buffer.from(task.programId.slice(2), 'hex')).toString();
+                    decodedResultCID = CID.decode(Buffer.from(response.resultCID.slice(2), 'hex')).toString();
+                } catch (error) {
+                    console.error('Error decoding CID:', error);
+                    decodedProgramId = 'Invalid CID';
+                    decodedResultCID = 'Invalid CID';
+                }
+
+                const newResponse = {
+                    batchIndex: task.batchIndex.toNumber(),
+                    programId: decodedProgramId,
+                    inputHash: ethers.utils.hexlify(task.inputHash),
+                    resultCID: decodedResultCID,
+                    outputHash: ethers.utils.hexlify(response.outputHash),
+                };
+                setTaskResponses((prev) => [newResponse, ...prev]);
+                console.log('TaskResponded:', newResponse);
+            });
+
+            // Listen to TaskBatchRegistered events
+            contract.on('TaskBatchRegistered', (batch) => {
+                const newBatch = {
+                    index: batch.index.toNumber(),
+                    blockNumber: batch.blockNumber.toNumber(),
+                    merkeRoot: ethers.utils.hexlify(batch.merkeRoot),
+                    quorumNumbers: ethers.utils.hexlify(batch.quorumNumbers),
+                    quorumThresholdPercentage: batch.quorumThresholdPercentage.toNumber(),
+                };
+                setTaskBatches((prev) => [newBatch, ...prev]);
+                console.log('TaskBatchRegistered:', newBatch);
+            });
+
+            // Cleanup
+            return () => {
+                contract.removeAllListeners('TaskResponded');
+                contract.removeAllListeners('TaskBatchRegistered');
             };
-            setTaskResponses((prev) => [newResponse, ...prev]);
-            console.log('TaskResponded:', newResponse);
-        });
-
-        // TaskBatchRegistered events
-        contract.on('TaskBatchRegistered', (batch) => {
-            const newBatch = {
-                index: batch.index.toNumber(),
-                blockNumber: batch.blockNumber.toNumber(),
-                merkeRoot: ethers.utils.hexlify(batch.merkeRoot),
-                quorumNumbers: ethers.utils.hexlify(batch.quorumNumbers),
-                quorumThresholdPercentage: batch.quorumThresholdPercentage.toNumber(),
-            };
-            setTaskBatches((prev) => [newBatch, ...prev]);
-            console.log('TaskBatchRegistered:', newBatch);
-        });
-
-        // Cleanup
-        return () => {
-            contract.removeAllListeners('TaskResponded');
-            contract.removeAllListeners('TaskBatchRegistered');
         };
+
+        setupListeners(); // Call the async function
     }, []);
 
     const handleChangePage = (event, newPage) => {
