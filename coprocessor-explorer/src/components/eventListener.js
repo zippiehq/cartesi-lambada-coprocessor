@@ -53,7 +53,7 @@ const EventListener = () => {
                 }
 
                 const newResponse = {
-                    batchIndex: batchIndex.toNumber(),
+                    batchIndex: batchIndex,
                     programId: decodedProgramId,
                     inputHash: ethers.utils.hexlify(inputHash),
                     resultCID: decodedResultCID,
@@ -76,11 +76,11 @@ const EventListener = () => {
                 });
 
                 const newBatch = {
-                    index: index.toNumber(),
-                    blockNumber: blockNumber.toNumber(),
+                    index: index,
+                    blockNumber: blockNumber,
                     merkeRoot: ethers.utils.hexlify(merkleRoot),
                     quorumNumbers: ethers.utils.hexlify(quorumNumbers),
-                    quorumThresholdPercentage: quorumThresholdPercentage.toNumber(),
+                    quorumThresholdPercentage: quorumThresholdPercentage,
                 };
                 setTaskBatches((prev) => [newBatch, ...prev]);
                 console.log('TaskBatchRegistered:', newBatch);
