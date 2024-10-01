@@ -44,20 +44,17 @@ const EventListener = () => {
                 let decodedResultCID = 'Invalid CID';
 
                 try {
-                    let programIdBytes = programId;
+                    const programIdBytes = ethers.utils.arrayify(programId);
+                    decodedProgramId = new TextDecoder('utf-8').decode(programIdBytes);
+
                     let resultCIDBytes = resultCID;
-
-                    if (typeof programId === 'string') {
-                        programIdBytes = ethers.utils.arrayify(programId);
-                    }
-
                     if (typeof resultCID === 'string') {
                         resultCIDBytes = ethers.utils.arrayify(resultCID);
                     }
-                    decodedProgramId = CID.decode(programIdBytes).toString();
                     decodedResultCID = CID.decode(resultCIDBytes).toString();
+
                 } catch (error) {
-                    console.error('Error decoding CID:', error);
+                    console.error('Error decoding CIDs:', error);
                 }
 
                 const newResponse = {
@@ -71,6 +68,7 @@ const EventListener = () => {
                 console.log('TaskResponded:', newResponse);
             });
 
+            // Listen to TaskBatchRegistered events
             contract.on('TaskBatchRegistered', (batch) => {
                 console.log('TaskBatchRegistered event received:', batch);
 
@@ -100,8 +98,8 @@ const EventListener = () => {
 
             // Cleanup
             return () => {
-                contract.removeAllListeners('TaskResponded');
-                contract.removeAllListeners('TaskBatchRegistered');
+                contract.off('TaskResponded');
+                contract.off('TaskBatchRegistered');
             };
         };
 
