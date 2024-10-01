@@ -30,7 +30,7 @@ services:
 
       test: bash -c "[ -f /cartesi-lambada-coprocessor/contracts/script/output/coprocessor_deployment_output_mainnet.json ]"
       interval: 3s
-      retries: 20
+      retries: 300
       start_period: 15s
 
     networks:
@@ -78,7 +78,7 @@ services:
     healthcheck:
       test: bash -c "[ cat < /dev/null > /dev/tcp/0.0.0.0/8080 ]"
       interval: 10s
-      retries: 200
+      retries: 300
       start_period: 15s
 
 

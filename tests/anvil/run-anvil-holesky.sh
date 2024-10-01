@@ -3,7 +3,7 @@
 rm /cartesi-lambada-coprocessor/contracts/script/output/coprocessor_deployment_output_holesky.json
 
 ANVIL_FORK_URL=`cat /run/secrets/anvil_fork_url_holesky`
-anvil --fork-url $ANVIL_FORK_URL --host 0.0.0.0 &
+anvil --fork-url $ANVIL_FORK_URL --host 0.0.0.0 --block-time 12 &
 timeout 22 bash -c 'until printf "" 2>>/dev/null >>/dev/tcp/$0/$1; do sleep 1; done' 0.0.0.0:8545
 
 

@@ -38,17 +38,17 @@ services:
 {% if network == 'devnet' %}
       test: bash -c "[ -f /cartesi-lambada-coprocessor/tests/anvil/devnet-operators-ready.flag ]"
       interval: 3s
-      retries: 20
+      retries: 300
       start_period: 15s
 {% elif network == 'holesky' %}
       test: bash -c "[ -f /cartesi-lambada-coprocessor/contracts/script/output/coprocessor_deployment_output_holesky.json ]"
       interval: 3s
-      retries: 20
+      retries: 300
       start_period: 15s
 {% elif network == 'mainnet' %}
       test: bash -c "[ -f /cartesi-lambada-coprocessor/contracts/script/output/coprocessor_deployment_output_mainnet.json ]"
       interval: 3s
-      retries: 20
+      retries: 300
       start_period: 15s
 {% endif %}
     networks:
@@ -103,7 +103,7 @@ services:
     healthcheck:
       test: bash -c "[ cat < /dev/null > /dev/tcp/0.0.0.0/8080 ]"
       interval: 10s
-      retries: 200
+      retries: 300
       start_period: 15s
 
 {% for operator in operators %}

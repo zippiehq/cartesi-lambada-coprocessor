@@ -192,8 +192,8 @@ func checkTaskBatch(
 		}
 		assert.Equal(t, batchHash, onchainBatchHash, "invalid onchain batch hash for batch %d", batch.index)
 
-	case <-time.After(15 * time.Second):
-		t.Fatalf("failed to get new batch in 15 seconds")
+	case <-time.After(50 * time.Second):
+		t.Fatalf("failed to get new batch in 50 seconds")
 	}
 
 	// Validate all onchain task responses.
