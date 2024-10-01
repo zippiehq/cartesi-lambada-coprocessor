@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Button, Typography, Paper, Box, Alert, TextField } from '@mui/material';
 
-const SendTask = () => {
+const SendTask = ({ account }) => {
     const [programId, setProgramId] = useState('');
     const [file, setFile] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -17,6 +17,11 @@ const SendTask = () => {
 
         setSuccessMessage('');
         setErrorMessage('');
+
+        if (!account) {
+            setErrorMessage('Please connect your wallet first.');
+            return;
+        }
 
         if (!programId || !file) {
             setErrorMessage('Both Program ID and a file are required.');
@@ -34,16 +39,16 @@ const SendTask = () => {
                 const payload = JSON.stringify([
                     {
                         programId: programId,
-                        input: base64Input
-                    }
+                        input: base64Input,
+                    },
                 ]);
 
                 const response = await fetch('/createTask', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
                     },
-                    body: payload
+                    body: payload,
                 });
 
                 if (!response.ok) {
@@ -57,7 +62,7 @@ const SendTask = () => {
                 setFile(null);
                 console.log('Response:', data);
             };
-            reader.onerror = error => {
+            reader.onerror = (error) => {
                 throw error;
             };
         } catch (error) {
@@ -88,9 +93,17 @@ const SendTask = () => {
                         onChange={handleFileChange}
                         required
                     />
-                    <Button type="submit" variant="contained" color="primary" disabled={loading || !file}>
+                    <Button
+                        type="submit"
+                        variant="contained"
+                        color="primary"
+                        disabled={loading || !file || !account} // Disable button if wallet is not connected
+                    >
                         {loading ? 'Sending...' : 'Send Task'}
                     </Button>
+                    {!account && (
+                        <Typography color="error">Please connect your wallet to send a task.</Typography>
+                    )}
                 </Box>
             </form>
             {successMessage && (

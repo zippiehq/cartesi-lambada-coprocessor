@@ -1,12 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Container, Typography } from '@mui/material';
 import ConnectWallet from './components/connectWallet';
 import EventListener from './components/eventListener';
 import SendTask from './components/sendTask';
 
 function App() {
+    const [account, setAccount] = useState(null);
+
     const handleAccountChange = (account) => {
         console.log('Connected account:', account);
+        setAccount(account);
     };
 
     return (
@@ -15,7 +18,7 @@ function App() {
                 Coprocessor Explorer
             </Typography>
             <ConnectWallet onAccountChange={handleAccountChange} />
-            <SendTask />
+            <SendTask account={account} />
             <EventListener />
         </Container>
     );
