@@ -1,11 +1,8 @@
 import { ethers } from 'ethers';
 import ICoprocessorTaskManagerABI from './abis/ICoprocessorTaskManager.json';
 
-const CONTRACT_ADDRESS = '0x000000000000000000000000000000000000dEaD';
+const CONTRACT_ADDRESS = '0xf1a22A655aA923dF47893a44F3765Bf30A7DD0a8';
 
-if (CONTRACT_ADDRESS === '0x000000000000000000000000000000000000dEaD') {
-    console.warn('Using dummy contract address.');
-}
 
 export const getProvider = () => {
     if (window.ethereum) {
