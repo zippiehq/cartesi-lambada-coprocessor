@@ -26,7 +26,6 @@ const EventListener = () => {
 
     useEffect(() => {
         console.log('EventListener component mounted');
-        let isMounted = true;
 
         const setupListeners = async () => {
             try {
@@ -51,21 +50,24 @@ const EventListener = () => {
 
                 // Add event listeners if not already added
                 if (!listenersAddedRef.current) {
+                    console.log("adding listeners");
+
                     // Listener for TaskResponded
                     contract.on('TaskResponded', (task, response) => {
                         console.log('Received TaskResponded event:', { task, response });
                         const newResponse = parseTaskResponded(task, response);
-                        if (newResponse && isMounted) {
+                        if (newResponse) {
                             setTaskResponses((prev) => [newResponse, ...prev]);
                             console.log('New TaskResponded event added to state');
                         }
                     });
 
                     // Listener for TaskBatchRegistered
-                    contract.on('TaskBatchRegistered', (index, blockNumber, merkeRoot, quorumNumbers, quorumThresholdPercentage) => {
-                        console.log('Received TaskBatchRegistered event:', { index, blockNumber, merkeRoot, quorumNumbers, quorumThresholdPercentage });
+                    contract.on('TaskBatchRegistered', (batch) => {
+                        console.log('Received TaskBatchRegistered event:', { batch });
                         const newBatch = parseTaskBatchRegistered(index, blockNumber, merkeRoot, quorumNumbers, quorumThresholdPercentage);
-                        if (newBatch && isMounted) {
+                        console.log({ newBatch });
+                        if (newBatch) {
                             setTaskBatches((prev) => [newBatch, ...prev]);
                             console.log('New TaskBatchRegistered event added to state');
                         }
@@ -83,7 +85,6 @@ const EventListener = () => {
 
         // Cleanup on unmount
         return () => {
-            isMounted = false;
             const provider = getProvider();
             const contract = getContract(provider);
             if (contract) {
@@ -172,7 +173,7 @@ const EventListener = () => {
                                     <TableCell>
                                         {response.programId !== 'Invalid CID' ? (
                                             <Link
-                                                href={`https://ipfs.io/ipfs/${response.programId}`}
+                                                href={`http://espresso.tspre.org:8080/${response.programId}`}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                             >
@@ -186,7 +187,7 @@ const EventListener = () => {
                                     <TableCell>
                                         {response.resultCID !== 'Invalid CID' ? (
                                             <Link
-                                                href={`https://ipfs.io/ipfs/${response.resultCID}`}
+                                                href={`http://espresso.tspre.org:8080/${response.resultCID}`}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                             >
