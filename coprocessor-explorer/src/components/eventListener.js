@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+// EventListener.js
+import React, { useEffect, useState, useRef } from 'react';
 import { ethers } from 'ethers';
 import { CID } from 'multiformats/cid';
 import {
@@ -21,79 +22,61 @@ const EventListener = () => {
     const [page, setPage] = useState(0);
     const [rowsPerPage, setRowsPerPage] = useState(10);
 
+    const listenersAddedRef = useRef(false);
+
     useEffect(() => {
+        console.log('EventListener component mounted');
         let isMounted = true;
 
         const setupListeners = async () => {
-            const provider = getProvider();
-            if (!provider) {
-                console.error('Provider not found');
-                return;
-            }
-            console.log('Provider:', provider.connection.url);
-
-            const contract = getContract(provider);
-            if (!contract) {
-                console.error('Contract not found');
-                return;
-            }
-
-            // Log contract address
-            console.log('Contract address:', contract.address);
-
-            // Log network info
-            const network = await contract.provider.getNetwork();
-            console.log('Connected to network:', network);
-
             try {
-                const pastTaskRespondedEvents = await contract.queryFilter('TaskResponded');
-                const pastResponses = pastTaskRespondedEvents.map((event) => {
-                    const { task, response } = event.args;
-                    return parseTaskResponded(task, response);
-                }).filter(response => response !== null);
-                if (isMounted) {
-                    setTaskResponses((prev) => [...pastResponses.reverse(), ...prev]);
+                const provider = getProvider();
+                if (!provider) {
+                    console.error('Provider not found');
+                    return;
+                }
+                console.log('Provider connected:', provider);
+
+                const contract = getContract(provider);
+                if (!contract) {
+                    console.error('Contract not found');
+                    return;
+                }
+
+                console.log('Contract address:', contract.address);
+
+                // Ensure we're connected to the correct network
+                const network = await provider.getNetwork();
+                console.log('Connected to network:', network.name);
+
+                // Add event listeners if not already added
+                if (!listenersAddedRef.current) {
+                    // Listener for TaskResponded
+                    contract.on('TaskResponded', (task, response) => {
+                        console.log('Received TaskResponded event:', { task, response });
+                        const newResponse = parseTaskResponded(task, response);
+                        if (newResponse && isMounted) {
+                            setTaskResponses((prev) => [newResponse, ...prev]);
+                            console.log('New TaskResponded event added to state');
+                        }
+                    });
+
+                    // Listener for TaskBatchRegistered
+                    contract.on('TaskBatchRegistered', (index, blockNumber, merkeRoot, quorumNumbers, quorumThresholdPercentage) => {
+                        console.log('Received TaskBatchRegistered event:', { index, blockNumber, merkeRoot, quorumNumbers, quorumThresholdPercentage });
+                        const newBatch = parseTaskBatchRegistered(index, blockNumber, merkeRoot, quorumNumbers, quorumThresholdPercentage);
+                        if (newBatch && isMounted) {
+                            setTaskBatches((prev) => [newBatch, ...prev]);
+                            console.log('New TaskBatchRegistered event added to state');
+                        }
+                    });
+
+                    listenersAddedRef.current = true;
+                    console.log('Event listeners added');
                 }
             } catch (error) {
-                console.error('Error fetching past TaskResponded events:', error);
+                console.error('Error setting up listeners:', error);
             }
-
-            try {
-                const pastTaskBatchRegisteredEvents = await contract.queryFilter('TaskBatchRegistered');
-                const pastBatches = pastTaskBatchRegisteredEvents.map((event) => {
-                    const { index, blockNumber, merkeRoot, quorumNumbers, quorumThresholdPercentage } = event.args;
-                    return parseTaskBatchRegistered(index, blockNumber, merkeRoot, quorumNumbers, quorumThresholdPercentage);
-                }).filter(batch => batch !== null); // Filter out null batches
-                if (isMounted) {
-                    setTaskBatches((prev) => [...pastBatches.reverse(), ...prev]);
-                }
-            } catch (error) {
-                console.error('Error fetching past TaskBatchRegistered events:', error);
-            }
-
-            contract.on('TaskResponded', (task, response) => {
-                console.log('Received TaskResponded event:', { task, response });
-                const newResponse = parseTaskResponded(task, response);
-                if (newResponse && isMounted) {
-                    setTaskResponses((prev) => [newResponse, ...prev]);
-                }
-                console.log('TaskResponded:', newResponse);
-            });
-
-            contract.on('TaskBatchRegistered', (index, blockNumber, merkeRoot, quorumNumbers, quorumThresholdPercentage) => {
-                console.log('Received TaskBatchRegistered event:', { index, blockNumber, merkeRoot, quorumNumbers, quorumThresholdPercentage });
-                const newBatch = parseTaskBatchRegistered(index, blockNumber, merkeRoot, quorumNumbers, quorumThresholdPercentage);
-                if (newBatch && isMounted) {
-                    setTaskBatches((prev) => [newBatch, ...prev]);
-                }
-                console.log('TaskBatchRegistered:', newBatch);
-            });
-
-            return () => {
-                isMounted = false;
-                contract.removeAllListeners('TaskResponded');
-                contract.removeAllListeners('TaskBatchRegistered');
-            };
         };
 
         setupListeners();
@@ -101,6 +84,13 @@ const EventListener = () => {
         // Cleanup on unmount
         return () => {
             isMounted = false;
+            const provider = getProvider();
+            const contract = getContract(provider);
+            if (contract) {
+                contract.removeAllListeners('TaskResponded');
+                contract.removeAllListeners('TaskBatchRegistered');
+                console.log('Event listeners removed');
+            }
         };
     }, []);
 
@@ -238,7 +228,6 @@ const EventListener = () => {
                     </TableHead>
                     <TableBody>
                         {taskBatches
-                            .filter(batch => batch !== null)
                             .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
                             .map((batch, idx) => (
                                 <TableRow key={idx}>
