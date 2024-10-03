@@ -63,10 +63,11 @@ const EventListener = () => {
                     });
 
                     // Listener for TaskBatchRegistered
-                    contract.on('TaskBatchRegistered', (batch) => {
-                        console.log('Received TaskBatchRegistered event:', { batch });
+                    contract.on('TaskBatchRegistered', (batch, event) => {
+                        console.log('Received TaskBatchRegistered event:', batch);
+                        const { index, blockNumber, merkeRoot, quorumNumbers, quorumThresholdPercentage } = batch;
                         const newBatch = parseTaskBatchRegistered(index, blockNumber, merkeRoot, quorumNumbers, quorumThresholdPercentage);
-                        console.log({ newBatch });
+                        console.log({newBatch, mounted});
                         if (newBatch) {
                             setTaskBatches((prev) => [newBatch, ...prev]);
                             console.log('New TaskBatchRegistered event added to state');
