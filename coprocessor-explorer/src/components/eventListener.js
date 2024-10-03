@@ -173,7 +173,7 @@ const EventListener = () => {
                                     <TableCell>
                                         {response.programId !== 'Invalid CID' ? (
                                             <Link
-                                                href={`http://espresso.tspre.org:8080/${response.programId}`}
+                                                href={`http://espresso.tspre.org:8080/ipfs/${response.programId}`}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                             >
@@ -187,7 +187,7 @@ const EventListener = () => {
                                     <TableCell>
                                         {response.resultCID !== 'Invalid CID' ? (
                                             <Link
-                                                href={`http://espresso.tspre.org:8080/${response.resultCID}`}
+                                                href={`http://espresso.tspre.org:8080/ipfs/${response.resultCID}`}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                             >
