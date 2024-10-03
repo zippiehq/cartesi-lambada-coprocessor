@@ -43,18 +43,13 @@ const SendTask = ({ account }) => {
                     },
                 ]);
 
-                const response = await fetch('http://lambada.tspre.org:8090/createTask', {
+                const response = await fetch('/createTask', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
                     body: payload,
                 });
-
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.message || 'Failed to send task.');
-                }
 
                 const data = await response.json();
                 setSuccessMessage('Task sent successfully!');
