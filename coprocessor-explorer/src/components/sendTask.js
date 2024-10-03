@@ -43,7 +43,7 @@ const SendTask = ({ account }) => {
                     },
                 ]);
 
-                const response = await fetch('/createTask', {
+                const response = await fetch('http://lambada.tspre.org:8090/createTask', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
