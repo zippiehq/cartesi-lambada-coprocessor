@@ -67,7 +67,7 @@ const EventListener = () => {
                         console.log('Received TaskBatchRegistered event:', batch);
                         const { index, blockNumber, merkeRoot, quorumNumbers, quorumThresholdPercentage } = batch;
                         const newBatch = parseTaskBatchRegistered(index, blockNumber, merkeRoot, quorumNumbers, quorumThresholdPercentage);
-                        console.log({newBatch, mounted});
+                        console.log({newBatch});
                         if (newBatch) {
                             setTaskBatches((prev) => [newBatch, ...prev]);
                             console.log('New TaskBatchRegistered event added to state');
