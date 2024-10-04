@@ -15,7 +15,7 @@ function App() {
     return (
         <Container maxWidth="lg" style={{ marginTop: '2rem' }}>
             <Typography variant="h3" gutterBottom>
-                Coprocessor Explorer
+                Cartesi Coprocessor Explorer
             </Typography>
             <ConnectWallet onAccountChange={handleAccountChange} />
             <SendTask account={account} />
