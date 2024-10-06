@@ -48,6 +48,8 @@ const EventListener = () => {
                 const network = await provider.getNetwork();
                 console.log('Connected to network:', network.name);
 
+                await fetchPastEvents(contract);
+
                 // Add event listeners if not already added
                 if (!listenersAddedRef.current) {
                     console.log("adding listeners");
@@ -79,6 +81,34 @@ const EventListener = () => {
                 }
             } catch (error) {
                 console.error('Error setting up listeners:', error);
+            }
+        };
+
+        const fetchPastEvents = async (contract) => {
+            try {
+                console.log('Fetching past events');
+
+                // past TaskResponded events
+                const taskRespondedEvents = await contract.queryFilter('TaskResponded');
+                const pastTaskResponses = taskRespondedEvents.map((event) => {
+                    const { task, response } = event.args;
+                    return parseTaskResponded(task, response);
+                });
+
+                setTaskResponses(pastTaskResponses.reverse());
+
+                // past TaskBatchRegistered events
+                const taskBatchRegisteredEvents = await contract.queryFilter('TaskBatchRegistered');
+                const pastTaskBatches = taskBatchRegisteredEvents.map((event) => {
+                    const { index, blockNumber, merkeRoot, quorumNumbers, quorumThresholdPercentage } = event.args;
+                    return parseTaskBatchRegistered(index, blockNumber, merkeRoot, quorumNumbers, quorumThresholdPercentage);
+                });
+
+                setTaskBatches(pastTaskBatches.reverse());
+
+                console.log('Past events fetched');
+            } catch (error) {
+                console.error('Error fetching past events:', error);
             }
         };
 
@@ -230,6 +260,7 @@ const EventListener = () => {
                     </TableHead>
                     <TableBody>
                         {taskBatches
+                            .filter(batch => batch !== null)
                             .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
                             .map((batch, idx) => (
                                 <TableRow key={idx}>
