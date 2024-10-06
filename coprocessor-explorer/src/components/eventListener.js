@@ -157,7 +157,6 @@ const EventListener = () => {
 
     const parseTaskBatchRegistered = (index, blockNumber, merkeRoot, quorumNumbers, quorumThresholdPercentage) => {
         if (merkeRoot === undefined || quorumNumbers === undefined) {
-            console.error('Received undefined values in TaskBatchRegistered event.');
             return null;
         }
 
