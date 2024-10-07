@@ -99,8 +99,8 @@ const EventListener = () => {
 
                 // past TaskBatchRegistered events
                 const taskBatchRegisteredEvents = await contract.queryFilter('TaskBatchRegistered');
-                const pastTaskBatches = taskBatchRegisteredEvents.map((batch, event) => {
-
+                const pastTaskBatches = taskBatchRegisteredEvents.map((event) => {
+                    const batch = event.args.batch;
                     const { index, blockNumber, merkeRoot, quorumNumbers, quorumThresholdPercentage } = batch;
 
                     return parseTaskBatchRegistered(index, blockNumber, merkeRoot, quorumNumbers, quorumThresholdPercentage);
