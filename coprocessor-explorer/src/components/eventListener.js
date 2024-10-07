@@ -1,4 +1,3 @@
-// EventListener.js
 import React, { useEffect, useState, useRef } from 'react';
 import { ethers } from 'ethers';
 import { CID } from 'multiformats/cid';
@@ -94,15 +93,20 @@ const EventListener = () => {
                     const { task, response } = event.args;
                     return parseTaskResponded(task, response);
                 });
+                console.log('past task responses fetched:', pastTaskResponses);
 
                 setTaskResponses(pastTaskResponses.reverse());
 
                 // past TaskBatchRegistered events
                 const taskBatchRegisteredEvents = await contract.queryFilter('TaskBatchRegistered');
-                const pastTaskBatches = taskBatchRegisteredEvents.map((event) => {
-                    const { index, blockNumber, merkeRoot, quorumNumbers, quorumThresholdPercentage } = event.args;
+                const pastTaskBatches = taskBatchRegisteredEvents.map((batch, event) => {
+
+                    const { index, blockNumber, merkeRoot, quorumNumbers, quorumThresholdPercentage } = batch;
+
                     return parseTaskBatchRegistered(index, blockNumber, merkeRoot, quorumNumbers, quorumThresholdPercentage);
-                });
+                }).filter((batch) => batch !== null);
+
+                console.log('past task batches fetched:', pastTaskBatches);
 
                 setTaskBatches(pastTaskBatches.reverse());
 
@@ -157,6 +161,7 @@ const EventListener = () => {
 
     const parseTaskBatchRegistered = (index, blockNumber, merkeRoot, quorumNumbers, quorumThresholdPercentage) => {
         if (merkeRoot === undefined || quorumNumbers === undefined) {
+            console.warn('undefined taskBatchRegistered event');
             return null;
         }
 
