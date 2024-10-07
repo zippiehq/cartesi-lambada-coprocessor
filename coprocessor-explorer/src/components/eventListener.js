@@ -93,7 +93,7 @@ const EventListener = () => {
                     const { task, response } = event.args;
                     return parseTaskResponded(task, response);
                 });
-                console.log('past task responses fetched:', pastTaskResponses);
+                // console.log('past task responses fetched:', pastTaskResponses);
 
                 setTaskResponses(pastTaskResponses.reverse());
 
@@ -102,11 +102,10 @@ const EventListener = () => {
                 const pastTaskBatches = taskBatchRegisteredEvents.map((event) => {
                     const batch = event.args.batch;
                     const { index, blockNumber, merkeRoot, quorumNumbers, quorumThresholdPercentage } = batch;
-
                     return parseTaskBatchRegistered(index, blockNumber, merkeRoot, quorumNumbers, quorumThresholdPercentage);
                 }).filter((batch) => batch !== null);
 
-                console.log('past task batches fetched:', pastTaskBatches);
+                // console.log('past task batches fetched:', pastTaskBatches);
 
                 setTaskBatches(pastTaskBatches.reverse());
 
